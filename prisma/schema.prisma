@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  username     String     @unique
+  passwordHash String
+  role         String     @default("admin")
+  createdAt    DateTime   @default(now())
+  apiKeys      ApiKey[]
+  sessions     Session[]
+  auditLogs    AuditLog[]
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  prefix     String
+  hashedKey  String    @unique
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+}
+
+model NetworkMeta {
+  nwid        String   @id
+  name        String   @default("")
+  description String   @default("")
+  tags        String   @default("[]")
+  rulesSource String   @default("")
+  createdAt   DateTime @default(now())
+}
+
+model MemberMeta {
+  nwid     String
+  memberId String
+  name     String @default("")
+  notes    String @default("")
+
+  @@id([nwid, memberId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String
+  targetType String
+  targetId   String
+  detail     String   @default("{}")
+  createdAt  DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}
