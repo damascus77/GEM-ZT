@@ -77,79 +77,92 @@ export function MemberRow({
   });
 
   return (
-    <tr className="border-t border-hairline align-top">
-      <td className="py-3 pr-4">
-        <PresencePill online={member.online} />
-      </td>
-      <td className="py-3 pr-4">
-        <div className="text-ink wght-540">{member.name || '—'}</div>
-        <div className="text-xs text-ink-mute font-mono">{member.memberId}</div>
-      </td>
-      <td className="py-3 pr-4">
-        <Button
-          variant={member.authorized ? 'outline' : 'primary'}
-          className="px-3 py-2 text-sm"
-          disabled={degraded || patch.isPending}
-          onClick={() => patch.mutate({ authorized: !member.authorized })}
-        >
-          {member.authorized ? 'Deauthorize' : 'Authorize'}
-        </Button>
-      </td>
-      <td className="py-3 pr-4 min-w-52">
-        <div className="flex gap-2">
-          <Input
-            value={ips}
-            onChange={(e) => {
-              setIps(e.target.value);
-              setIpsDirty(true);
-            }}
-            className="mt-0"
-            aria-label={`IP assignments for ${member.memberId}`}
-          />
+    <>
+      <tr className="border-t border-hairline align-top">
+        <td className="py-3 pr-4">
+          <PresencePill online={member.online} />
+        </td>
+        <td className="py-3 pr-4">
+          <div className="text-ink wght-540">{member.name || '—'}</div>
+          <div className="text-xs text-ink-mute font-mono">{member.memberId}</div>
+        </td>
+        <td className="py-3 pr-4">
+          <Button
+            variant={member.authorized ? 'outline' : 'primary'}
+            className="px-3 py-2 text-sm"
+            disabled={degraded || patch.isPending}
+            onClick={() => patch.mutate({ authorized: !member.authorized })}
+          >
+            {member.authorized ? 'Deauthorize' : 'Authorize'}
+          </Button>
+        </td>
+        <td className="py-3 pr-4 min-w-52">
+          <div className="flex gap-2">
+            <Input
+              value={ips}
+              onChange={(e) => {
+                setIps(e.target.value);
+                setIpsDirty(true);
+              }}
+              className="mt-0"
+              aria-label={`IP assignments for ${member.memberId}`}
+            />
+            <Button
+              variant="outline"
+              className="px-3 py-2 text-sm shrink-0"
+              disabled={degraded || patch.isPending}
+              onClick={() =>
+                patch.mutate(
+                  {
+                    ipAssignments: ips
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter((s) => s !== ''),
+                  },
+                  // Clear the dirty flag so the input re-syncs to the server's
+                  // canonical list once the write lands.
+                  { onSuccess: () => setIpsDirty(false) },
+                )
+              }
+            >
+              Save IPs
+            </Button>
+          </div>
+        </td>
+        <td className="py-3 pr-4 text-sm text-ink-mute whitespace-nowrap">
+          {member.latency !== null ? `${member.latency} ms` : '— ms'}
+        </td>
+        <td className="py-3 pr-4 text-sm text-ink-mute font-mono">
+          {member.physicalAddress ?? 'unknown'}
+        </td>
+        <td className="py-3 pr-4 text-sm text-ink-mute whitespace-nowrap">
+          {member.lastAuthorizedTime > 0
+            ? new Date(member.lastAuthorizedTime).toLocaleString()
+            : 'never'}
+        </td>
+        <td className="py-3">
           <Button
             variant="outline"
-            className="px-3 py-2 text-sm shrink-0"
-            disabled={degraded || patch.isPending}
-            onClick={() =>
-              patch.mutate(
-                {
-                  ipAssignments: ips
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter((s) => s !== ''),
-                },
-                // Clear the dirty flag so the input re-syncs to the server's
-                // canonical list once the write lands.
-                { onSuccess: () => setIpsDirty(false) },
-              )
-            }
+            className="px-3 py-2 text-sm"
+            disabled={degraded || remove.isPending}
+            onClick={() => remove.mutate()}
           >
-            Save IPs
+            Remove
           </Button>
-        </div>
-      </td>
-      <td className="py-3 pr-4 text-sm text-ink-mute whitespace-nowrap">
-        {member.latency !== null ? `${member.latency} ms` : '— ms'}
-      </td>
-      <td className="py-3 pr-4 text-sm text-ink-mute font-mono">
-        {member.physicalAddress ?? 'unknown'}
-      </td>
-      <td className="py-3 pr-4 text-sm text-ink-mute whitespace-nowrap">
-        {member.lastAuthorizedTime > 0
-          ? new Date(member.lastAuthorizedTime).toLocaleString()
-          : 'never'}
-      </td>
-      <td className="py-3">
-        <Button
-          variant="outline"
-          className="px-3 py-2 text-sm"
-          disabled={degraded || remove.isPending}
-          onClick={() => remove.mutate()}
-        >
-          Remove
-        </Button>
-      </td>
-    </tr>
+        </td>
+      </tr>
+      {(patch.isError || remove.isError) && (
+        <tr>
+          <td colSpan={8} className="pb-3">
+            <p role="alert" className="text-sm text-ink">
+              {patch.isError && (patch.error as Error).message}
+              {patch.isError && remove.isError && ' '}
+              {remove.isError && (remove.error as Error).message}
+            </p>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 

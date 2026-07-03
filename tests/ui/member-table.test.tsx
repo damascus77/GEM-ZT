@@ -115,6 +115,58 @@ describe('MemberTable', () => {
       expect(del![0]).toBe(`/api/v1/networks/${NWID}/members/deadbeef01`);
     });
   });
+
+  it('surfaces a controller error when Authorize PATCH fails', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        return new Response(
+          JSON.stringify({ error: { code: 'CONTROLLER_UNREACHABLE', message: 'controller down' } }),
+          { status: 502 },
+        );
+      }
+      if (String(url).includes('/controller/status')) {
+        return new Response(
+          JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ members }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('deadbeef02');
+    await userEvent.click(screen.getByRole('button', { name: /^authorize$/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/controller down/i);
+  });
+
+  it('surfaces an error when Remove DELETE fails', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        return new Response(
+          JSON.stringify({ error: { code: 'CONTROLLER_UNREACHABLE', message: 'controller down' } }),
+          { status: 502 },
+        );
+      }
+      if (String(url).includes('/controller/status')) {
+        return new Response(
+          JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ members }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('deadbeef02');
+    await userEvent.click(screen.getAllByRole('button', { name: /remove/i })[0]);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/delete failed/i);
+  });
 });
 
 describe('MemberRow IP input re-seed (stale-IP guard)', () => {
