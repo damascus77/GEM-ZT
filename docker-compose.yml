@@ -1,6 +1,9 @@
 services:
   zerotier-controller:
-    image: zerotier/zerotier:1.14.2
+    # zyclonite/zerotier honors ZT_OVERRIDE_LOCAL_CONF + ZT_ALLOW_MANAGEMENT_FROM
+    # (the official zerotier/zerotier image ignores them, so its local API only
+    # accepts 127.0.0.1 and 401s the app container).
+    image: zyclonite/zerotier:1.14.2
     restart: unless-stopped
     environment:
       - ZT_OVERRIDE_LOCAL_CONF=true

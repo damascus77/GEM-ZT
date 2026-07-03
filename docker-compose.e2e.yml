@@ -1,6 +1,6 @@
 services:
   zerotier-controller:
-    image: zerotier/zerotier:1.14.2
+    image: zyclonite/zerotier:1.14.2
     environment:
       - ZT_OVERRIDE_LOCAL_CONF=true
       - ZT_ALLOW_MANAGEMENT_FROM=0.0.0.0/0
