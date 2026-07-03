@@ -87,4 +87,35 @@ export class ControllerClient {
   async deleteNetwork(nwid: string): Promise<void> {
     await this.request<unknown>('DELETE', `/controller/network/${nwid}`);
   }
+
+  listMemberIds(nwid: string): Promise<Record<string, number>> {
+    return this.request<Record<string, number>>('GET', `/controller/network/${nwid}/member`);
+  }
+
+  getMember(nwid: string, memberId: string): Promise<ControllerMember> {
+    return this.request<ControllerMember>(
+      'GET',
+      `/controller/network/${nwid}/member/${memberId}`,
+    );
+  }
+
+  updateMember(
+    nwid: string,
+    memberId: string,
+    config: Partial<ControllerMember>,
+  ): Promise<ControllerMember> {
+    return this.request<ControllerMember>(
+      'POST',
+      `/controller/network/${nwid}/member/${memberId}`,
+      config,
+    );
+  }
+
+  async deleteMember(nwid: string, memberId: string): Promise<void> {
+    await this.request<unknown>('DELETE', `/controller/network/${nwid}/member/${memberId}`);
+  }
+
+  listPeers(): Promise<ControllerPeer[]> {
+    return this.request<ControllerPeer[]>('GET', '/peer');
+  }
 }
