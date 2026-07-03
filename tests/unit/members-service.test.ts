@@ -165,6 +165,28 @@ describe('members service', () => {
     expect(meta?.notes).toBe('note');
   });
 
+  it('updateMember 404s on an unknown member instead of creating a phantom', async () => {
+    mockClient.getMember.mockRejectedValueOnce(new ControllerApiError(404, 'gone'));
+    await expect(
+      updateMember(NWID, 'ffffffffff', { authorized: true }),
+    ).rejects.toBeInstanceOf(ControllerApiError);
+    // Must not POST to the controller (which would upsert a new member).
+    expect(mockClient.updateMember).not.toHaveBeenCalled();
+  });
+
+  it('forwards activeBridge and noAutoAssignIps to the controller and exposes them in the view', async () => {
+    const { data } = await updateMember(NWID, 'deadbeef01', {
+      activeBridge: true,
+      noAutoAssignIps: true,
+    });
+    expect(mockClient.updateMember).toHaveBeenCalledWith(NWID, 'deadbeef01', {
+      activeBridge: true,
+      noAutoAssignIps: true,
+    });
+    expect(data.activeBridge).toBe(true);
+    expect(data.noAutoAssignIps).toBe(true);
+  });
+
   it('metadata-only update does not touch the controller config', async () => {
     await updateMember(NWID, 'deadbeef01', { name: 'just-a-name' });
     expect(mockClient.updateMember).not.toHaveBeenCalled();

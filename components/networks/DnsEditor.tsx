@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useControllerStatus } from '@/components/DegradedBanner';
+import { validateDnsServers } from '@/lib/util/networkValidation';
+import { useNetworkDetail } from './useNetworkDetail';
 
 interface DetailResponse {
   network: { config: { dns: { domain: string; servers: string[] } } };
@@ -15,27 +17,21 @@ export function DnsEditor({ nwid }: { nwid: string }) {
   const queryClient = useQueryClient();
   const controller = useControllerStatus();
   const degraded = controller.data?.degraded ?? false;
-  const { data } = useQuery<DetailResponse>({
-    queryKey: ['network', nwid],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/networks/${nwid}`);
-      if (!res.ok) throw new Error('Failed to load network');
-      return res.json();
-    },
-    refetchInterval: 5000,
-  });
+  const { data } = useNetworkDetail<DetailResponse>(nwid);
 
   const [domain, setDomain] = useState('');
   const [servers, setServers] = useState('');
   const [seeded, setSeeded] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
+  // Re-seed from the server unless the operator is mid-edit (see NetworkSettings).
   useEffect(() => {
-    if (data && !seeded) {
+    if (data && !dirty) {
       setDomain(data.network.config.dns?.domain ?? '');
       setServers((data.network.config.dns?.servers ?? []).join('\n'));
       setSeeded(true);
     }
-  }, [data, seeded]);
+  }, [data, dirty]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -58,7 +54,10 @@ export function DnsEditor({ nwid }: { nwid: string }) {
       }
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['network', nwid] }),
+    onSuccess: () => {
+      setDirty(false);
+      queryClient.invalidateQueries({ queryKey: ['network', nwid] });
+    },
   });
 
   if (!seeded) {
@@ -78,6 +77,7 @@ export function DnsEditor({ nwid }: { nwid: string }) {
       </p>
       <form
         className="flex flex-col gap-4"
+        onChange={() => setDirty(true)}
         onSubmit={(e) => {
           e.preventDefault();
           save.mutate();
@@ -96,6 +96,11 @@ export function DnsEditor({ nwid }: { nwid: string }) {
             className="mt-1 w-full bg-canvas text-ink text-base rounded-sm border border-hairline px-3 py-2.5 font-mono focus:outline-none focus:border-hairline-dark"
           />
         </label>
+        {validateDnsServers(servers.split('\n').map((s) => s.trim())).map((w, i) => (
+          <p key={i} role="status" className="text-sm text-ink-mute">
+            ⚠ {w}
+          </p>
+        ))}
         {save.isError && (
           <p role="alert" className="text-sm text-ink">
             {(save.error as Error).message}

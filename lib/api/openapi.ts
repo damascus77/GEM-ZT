@@ -212,6 +212,21 @@ export const openApiSpec = {
         responses: { '200': { description: '{ entries[] }' } },
       },
     },
+    '/networks/{nwid}/clone': {
+      post: {
+        tags: ['networks'],
+        summary: 'Create a new network from an existing one (config + rules source)',
+        parameters: [{ name: 'nwid', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '201': { description: '{ network, metaWarning }' }, '404': errorResponse, '502': errorResponse },
+      },
+    },
+    '/metrics': {
+      get: {
+        tags: ['meta'],
+        summary: 'Prometheus text-exposition metrics: controller liveness + inventory counts',
+        responses: { '200': { description: 'text/plain metrics' }, '502': errorResponse },
+      },
+    },
     '/openapi.json': {
       get: {
         tags: ['meta'],

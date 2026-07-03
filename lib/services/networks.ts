@@ -170,6 +170,53 @@ export async function createNetwork(
   return { data: await toDetail(created), metaWarning };
 }
 
+export async function cloneNetwork(nwid: string): Promise<WriteResult<NetworkDetail> | null> {
+  const client = await getControllerClient();
+  let source: ControllerNetwork;
+  try {
+    source = await client.getNetwork(nwid);
+  } catch (e) {
+    if (e instanceof ControllerApiError && e.status === 404) return null;
+    throw e;
+  }
+  const sourceMeta = await getDb().networkMeta.findUnique({ where: { nwid } }).catch(() => null);
+  const cloneName = `${sourceMeta?.name || source.name || nwid} (copy)`;
+  const status = await client.getStatus();
+  const created = await client.createNetwork(status.address, {
+    name: cloneName,
+    private: source.private,
+    enableBroadcast: source.enableBroadcast,
+    mtu: source.mtu,
+    multicastLimit: source.multicastLimit,
+    routes: source.routes,
+    ipAssignmentPools: source.ipAssignmentPools,
+    v4AssignMode: source.v4AssignMode,
+    v6AssignMode: source.v6AssignMode,
+    dns: source.dns,
+    rules: source.rules,
+    capabilities: source.capabilities,
+    tags: source.tags,
+  } as Partial<ControllerNetwork>);
+  let metaWarning: string | null = null;
+  try {
+    await getDb().networkMeta.upsert({
+      where: { nwid: created.id },
+      create: {
+        nwid: created.id,
+        name: cloneName,
+        description: sourceMeta?.description ?? '',
+        tags: sourceMeta?.tags ?? '[]',
+        rulesSource: sourceMeta?.rulesSource ?? '',
+      },
+      update: { name: cloneName },
+    });
+  } catch (e) {
+    console.error('[gem-zt] clone meta upsert failed:', e);
+    metaWarning = META_UPSERT_WARNING;
+  }
+  return { data: await toDetail(created), metaWarning };
+}
+
 export async function getNetwork(nwid: string): Promise<NetworkDetail | null> {
   const client = await getControllerClient();
   try {

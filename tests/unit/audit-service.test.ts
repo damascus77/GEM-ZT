@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
 import { createUser } from '@/lib/services/auth';
-import { logAudit, listAuditLog } from '@/lib/services/audit';
+import { logAudit, listAuditLog, purgeAuditLogsOlderThan } from '@/lib/services/audit';
 
 let userId: string;
 
@@ -41,6 +41,49 @@ describe('audit service', () => {
     const entries = await listAuditLog(1);
     expect(entries).toHaveLength(1);
     await expect(listAuditLog(9999)).resolves.toBeDefined();
+  });
+
+  it('orders same-millisecond rows deterministically by id, newest first', async () => {
+    await getDb().auditLog.deleteMany();
+    // Same explicit createdAt so only the id tiebreak can decide the order.
+    const ts = new Date('2026-07-03T12:00:00.000Z');
+    const a = await getDb().auditLog.create({
+      data: { userId, action: 'a', targetType: 't', targetId: '1', detail: '{}', createdAt: ts },
+    });
+    const b = await getDb().auditLog.create({
+      data: { userId, action: 'b', targetType: 't', targetId: '2', detail: '{}', createdAt: ts },
+    });
+    const ids = (await listAuditLog()).map((e) => e.id);
+    const [first, second] = [a.id, b.id].sort().reverse();
+    expect(ids).toEqual([first, second]);
+  });
+
+  it('purgeAuditLogsOlderThan deletes rows before the cutoff and returns the count', async () => {
+    await getDb().auditLog.deleteMany();
+    await getDb().auditLog.create({
+      data: {
+        userId,
+        action: 'old',
+        targetType: 't',
+        targetId: '1',
+        detail: '{}',
+        createdAt: new Date('2020-01-01T00:00:00.000Z'),
+      },
+    });
+    await getDb().auditLog.create({
+      data: {
+        userId,
+        action: 'recent',
+        targetType: 't',
+        targetId: '2',
+        detail: '{}',
+        createdAt: new Date('2026-07-03T00:00:00.000Z'),
+      },
+    });
+    const removed = await purgeAuditLogsOlderThan(new Date('2021-01-01T00:00:00.000Z'));
+    expect(removed).toBe(1);
+    const remaining = await listAuditLog();
+    expect(remaining.map((e) => e.action)).toEqual(['recent']);
   });
 
   it('never throws when the write fails', async () => {

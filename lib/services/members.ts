@@ -19,6 +19,7 @@ export interface MemberView {
   notes: string;
   authorized: boolean;
   activeBridge: boolean;
+  noAutoAssignIps: boolean;
   ipAssignments: string[];
   lastAuthorizedTime: number;
   online: boolean | null;
@@ -33,6 +34,7 @@ export const updateMemberSchema = z
     notes: z.string().max(1000).optional(),
     authorized: z.boolean().optional(),
     activeBridge: z.boolean().optional(),
+    noAutoAssignIps: z.boolean().optional(),
     ipAssignments: z.array(z.string().ip()).max(32).optional(),
     capabilities: z.array(z.number().int().min(0)).max(128).optional(),
     tags: z.array(z.tuple([z.number().int().min(0), z.number().int().min(0)])).max(128).optional(),
@@ -44,6 +46,7 @@ export type UpdateMemberInput = z.infer<typeof updateMemberSchema>;
 const CONTROLLER_KEYS = [
   'authorized',
   'activeBridge',
+  'noAutoAssignIps',
   'ipAssignments',
   'capabilities',
   'tags',
@@ -67,6 +70,7 @@ function toView(
     notes: meta?.notes ?? '',
     authorized: m.authorized,
     activeBridge: m.activeBridge,
+    noAutoAssignIps: m.noAutoAssignIps,
     ipAssignments: m.ipAssignments,
     lastAuthorizedTime: m.lastAuthorizedTime,
     online: peer ? peer.paths.some((p) => p.active) : null,
@@ -123,6 +127,10 @@ export async function updateMember(
   patch: UpdateMemberInput,
 ): Promise<WriteResult<MemberView>> {
   const client = await getControllerClient();
+  // GET-first: the ZT controller upserts on POST, so a PATCH to a typo'd
+  // memberId would silently mint a phantom (possibly pre-authorized) member.
+  // Confirming existence first turns that into a clean 404 instead.
+  const existing = await client.getMember(nwid, memberId);
   const controllerPatch: Record<string, unknown> = {};
   for (const key of CONTROLLER_KEYS) {
     if (patch[key] !== undefined) controllerPatch[key] = patch[key];
@@ -130,7 +138,7 @@ export async function updateMember(
   const updated =
     Object.keys(controllerPatch).length > 0
       ? await client.updateMember(nwid, memberId, controllerPatch as Partial<ControllerMember>)
-      : await client.getMember(nwid, memberId);
+      : existing;
   let metaWarning: string | null = null;
   if (patch.name !== undefined || patch.notes !== undefined) {
     try {

@@ -18,6 +18,30 @@ export class ControllerApiError extends Error {
   }
 }
 
+/**
+ * Thrown when an nwid/node/member id fails format validation before it would be
+ * interpolated into a controller URL. Guards against steering requests at
+ * arbitrary controller API paths and against minting junk controller entries.
+ */
+export class InvalidControllerIdError extends Error {
+  readonly code = 'INVALID_CONTROLLER_ID';
+}
+
+const NWID_RE = /^[0-9a-f]{16}$/;
+const NODE_ID_RE = /^[0-9a-f]{10}$/;
+
+function assertNwid(nwid: string): void {
+  if (!NWID_RE.test(nwid)) {
+    throw new InvalidControllerIdError(`Invalid network id: expected 16 hex chars, got "${nwid}".`);
+  }
+}
+
+function assertNodeId(id: string, kind: 'member' | 'node'): void {
+  if (!NODE_ID_RE.test(id)) {
+    throw new InvalidControllerIdError(`Invalid ${kind} id: expected 10 hex chars, got "${id}".`);
+  }
+}
+
 export interface ControllerClientOptions {
   baseUrl: string;
   token: string;
@@ -69,41 +93,50 @@ export class ControllerClient {
     return this.request<string[]>('GET', '/controller/network');
   }
 
-  getNetwork(nwid: string): Promise<ControllerNetwork> {
+  async getNetwork(nwid: string): Promise<ControllerNetwork> {
+    assertNwid(nwid);
     return this.request<ControllerNetwork>('GET', `/controller/network/${nwid}`);
   }
 
-  createNetwork(
+  async createNetwork(
     nodeId: string,
     config: Partial<ControllerNetwork> = {},
   ): Promise<ControllerNetwork> {
+    assertNodeId(nodeId, 'node');
     return this.request<ControllerNetwork>('POST', `/controller/network/${nodeId}______`, config);
   }
 
-  updateNetwork(nwid: string, config: Partial<ControllerNetwork>): Promise<ControllerNetwork> {
+  async updateNetwork(nwid: string, config: Partial<ControllerNetwork>): Promise<ControllerNetwork> {
+    assertNwid(nwid);
     return this.request<ControllerNetwork>('POST', `/controller/network/${nwid}`, config);
   }
 
   async deleteNetwork(nwid: string): Promise<void> {
+    assertNwid(nwid);
     await this.request<unknown>('DELETE', `/controller/network/${nwid}`);
   }
 
-  listMemberIds(nwid: string): Promise<Record<string, number>> {
+  async listMemberIds(nwid: string): Promise<Record<string, number>> {
+    assertNwid(nwid);
     return this.request<Record<string, number>>('GET', `/controller/network/${nwid}/member`);
   }
 
-  getMember(nwid: string, memberId: string): Promise<ControllerMember> {
+  async getMember(nwid: string, memberId: string): Promise<ControllerMember> {
+    assertNwid(nwid);
+    assertNodeId(memberId, 'member');
     return this.request<ControllerMember>(
       'GET',
       `/controller/network/${nwid}/member/${memberId}`,
     );
   }
 
-  updateMember(
+  async updateMember(
     nwid: string,
     memberId: string,
     config: Partial<ControllerMember>,
   ): Promise<ControllerMember> {
+    assertNwid(nwid);
+    assertNodeId(memberId, 'member');
     return this.request<ControllerMember>(
       'POST',
       `/controller/network/${nwid}/member/${memberId}`,
@@ -112,6 +145,8 @@ export class ControllerClient {
   }
 
   async deleteMember(nwid: string, memberId: string): Promise<void> {
+    assertNwid(nwid);
+    assertNodeId(memberId, 'member');
     await this.request<unknown>('DELETE', `/controller/network/${nwid}/member/${memberId}`);
   }
 

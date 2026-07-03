@@ -6,7 +6,7 @@ import {
   createSession,
   createUser,
   SESSION_COOKIE,
-  SESSION_TTL_MS,
+  sessionCookieOptions,
   userCount,
 } from '@/lib/services/auth';
 
@@ -48,12 +48,7 @@ export async function POST(req: Request) {
       { user: { id: user.id, username: user.username, role: user.role } },
       { status: 201 },
     );
-    res.cookies.set(SESSION_COOKIE, session.id, {
-      httpOnly: true,
-      path: '/',
-      sameSite: 'lax',
-      maxAge: SESSION_TTL_MS / 1000,
-    });
+    res.cookies.set(SESSION_COOKIE, session.id, sessionCookieOptions());
     return res;
   } catch (e) {
     return handleRouteError(e);

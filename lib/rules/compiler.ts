@@ -1,6 +1,5 @@
 // Wraps the vendored ZeroTier rules compiler (lib/rules/vendor/rule-compiler.js).
 // Upstream API: compile(src, rules, caps, tags) -> null | [line, col, message]
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 import RuleCompiler from './vendor/rule-compiler.js';
 
 export const DEFAULT_RULES_SOURCE = [

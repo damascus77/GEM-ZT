@@ -12,12 +12,21 @@ services:
       - controller_data:/var/lib/zerotier-one
     ports:
       - "9993:9993/udp"
+    # Ready once the controller has generated its authtoken.secret — the app
+    # needs that file to talk to the local API, so gate startup on it.
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /var/lib/zerotier-one/authtoken.secret"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
 
   app:
     build: .
     restart: unless-stopped
     depends_on:
-      - zerotier-controller
+      zerotier-controller:
+        condition: service_healthy
     environment:
       - DATABASE_URL=file:/data/gemzt.db
       - ZT_CONTROLLER_URL=http://zerotier-controller:9993
@@ -30,6 +39,16 @@ services:
       - controller_data:/controller:ro
     ports:
       - "3000:3000"
+    # Liveness on the unauthenticated setup-status endpoint (Node 20 global fetch,
+    # so no extra tooling in the image).
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "node -e \"fetch('http://localhost:3000/api/v1/setup/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 volumes:
   controller_data:

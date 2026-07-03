@@ -18,6 +18,25 @@ function ipv4ToInt(ip: string): number {
     .reduce((acc, octet) => acc * 256 + Number(octet), 0);
 }
 
+const IPV4_ADDR_RE = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
+
+/** Parse a dotted-quad IPv4 address to a uint32, or null if malformed. */
+export function ipv4ToIntChecked(ip: string): number | null {
+  return IPV4_ADDR_RE.test(ip) ? ipv4ToInt(ip) >>> 0 : null;
+}
+
+/** Inclusive [network, broadcast] uint32 range of an IPv4 CIDR, or null if not IPv4. */
+export function ipv4CidrRange(cidr: string): [number, number] | null {
+  if (!IPV4_RE.test(cidr)) return null;
+  const [addr, prefixStr] = cidr.split('/');
+  const prefix = Number(prefixStr);
+  const base = ipv4ToInt(addr) >>> 0;
+  const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+  const network = (base & mask) >>> 0;
+  const broadcast = (network | (~mask >>> 0)) >>> 0;
+  return [network, broadcast];
+}
+
 function intToIpv4(n: number): string {
   return [24, 16, 8, 0].map((shift) => (n >>> shift) & 0xff).join('.');
 }

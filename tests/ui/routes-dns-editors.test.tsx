@@ -86,6 +86,17 @@ describe('RoutesEditor', () => {
     });
   });
 
+  it('shows an advisory warning when a pool falls outside every managed route', async () => {
+    stubFetch();
+    renderWithQuery(<RoutesEditor nwid={NWID} />);
+    await screen.findByDisplayValue('10.147.17.0/24');
+    // Change the route target so the seeded pool (10.147.17.x) no longer fits.
+    const routeInput = screen.getByLabelText(/route target 1/i);
+    await userEvent.clear(routeInput);
+    await userEvent.type(routeInput, '192.168.5.0/24');
+    expect(await screen.findByText(/outside every managed route/i)).toBeInTheDocument();
+  });
+
   it('rejects an invalid CIDR in the helper without PATCHing', async () => {
     const fetchMock = stubFetch();
     renderWithQuery(<RoutesEditor nwid={NWID} />);

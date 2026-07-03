@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 
 export interface ControllerStatusView {
   degraded: boolean;
+  reason?: string;
   address?: string;
   online?: boolean;
   version?: string;
@@ -19,7 +20,15 @@ export function useControllerStatus() {
       } catch {
         return { degraded: true };
       }
-      if (res.status === 502) return { degraded: true };
+      if (res.status === 502) {
+        // Surface the server's explanation (e.g. auth-token misconfig vs plain
+        // unreachable) so the banner can say why rather than assuming a network fault.
+        const reason = await res
+          .json()
+          .then((b) => b?.error?.message as string | undefined)
+          .catch(() => undefined);
+        return { degraded: true, reason };
+      }
       if (!res.ok) throw new Error('Failed to load controller status');
       const body = await res.json();
       return { degraded: false, ...body };
@@ -36,6 +45,7 @@ export function DegradedBanner() {
       <span className="wght-600">Controller degraded</span> — the ZeroTier controller is
       unreachable. Networks keep running, but changes are disabled until connectivity is
       restored.
+      {data.reason && <span className="block opacity-90 mt-0.5">{data.reason}</span>}
     </div>
   );
 }

@@ -11,3 +11,13 @@ export async function getControllerClient(): Promise<ControllerClient> {
   cached = new ControllerClient({ baseUrl, token });
   return cached;
 }
+
+/**
+ * Drop the cached client so the next `getControllerClient()` re-reads the auth
+ * token from disk/env. Call this after a controller auth failure: if the
+ * controller regenerated its `authtoken.secret`, the app would otherwise 401
+ * forever until restarted.
+ */
+export function invalidateControllerClient(): void {
+  cached = null;
+}

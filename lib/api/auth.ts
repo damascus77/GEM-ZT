@@ -5,8 +5,11 @@ import { verifyApiKey } from '@/lib/services/apiKeys';
 
 export async function requireAuth(req: Request): Promise<{ user: User } | Response> {
   const authz = req.headers.get('authorization');
-  if (authz && authz.startsWith('Bearer ztk_')) {
-    const user = await verifyApiKey(authz.slice('Bearer '.length));
+  // RFC 7235: the auth scheme is case-insensitive ("Bearer"/"bearer"). The token
+  // itself (ztk_…) stays case-sensitive.
+  const bearer = authz?.match(/^Bearer[ \t]+(.+)$/i);
+  if (bearer && bearer[1].startsWith('ztk_')) {
+    const user = await verifyApiKey(bearer[1]);
     if (user) return { user };
     return apiError('UNAUTHORIZED', 'Invalid or expired API key.', 401);
   }

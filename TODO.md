@@ -13,23 +13,22 @@ These were logged during the build/review and the Docker bring-up. None block ru
 v1 today, but each is worth closing.
 
 ### Correctness / resilience
-- **[P1] Controller auth failure maps to a generic 500, not the degraded UI.** A controller
-  `401`/`403` (e.g. misconfig) falls through `handleRouteError` to `INTERNAL` 500, and the
-  "controller degraded" banner only trips on `502`. Map controller auth/connectivity failures
-  to a clear degraded state so the UI explains it instead of throwing raw errors.
-  (`lib/api/errors.ts`, `components/DegradedBanner.tsx`.)
-- **[P1] `getControllerClient()` caches the token forever.** If the controller regenerates its
-  `authtoken.secret`, the app 401s until restarted — there's no re-read on auth failure. Invalidate
-  the cached client and re-read the token on a controller `401`. (`lib/controller/index.ts`.)
-- **[P2] `login()` user-enumeration timing side-channel.** Unknown username returns early without
-  paying the argon2 cost, so response timing distinguishes "no such user" from "wrong password".
-  Verify against a dummy hash when the user is missing. (`lib/services/auth.ts`.)
-- **[P2] `listAuditLog` orders by `createdAt` only** (ms resolution, no tiebreak) → nondeterministic
-  ordering for same-millisecond rows. Use `orderBy: [{createdAt:'desc'},{id:'desc'}]`. (`lib/services/audit.ts`.)
-- **[P2] API-key date-only expiry shifts by timezone.** `type="date"` → `new Date(v).toISOString()`
-  is parsed as UTC midnight; a positive-offset TZ stores the prior local day. (`app/(ui)/apikeys/page.tsx`.)
-- **[P2] `requireAuth` is case-sensitive on the `Bearer ` scheme** (RFC 7235 says case-insensitive).
-  (`lib/api/auth.ts`.)
+- ✅ **[DONE] [P1]** ~~Controller auth failure maps to a generic 500, not the degraded UI.~~
+  *(Fixed: `handleRouteError` maps controller `401`/`403` to a 502 degraded response so the banner
+  trips; `DegradedBanner` now surfaces the server's specific reason. `lib/api/errors.ts`,
+  `components/DegradedBanner.tsx`.)*
+- ✅ **[DONE] [P1]** ~~`getControllerClient()` caches the token forever.~~ *(Fixed: added
+  `invalidateControllerClient()`, called on a controller `401`/`403` so the next request re-reads
+  the token — recovers from a rotated `authtoken.secret` without a restart. `lib/controller/index.ts`.)*
+- ✅ **[DONE] [P2]** ~~`login()` user-enumeration timing side-channel.~~ *(Fixed: an unknown username
+  now verifies against a constant dummy argon2 hash so timing doesn't leak user existence.
+  `lib/services/auth.ts`.)*
+- ✅ **[DONE] [P2]** ~~`listAuditLog` orders by `createdAt` only~~ *(Fixed: `orderBy:
+  [{createdAt:'desc'},{id:'desc'}]`. `lib/services/audit.ts`.)*
+- ✅ **[DONE] [P2]** ~~API-key date-only expiry shifts by timezone.~~ *(Fixed: `dateInputToEndOfDayIso`
+  interprets the picked date as end-of-local-day. `lib/util/date.ts`, `app/(ui)/apikeys/page.tsx`.)*
+- ✅ **[DONE] [P2]** ~~`requireAuth` is case-sensitive on the `Bearer ` scheme~~ *(Fixed: scheme
+  parsed case-insensitively per RFC 7235; token stays case-sensitive. `lib/api/auth.ts`.)*
 
 ### Tooling / CI / deps
 - **[P1] Add `typecheck` + lint scripts and wire into CI.** No `tsc --noEmit`/lint script exists;
@@ -43,10 +42,11 @@ v1 today, but each is worth closing.
   migration guide if taken.
 
 ### Cleanup
-- **[P2] Remove dead `isValidCidr` import** in `components/networks/RoutesEditor.tsx` and the stray
-  `eslint-disable @typescript-eslint/no-var-requires` above an ES `import` in `lib/rules/compiler.ts`.
-- **[P2] Extract a `useNetworkDetail(nwid)` hook.** The `['network', nwid]` `useQuery` block is
-  copy-pasted across `NetworkSettings`, `RoutesEditor`, and `DnsEditor`.
+- ✅ **[DONE] [P2]** ~~Remove dead `isValidCidr` import~~ in `components/networks/RoutesEditor.tsx` and
+  ~~the stray `eslint-disable @typescript-eslint/no-var-requires`~~ above an ES `import` in
+  `lib/rules/compiler.ts`. *(Both removed.)*
+- ✅ **[DONE] [P2]** ~~Extract a `useNetworkDetail(nwid)` hook.~~ *(Done: `components/networks/
+  useNetworkDetail.ts`, now used by `NetworkSettings`, `RoutesEditor`, and `DnsEditor`.)*
 
 ## 2. Issues you may encounter (review)
 
@@ -67,8 +67,10 @@ v1 today, but each is worth closing.
 > error surfacing, ✅ member-list fan-out bounded (cap 8) + poll slowed to 10s, ✅ `prisma migrate deploy`
 > at container start (see README "Upgrading" — existing db-push'd DBs need a one-time `migrate resolve`).
 
-**Still open — next most impactful:** SQLite `?connection_limit=1`/WAL (P2), compose healthchecks (P2),
-session-token CSPRNG + cookie `Secure` (P2), plus the tracked items in §1 and the feature roadmap in §3.
+**Still open — next most impactful:** compose healthchecks (P2), multi-stage image + non-root (P2),
+`next` security bump (P2), plus the feature roadmap in §3. *(Done 2026-07-03: SQLite
+`connection_limit=1`+WAL, session/audit retention, CSPRNG session tokens, cookie `Secure`, login rate
+limiting — see §2 Data & Security.)*
 
 ### Data & persistence
 - ✅ **[DONE] [P0] No backup/restore story; `docker compose down -v` irreversibly destroys the controller
@@ -86,24 +88,23 @@ session-token CSPRNG + cookie `Secure` (P2), plus the tracked items in §1 and t
   with no check that it matches `network.rules`. If `app_data` is lost/restored (or a network predates
   GEM-ZT), the editor shows the default and one "Compile & save" overwrites the controller's real rules.
   Detect source/compiled divergence and warn instead of presenting the default as current.
-- **[P2] SQLite + Prisma default pool → intermittent "database is locked" under concurrent writes.**
-  `verifyApiKey` writes `lastUsedAt` on every API-key request (`lib/services/apiKeys.ts`) alongside audit
-  writes; Prisma's multi-connection pool on SQLite yields SQLITE_BUSY under scripted polling. Set
-  `?connection_limit=1` and/or WAL + busy_timeout. (`lib/db/client.ts` / `DATABASE_URL`)
-- **[P2] Expired sessions and audit rows are never purged.** `getSession` only deletes an expired session
-  if that same session is presented again; `AuditLog` grows forever (500-row read cap only). Add retention/cleanup.
+- ✅ **[DONE] [P2]** ~~SQLite + Prisma default pool → intermittent "database is locked" under concurrent
+  writes.~~ *(Fixed: `getDb()` forces `connection_limit=1` and applies WAL + `busy_timeout=5000` +
+  `synchronous=NORMAL` pragmas on init. `lib/db/client.ts`)*
+- ✅ **[DONE] [P2]** ~~Expired sessions and audit rows are never purged.~~ *(Fixed: `purgeExpiredSessions()`
+  + `purgeAuditLogsOlderThan(cutoff)`, run via a self-throttled `runRetention()` wired into the login
+  route. Retention window: `GEMZT_AUDIT_RETENTION_DAYS` (default 90). `lib/services/retention.ts`)*
 
 ### Controller integration
 - ✅ **[DONE] [P1] Member list is N+1 against the controller every 5s per open tab.** *(Fixed: `mapWithConcurrency` caps per-member GETs at 8; poll interval 5s→10s. The per-member GET count is inherent — no bulk controller endpoint — but bursts are bounded.)* `listMembers` fires an
   unbounded parallel `getMember` per member + a full `/peer` fetch (`lib/services/members.ts`), on a 5s
   `refetchInterval` — ~100 members ≈ ~100 controller requests per poll per tab, and `updateMember` re-runs
   `loadContext` after every write. Cache peers, batch, or lengthen the interval.
-- **[P2] PATCH to a nonexistent member silently creates it on the controller.** The ZT controller creates
-  a member on POST, so `updateMember` on a typo'd memberId mints a phantom (possibly pre-authorized) member
-  with no error. GET-first or 404 on unknown members. (`lib/services/members.ts`)
-- **[P2] `nwid`/`memberId` params are never format-validated and are interpolated into controller URLs.**
-  An authenticated caller can steer requests at arbitrary controller API paths (and garbage IDs create junk
-  entries). Validate `^[0-9a-f]{16}$` / `^[0-9a-f]{10}$` at the route layer. (`lib/controller/client.ts`, routes)
+- ✅ **[DONE] [P2]** ~~PATCH to a nonexistent member silently creates it on the controller.~~ *(Fixed:
+  `updateMember` GET-firsts so a typo'd memberId 404s instead of minting a phantom. `lib/services/members.ts`)*
+- ✅ **[DONE] [P2]** ~~`nwid`/`memberId` params are never format-validated and are interpolated into
+  controller URLs.~~ *(Fixed: `ControllerClient` validates `^[0-9a-f]{16}$` / `^[0-9a-f]{10}$` before every
+  request; `InvalidControllerIdError` → 400. `lib/controller/client.ts`, `lib/api/errors.ts`)*
 
 ### Security & auth
 - ✅ **[DONE] [P1] First-boot (and post-DB-loss) admin takeover: `/setup` is open to whoever reaches port 3000 first.**
@@ -112,18 +113,19 @@ session-token CSPRNG + cookie `Secure` (P2), plus the tracked items in §1 and t
   interfaces. If the box is reachable beyond the operator — or `app_data` is ever lost (silently resetting
   to `needsSetup`) — someone else becomes admin of the real controller. Gate setup with a bootstrap-token env
   var or bind `127.0.0.1:3000` by default. (`docker-compose.yml`)
-- **[P2] Session tokens are Prisma `cuid()`, not CSPRNG.** `Session.id` is mostly timestamp/counter with
-  ~40 bits of randomness — weak for a bearer credential. Issue a 128-bit `randomBytes` token like API keys do.
-- **[P2] Session cookie lacks `Secure`; no TLS/reverse-proxy guidance.** Login password travels plain HTTP on
-  `0.0.0.0:3000`. Set `secure` when applicable and document a reverse-proxy TLS setup. (`app/api/v1/auth/login`)
-- **[P2] No login rate limiting.** argon2 slows single attempts but nothing stops sustained guessing against
-  the single admin account. (`app/api/v1/auth/login`)
+- ✅ **[DONE] [P2]** ~~Session tokens are Prisma `cuid()`, not CSPRNG.~~ *(Fixed: `createSession` issues a
+  256-bit `randomBytes` hex token as the session id. `lib/services/auth.ts`)*
+- ✅ **[DONE] [P2]** ~~Session cookie lacks `Secure`~~ *(Fixed: `sessionCookieOptions()`/`clearSessionCookieHeader()`
+  set `Secure` when `GEMZT_COOKIE_SECURE=true`, used across login/setup/logout. Reverse-proxy TLS docs still
+  worth expanding in README. `lib/services/auth.ts`)*
+- ✅ **[DONE] [P2]** ~~No login rate limiting.~~ *(Fixed: in-memory per-username failed-login limiter →
+  429 + `Retry-After` after `GEMZT_LOGIN_MAX_ATTEMPTS` (default 5) failures per `GEMZT_LOGIN_WINDOW_MS`
+  (default 15m); resets on success. `lib/services/rateLimit.ts`, `app/api/v1/auth/login`)*
 
 ### Deployment & ops
-- **[P2] No healthchecks; `depends_on` is start-order only.** On first boot the app can race the controller's
-  `authtoken.secret` creation (502s until it appears — recovers, but looks broken), and Docker never restarts
-  a wedged-but-running service. Add a controller healthcheck + `condition: service_healthy` and an app
-  healthcheck on `/api/v1/setup/status`. (`docker-compose.yml`)
+- ✅ **[DONE] [P2] No healthchecks; `depends_on` is start-order only.** *(Fixed: controller healthcheck on
+  `authtoken.secret` + app `depends_on: condition: service_healthy`; app healthcheck hits
+  `/api/v1/setup/status` via Node's global fetch. `docker-compose.yml`)*
 - **[P2] Single-stage image ships devDependencies + source and runs as root.** Move to Next standalone
   multi-stage + `USER node` (note: the ro-mounted `authtoken.secret` is 0600/foreign-UID, so dropping root
   needs `ZT_AUTH_TOKEN` or permission handling). (`Dockerfile`)
@@ -135,14 +137,15 @@ session-token CSPRNG + cookie `Secure` (P2), plus the tracked items in §1 and t
   auto-assigns an IP → input still shows the old list → "Save IPs" PATCHes the stale list, deleting the live
   assignment. Re-seed when server data changes (or diff before save).
 - ✅ **[DONE] [P1] Authorize / Deauthorize / Save IPs / Remove failures are silent.** *(Fixed: `MemberRow` renders a
-  `role="alert"` row showing the mutation error.)* Follow-up polish: the Remove/DELETE path still shows a fixed
-  "Delete failed" rather than parsing the response body's `error.message`.
-- **[P2] Settings/Routes/DNS editors seed once and save whole stale snapshots.** A tab left open across an
-  external change reverts it on save (whole-object PATCH). Send only dirty fields or re-seed on server change.
-  (`components/networks/*`)
-- **[P2] No delete-network control in the UI, and member "Remove" has no confirmation.** `DELETE /networks/{nwid}`
-  exists but no component calls it; meanwhile one misclick removes a member instantly. Add a delete-network
-  control (with confirm) and a confirm on member removal. (`components/members/MemberTable.tsx`)
+  `role="alert"` row showing the mutation error. Follow-up also done: the Remove/DELETE path now parses the
+  response body's `error.message` instead of a fixed "Delete failed".)*
+- ✅ **[DONE] [P2] Settings/Routes/DNS editors seed once and save whole stale snapshots.** *(Fixed: all three
+  editors now re-seed from the server when it changes and the field is untouched (dirty-flag guard, like the
+  member IP input), so a tab left open no longer reverts external edits on save. `components/networks/*`)*
+- ✅ **[DONE] [P2] No delete-network control in the UI, and member "Remove" has no confirmation.** *(Fixed:
+  `NetworkActions` adds a danger-zone Delete (type-the-nwid confirm) that calls `DELETE /networks/{nwid}`;
+  member "Remove" now confirms first, individually and in bulk. `components/networks/NetworkActions.tsx`,
+  `components/members/MemberTable.tsx`)*
 
 ## 3. Feature roadmap (review)
 
@@ -154,12 +157,12 @@ Tags here: **[P1]** high-value / expected of a ZTNET alternative · **[P2]** val
   (the vendored `rule-compiler.js` already emits name→id maps) and render per-member dropdowns/checkboxes
   in `MemberTable`. The API already accepts `capabilities`/`tags` on PATCH — UI-only, and it's what makes
   ZeroTier flow rules usable per-device. Medium effort (`components/members/`).
-- **[P1] Member search, filter, and sort.** Free-text search (name/ID/IP), filters (authorized/pending,
-  online/offline), column sort — same for the networks list. The table is unusable past ~20 members.
-  Small, client-side (`MemberTable.tsx`, `NetworkList.tsx`).
+- ✅ **[DONE] [P1] Member search, filter, and sort.** *(Done: `lib/util/memberFilter.ts` + a toolbar in
+  `MemberTable` — free-text name/ID/IP search, authorized/pending + online/offline filters, and column
+  sort. NetworkList search still open.)*
 - **[P1] IPv4/IPv6 assign-mode toggles + full per-member controls.** UI for `v4AssignMode.zt`, `v6AssignMode`
-  (`zt`/`6plane`/`rfc4193`) in `NetworkSettings`, plus per-member `noAutoAssignIps`/`activeBridge`. Schemas
-  already support all of it (`lib/services/networks.ts`); nothing surfaces it. Small.
+  (`zt`/`6plane`/`rfc4193`) in `NetworkSettings` — *(network-level v4/v6 toggles already shipped in
+  `RoutesEditor`)*. ✅ Per-member `noAutoAssignIps`/`activeBridge` toggles now render in `MemberTable`.
 - ✅ **[DONE] [P1] Dark mode.** *(Done 2026-07-03: CSS-variable theming — neutral tokens flip under a `.dark`
   class; defaults to dark with a no-flash inline script + `localStorage` toggle in the sidebar/auth screen.
   Palette may want visual tuning — the `.dark` values live in `app/globals.css`.)*
@@ -182,20 +185,18 @@ Tags here: **[P1]** high-value / expected of a ZTNET alternative · **[P2]** val
   metadata (names/notes/rules source) as one JSON, and a restore that replays it against the controller API.
   Top operator anxiety with a self-hosted controller. Medium (new service over existing `networks`/`members`).
   (Pairs with the [P0] identity-backup issue in §2.)
-- **[P1] Bulk member actions.** Checkbox selection → authorize / deauthorize / delete selected, and "delete
-  members offline > N days" (zombie cleanup). Big time-saver after onboarding a batch. Small (`MemberTable`
-  + loop over the existing member PATCH).
-- **[P1] Inline validation & conflict feedback for routes/pools/DNS.** Warn on overlapping routes, pools
-  outside any managed route, `via` gateways not inside the network, malformed DNS servers — before saving.
-  `lib/util/cidr.ts` exists (and `RoutesEditor` already imports the unused `isValidCidr`). Prevents the classic
-  "saved a broken route, network silently dead". Small.
+- ✅ **[DONE] [P1] Bulk member actions.** *(Done: checkbox selection + select-all → authorize / deauthorize /
+  delete selected in `MemberTable`. "Delete offline > N days" not yet added.)*
+- ✅ **[DONE] [P1] Inline validation & conflict feedback for routes/pools/DNS.** *(Done:
+  `lib/util/networkValidation.ts` warns on overlapping routes, pools outside every managed route, `via`
+  gateways not inside a route, and malformed DNS servers — surfaced advisorily in `RoutesEditor`/`DnsEditor`.)*
 - **[P2] Pending-member approval queue + shareable join page.** A cross-network "devices awaiting
   authorization" dashboard view, plus a per-network join page (network ID, per-OS `zerotier-cli join`
   instructions, QR) optionally carrying a time-limited self-authorize token. Onboarding becomes "send a link".
   Medium (new route group + token table).
-- **[P2] Network templates / clone network.** Save a network's full config (settings/pools/routes/DNS/rule
-  source) as a named template; create-from-template or clone. Operators redo the same setup per project.
-  Small-medium (template model + reuse of the create path).
+- ✅ **[DONE] [P2] Clone network.** *(Done: `cloneNetwork()` service + `POST /networks/{nwid}/clone` +
+  "Clone network" button in `NetworkActions`; copies config, rules, and metadata into a new network.
+  Named saved templates are still open.)*
 - **[P2] Member presence history / last-seen timeline.** A lightweight poller sampling the `/peer` data
   already read for live presence, persisted to SQLite, rendered as a per-member sparkline + "last seen 3d ago".
   Answers "when did this node drop off?" — which nothing (including the controller API) answers today.
@@ -204,9 +205,9 @@ Tags here: **[P1]** high-value / expected of a ZTNET alternative · **[P2]** val
   rule changes, and store before/after in `AuditLog.detail` so the audit view renders real diffs for rules,
   routes, and settings. Flow rules are the easiest way to lock yourself out; a diff is cheap insurance.
   Small (compiler + audit plumbing already exist).
-- **[P3] Prometheus metrics + status dashboard.** `/api/v1/metrics` exposing controller reachability,
-  network/member counts, authorized-vs-pending, per-member online. Be honest in docs: the controller API
-  exposes no per-member traffic/bandwidth, so this is liveness + inventory, not usage accounting. Small-medium.
+- ✅ **[DONE] [P3] Prometheus metrics.** *(Done: `GET /api/v1/metrics` (text exposition) exposing controller
+  reachability + network/member/authorized/online counts via `lib/services/metrics.ts`. Liveness + inventory
+  only — the controller API has no per-member traffic. A status dashboard on top is still open.)*
 - **[P3] Visual flow-rule builder.** Block-based editor (source/dest/port/action rows) that emits rule-language
   source, alongside the text editor, with a starter-preset library (default allow, isolate-clients,
   expose-one-server). Makes ZeroTier's most powerful capability approachable; the vendored compiler gives

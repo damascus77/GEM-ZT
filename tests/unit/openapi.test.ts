@@ -23,7 +23,9 @@ const expected: Array<[string, string]> = [
   ['/networks/{nwid}/members/{memberId}', 'delete'],
   ['/networks/{nwid}/rules', 'get'],
   ['/networks/{nwid}/rules', 'put'],
+  ['/networks/{nwid}/clone', 'post'],
   ['/audit', 'get'],
+  ['/metrics', 'get'],
   ['/openapi.json', 'get'],
 ];
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ControllerClient } from '@/lib/controller/client';
+import { ControllerClient, InvalidControllerIdError } from '@/lib/controller/client';
 
 function jsonFetch(body: unknown) {
   return vi.fn(async () =>
@@ -59,6 +59,25 @@ describe('ControllerClient member/peer methods', () => {
     const [url, init] = lastCall(fetchFn);
     expect(url).toBe(`http://zt:9993/controller/network/${NWID}/member/deadbeef01`);
     expect(init.method).toBe('DELETE');
+  });
+
+  it('rejects a malformed memberId before issuing a request', async () => {
+    const fetchFn = jsonFetch(memberBody);
+    const client = new ControllerClient({ baseUrl: 'http://zt:9993', token: 't', fetchFn });
+    await expect(client.getMember(NWID, '../../status')).rejects.toBeInstanceOf(
+      InvalidControllerIdError,
+    );
+    await expect(client.updateMember(NWID, 'NOTHEX', {})).rejects.toBeInstanceOf(
+      InvalidControllerIdError,
+    );
+    expect((fetchFn as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
+  });
+
+  it('rejects a malformed nwid before issuing a request', async () => {
+    const fetchFn = jsonFetch(memberBody);
+    const client = new ControllerClient({ baseUrl: 'http://zt:9993', token: 't', fetchFn });
+    await expect(client.listMemberIds('short')).rejects.toBeInstanceOf(InvalidControllerIdError);
+    expect((fetchFn as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
   });
 
   it('listPeers GETs /peer', async () => {

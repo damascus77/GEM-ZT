@@ -38,7 +38,17 @@ describe('docker-compose topology', () => {
     expect(app.environment).toContain('ZT_TOKEN_PATH=/controller/authtoken.secret');
     expect(app.environment).toContain('DATABASE_URL=file:/data/gemzt.db');
     expect(app.ports).toContain('3000:3000');
-    expect(app.depends_on).toContain('zerotier-controller');
+    // depends_on uses the long form so it can wait for controller health.
+    expect(app.depends_on['zerotier-controller'].condition).toBe('service_healthy');
+  });
+
+  it('defines healthchecks for the controller and the app', () => {
+    const controller = compose.services['zerotier-controller'];
+    expect(controller.healthcheck.test.join(' ')).toMatch(/authtoken\.secret/);
+
+    const app = compose.services.app;
+    expect(app.healthcheck.test.join(' ')).toMatch(/setup\/status/);
+    expect(app.healthcheck.start_period).toBeDefined();
   });
 
   it('declares both named volumes', () => {

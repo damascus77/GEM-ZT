@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useControllerStatus } from '@/components/DegradedBanner';
+import { useNetworkDetail } from './useNetworkDetail';
 
 interface NetworkDetailResponse {
   network: {
@@ -26,15 +27,7 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
   const queryClient = useQueryClient();
   const controller = useControllerStatus();
   const degraded = controller.data?.degraded ?? false;
-  const { data } = useQuery<NetworkDetailResponse>({
-    queryKey: ['network', nwid],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/networks/${nwid}`);
-      if (!res.ok) throw new Error('Failed to load network');
-      return res.json();
-    },
-    refetchInterval: 5000,
-  });
+  const { data } = useNetworkDetail<NetworkDetailResponse>(nwid);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -43,10 +36,13 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
   const [mtu, setMtu] = useState(2800);
   const [multicastLimit, setMulticastLimit] = useState(32);
   const [seeded, setSeeded] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
 
+  // Re-seed from the server whenever it changes UNLESS the operator is mid-edit,
+  // so a tab left open reflects external changes instead of reverting them on save.
   useEffect(() => {
-    if (data && !seeded) {
+    if (data && !dirty) {
       setName(data.network.name ?? '');
       setDescription(data.network.description ?? '');
       setIsPrivate(data.network.config.private ?? true);
@@ -55,7 +51,7 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
       setMulticastLimit(data.network.config.multicastLimit ?? 32);
       setSeeded(true);
     }
-  }, [data, seeded]);
+  }, [data, dirty]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -79,6 +75,8 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
     },
     onSuccess: (body: { metaWarning: string | null }) => {
       setWarning(body.metaWarning);
+      // Allow the form to re-sync to the server's canonical saved values.
+      setDirty(false);
       queryClient.invalidateQueries({ queryKey: ['network', nwid] });
       queryClient.invalidateQueries({ queryKey: ['networks'] });
     },
@@ -98,6 +96,7 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
       <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Settings</h2>
       <form
         className="flex flex-col gap-4"
+        onChange={() => setDirty(true)}
         onSubmit={(e) => {
           e.preventDefault();
           save.mutate();

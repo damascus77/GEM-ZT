@@ -8,6 +8,7 @@ import { MemberTable, MemberRow, type MemberViewClient } from '@/components/memb
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 const NWID = 'abcdef0123456789';
@@ -20,6 +21,7 @@ const members = [
     notes: '',
     authorized: true,
     activeBridge: false,
+    noAutoAssignIps: false,
     ipAssignments: ['10.147.17.10'],
     lastAuthorizedTime: 1719900000000,
     online: true,
@@ -34,6 +36,7 @@ const members = [
     notes: '',
     authorized: false,
     activeBridge: false,
+    noAutoAssignIps: false,
     ipAssignments: [],
     lastAuthorizedTime: 0,
     online: null,
@@ -104,11 +107,12 @@ describe('MemberTable', () => {
     });
   });
 
-  it('DELETEs a member', async () => {
+  it('DELETEs a member after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fetchMock = stubFetch();
     renderWithQuery(<MemberTable nwid={NWID} />);
     await screen.findByText('deadbeef02');
-    await userEvent.click(screen.getAllByRole('button', { name: /remove/i })[0]);
+    await userEvent.click(screen.getAllByRole('button', { name: /^remove$/i })[0]);
     await waitFor(() => {
       const del = fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE');
       expect(del).toBeDefined();
@@ -142,7 +146,8 @@ describe('MemberTable', () => {
     expect(alert).toHaveTextContent(/controller down/i);
   });
 
-  it('surfaces an error when Remove DELETE fails', async () => {
+  it('surfaces the parsed controller error message when Remove DELETE fails', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === 'DELETE') {
         return new Response(
@@ -162,10 +167,59 @@ describe('MemberTable', () => {
 
     renderWithQuery(<MemberTable nwid={NWID} />);
     await screen.findByText('deadbeef02');
-    await userEvent.click(screen.getAllByRole('button', { name: /remove/i })[0]);
+    await userEvent.click(screen.getAllByRole('button', { name: /^remove$/i })[0]);
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/delete failed/i);
+    expect(alert).toHaveTextContent(/controller down/i);
+  });
+
+  it('does not DELETE when the remove confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const fetchMock = stubFetch();
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('deadbeef02');
+    await userEvent.click(screen.getAllByRole('button', { name: /^remove$/i })[0]);
+    // Give any (unexpected) request a chance to fire.
+    await new Promise((r) => setTimeout(r, 20));
+    expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE')).toBeUndefined();
+  });
+
+  it('filters members by free-text search', async () => {
+    stubFetch();
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('laptop');
+    await userEvent.type(screen.getByLabelText(/search members/i), 'laptop');
+    expect(screen.getByText('laptop')).toBeInTheDocument();
+    expect(screen.queryByText('deadbeef02')).not.toBeInTheDocument();
+  });
+
+  it('bulk-authorizes selected members', async () => {
+    const fetchMock = stubFetch();
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('deadbeef02');
+    await userEvent.click(screen.getByLabelText('Select member deadbeef02'));
+    await userEvent.click(screen.getByRole('button', { name: /^authorize selected$/i }));
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(
+        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH',
+      );
+      expect(patch).toBeDefined();
+      expect(JSON.parse(patch![1]!.body as string)).toEqual({ authorized: true });
+    });
+  });
+
+  it('toggles noAutoAssignIps via the per-member checkbox', async () => {
+    const fetchMock = stubFetch();
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('deadbeef02');
+    await userEvent.click(screen.getByLabelText('Disable auto-assign IPs for deadbeef02'));
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(
+        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH',
+      );
+      expect(patch).toBeDefined();
+      expect(JSON.parse(patch![1]!.body as string)).toEqual({ noAutoAssignIps: true });
+    });
   });
 });
 
@@ -177,6 +231,7 @@ describe('MemberRow IP input re-seed (stale-IP guard)', () => {
     notes: '',
     authorized: true,
     activeBridge: false,
+    noAutoAssignIps: false,
     ipAssignments: [],
     lastAuthorizedTime: 0,
     online: null,

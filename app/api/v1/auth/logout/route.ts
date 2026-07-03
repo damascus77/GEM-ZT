@@ -1,5 +1,5 @@
 import { handleRouteError } from '@/lib/api/errors';
-import { logout, SESSION_COOKIE } from '@/lib/services/auth';
+import { logout, SESSION_COOKIE, clearSessionCookieHeader } from '@/lib/services/auth';
 
 export async function POST(req: Request) {
   try {
@@ -10,9 +10,7 @@ export async function POST(req: Request) {
     }
     return new Response(null, {
       status: 204,
-      headers: {
-        'Set-Cookie': `${SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`,
-      },
+      headers: { 'Set-Cookie': clearSessionCookieHeader() },
     });
   } catch (e) {
     return handleRouteError(e);

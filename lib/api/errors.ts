@@ -1,12 +1,22 @@
 import { ZodError } from 'zod';
-import { ControllerApiError, ControllerUnreachableError } from '@/lib/controller/client';
+import {
+  ControllerApiError,
+  ControllerUnreachableError,
+  InvalidControllerIdError,
+} from '@/lib/controller/client';
+import { invalidateControllerClient } from '@/lib/controller';
 import { AuthTokenError } from '@/lib/controller/token';
 import { RulesCompileError } from '@/lib/rules/compiler';
 
-export function apiError(code: string, message: string, status: number): Response {
+export function apiError(
+  code: string,
+  message: string,
+  status: number,
+  extraHeaders?: Record<string, string>,
+): Response {
   return new Response(JSON.stringify({ error: { code, message } }), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...extraHeaders },
   });
 }
 
@@ -16,6 +26,9 @@ export function handleRouteError(e: unknown): Response {
       .map((i) => `${i.path.join('.') || 'body'}: ${i.message}`)
       .join('; ');
     return apiError('VALIDATION_ERROR', message, 400);
+  }
+  if (e instanceof InvalidControllerIdError) {
+    return apiError('VALIDATION_ERROR', e.message, 400);
   }
   if (e instanceof ControllerUnreachableError) {
     return apiError('CONTROLLER_UNREACHABLE', 'ZeroTier controller is unreachable.', 502);
@@ -28,6 +41,19 @@ export function handleRouteError(e: unknown): Response {
   }
   if (e instanceof ControllerApiError && e.status === 404) {
     return apiError('NOT_FOUND', 'Resource not found on the controller.', 404);
+  }
+  // A controller auth failure (misconfigured/rotated authtoken.secret) is a
+  // degraded-connectivity condition, not a caller error — surface it as 502 so
+  // the "controller degraded" UI trips instead of throwing a raw 500. Drop the
+  // cached client so the next request re-reads the token (recovers post-rotate).
+  if (e instanceof ControllerApiError && (e.status === 401 || e.status === 403)) {
+    invalidateControllerClient();
+    return apiError(
+      'CONTROLLER_UNREACHABLE',
+      'ZeroTier controller rejected our credentials — it may be misconfigured or its auth ' +
+        'token may have changed. Check the controller and restart if needed.',
+      502,
+    );
   }
   console.error('[gem-zt] unhandled route error:', e);
   return apiError('INTERNAL', 'Internal server error.', 500);

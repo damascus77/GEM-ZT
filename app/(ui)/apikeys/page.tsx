@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { dateInputToEndOfDayIso } from '@/lib/util/date';
 
 interface ApiKeyRow {
   id: string;
@@ -33,7 +34,7 @@ export default function ApiKeysPage() {
   const create = useMutation({
     mutationFn: async () => {
       const body: Record<string, unknown> = { name };
-      if (expiresAt !== '') body.expiresAt = new Date(expiresAt).toISOString();
+      if (expiresAt !== '') body.expiresAt = dateInputToEndOfDayIso(expiresAt);
       const res = await fetch('/api/v1/apikeys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

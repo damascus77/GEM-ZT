@@ -43,6 +43,18 @@ describe('requireAuth', () => {
     expect((result as { user: { id: string } }).user.id).toBe(user.id);
   });
 
+  it('accepts a lowercase "bearer" scheme (RFC 7235 case-insensitive)', async () => {
+    const { user } = await createTestUserAndSession();
+    const { fullKey } = await createApiKey(user.id, 'lowercase-bearer');
+    const result = await requireAuth(
+      new Request('http://x/api/v1/networks', {
+        headers: { authorization: `bearer ${fullKey}` },
+      }),
+    );
+    expect(result).not.toBeInstanceOf(Response);
+    expect((result as { user: { id: string } }).user.id).toBe(user.id);
+  });
+
   it('rejects an invalid Bearer key with 401', async () => {
     const result = await requireAuth(
       new Request('http://x/api/v1/networks', {

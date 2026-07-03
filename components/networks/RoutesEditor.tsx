@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useControllerStatus } from '@/components/DegradedBanner';
-import { cidrToPool, isValidCidr } from '@/lib/util/cidr';
+import { cidrToPool } from '@/lib/util/cidr';
+import { validateRoutesAndPools } from '@/lib/util/networkValidation';
+import { useNetworkDetail } from './useNetworkDetail';
 
 interface RouteRow {
   target: string;
@@ -33,15 +35,7 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
   const queryClient = useQueryClient();
   const controller = useControllerStatus();
   const degraded = controller.data?.degraded ?? false;
-  const { data } = useQuery<DetailResponse>({
-    queryKey: ['network', nwid],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/networks/${nwid}`);
-      if (!res.ok) throw new Error('Failed to load network');
-      return res.json();
-    },
-    refetchInterval: 5000,
-  });
+  const { data } = useNetworkDetail<DetailResponse>(nwid);
 
   const [routes, setRoutes] = useState<RouteRow[]>([]);
   const [pools, setPools] = useState<PoolRow[]>([]);
@@ -51,10 +45,11 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
   const [v6rfc, setV6rfc] = useState(false);
   const [cidr, setCidr] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [seeded, setSeeded] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
+  // Re-seed from the server unless the operator is mid-edit (see NetworkSettings).
   useEffect(() => {
-    if (data && !seeded) {
+    if (data && !dirty) {
       const c = data.network.config;
       // The live controller may omit or partially populate these on a fresh
       // network, so default every field rather than dereferencing blindly.
@@ -64,9 +59,8 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
       setV6zt(c.v6AssignMode?.zt ?? false);
       setV6plane(c.v6AssignMode?.['6plane'] ?? false);
       setV6rfc(c.v6AssignMode?.rfc4193 ?? false);
-      setSeeded(true);
     }
-  }, [data, seeded]);
+  }, [data, dirty]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -86,7 +80,10 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
       }
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['network', nwid] }),
+    onSuccess: () => {
+      setDirty(false);
+      queryClient.invalidateQueries({ queryKey: ['network', nwid] });
+    },
   });
 
   function addFromCidr() {
@@ -98,13 +95,14 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
         setRoutes((r) => [...r, { target: cidr.trim(), via: null }]);
       }
       setCidr('');
+      setDirty(true);
     } catch {
       setError('Enter a valid IPv4 CIDR, e.g. 10.10.0.0/16.');
     }
   }
 
   return (
-    <Card>
+    <Card onChange={() => setDirty(true)}>
       <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Routes & IP pools</h2>
 
       <h3 className="text-sm wght-600 text-ink-mute mb-2">Managed routes</h3>
@@ -135,7 +133,10 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
             <Button
               variant="outline"
               className="px-3 py-2 text-sm shrink-0"
-              onClick={() => setRoutes(routes.filter((_, j) => j !== i))}
+              onClick={() => {
+                setRoutes(routes.filter((_, j) => j !== i));
+                setDirty(true);
+              }}
             >
               Remove
             </Button>
@@ -144,7 +145,10 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
         <Button
           variant="outline"
           className="self-start px-3 py-2 text-sm"
-          onClick={() => setRoutes([...routes, { target: '', via: null }])}
+          onClick={() => {
+            setRoutes([...routes, { target: '', via: null }]);
+            setDirty(true);
+          }}
         >
           Add route
         </Button>
@@ -173,7 +177,10 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
             <Button
               variant="outline"
               className="px-3 py-2 text-sm shrink-0"
-              onClick={() => setPools(pools.filter((_, j) => j !== i))}
+              onClick={() => {
+                setPools(pools.filter((_, j) => j !== i));
+                setDirty(true);
+              }}
             >
               Remove
             </Button>
@@ -217,6 +224,18 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
         </label>
       </div>
 
+      {(() => {
+        const warnings = validateRoutesAndPools({ routes, pools });
+        return warnings.length > 0 ? (
+          <ul className="mb-3 text-sm text-ink-mute list-disc pl-5">
+            {warnings.map((w, i) => (
+              <li key={i} role="status">
+                ⚠ {w}
+              </li>
+            ))}
+          </ul>
+        ) : null;
+      })()}
       {save.isError && (
         <p role="alert" className="text-sm text-ink mb-2">
           {(save.error as Error).message}

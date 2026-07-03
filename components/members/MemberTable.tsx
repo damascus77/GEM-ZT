@@ -1,12 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Pill } from '@/components/ui/Pill';
 import { useControllerStatus } from '@/components/DegradedBanner';
+import {
+  filterAndSortMembers,
+  type AuthorizedFilter,
+  type OnlineFilter,
+  type MemberSort,
+} from '@/lib/util/memberFilter';
 
 export interface MemberViewClient {
   memberId: string;
@@ -15,6 +21,7 @@ export interface MemberViewClient {
   notes: string;
   authorized: boolean;
   activeBridge: boolean;
+  noAutoAssignIps: boolean;
   ipAssignments: string[];
   lastAuthorizedTime: number;
   online: boolean | null;
@@ -34,11 +41,15 @@ export function MemberRow({
   nwid,
   degraded,
   onChanged,
+  selected,
+  onToggleSelect,
 }: {
   member: MemberViewClient;
   nwid: string;
   degraded: boolean;
   onChanged: () => void;
+  selected?: boolean;
+  onToggleSelect?: (memberId: string) => void;
 }) {
   const serverIps = member.ipAssignments.join(', ');
   const [ips, setIps] = useState(serverIps);
@@ -71,14 +82,35 @@ export function MemberRow({
       const res = await fetch(`/api/v1/networks/${nwid}/members/${member.memberId}`, {
         method: 'DELETE',
       });
-      if (!res.ok && res.status !== 204) throw new Error('Delete failed');
+      if (!res.ok && res.status !== 204) {
+        // Surface the controller's actual reason instead of a fixed string.
+        const parsed = await res.json().catch(() => null);
+        throw new Error(parsed?.error?.message ?? 'Delete failed');
+      }
     },
     onSuccess: onChanged,
   });
 
+  function confirmRemove() {
+    const label = member.name || member.memberId;
+    if (window.confirm(`Remove member ${label}? This cannot be undone.`)) {
+      remove.mutate();
+    }
+  }
+
   return (
     <>
       <tr className="border-t border-hairline align-top">
+        <td className="py-3 pr-2">
+          {onToggleSelect && (
+            <input
+              type="checkbox"
+              checked={selected ?? false}
+              onChange={() => onToggleSelect(member.memberId)}
+              aria-label={`Select member ${member.memberId}`}
+            />
+          )}
+        </td>
         <td className="py-3 pr-4">
           <PresencePill online={member.online} />
         </td>
@@ -95,6 +127,28 @@ export function MemberRow({
           >
             {member.authorized ? 'Deauthorize' : 'Authorize'}
           </Button>
+          <div className="flex flex-col gap-1 mt-2 text-xs text-ink-mute">
+            <label className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={member.activeBridge}
+                disabled={degraded || patch.isPending}
+                onChange={(e) => patch.mutate({ activeBridge: e.target.checked })}
+                aria-label={`Active bridge for ${member.memberId}`}
+              />
+              Bridge
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={member.noAutoAssignIps}
+                disabled={degraded || patch.isPending}
+                onChange={(e) => patch.mutate({ noAutoAssignIps: e.target.checked })}
+                aria-label={`Disable auto-assign IPs for ${member.memberId}`}
+              />
+              No auto IP
+            </label>
+          </div>
         </td>
         <td className="py-3 pr-4 min-w-52">
           <div className="flex gap-2">
@@ -145,7 +199,7 @@ export function MemberRow({
             variant="outline"
             className="px-3 py-2 text-sm"
             disabled={degraded || remove.isPending}
-            onClick={() => remove.mutate()}
+            onClick={confirmRemove}
           >
             Remove
           </Button>
@@ -153,7 +207,7 @@ export function MemberRow({
       </tr>
       {(patch.isError || remove.isError) && (
         <tr>
-          <td colSpan={8} className="pb-3">
+          <td colSpan={9} className="pb-3">
             <p role="alert" className="text-sm text-ink">
               {patch.isError && (patch.error as Error).message}
               {patch.isError && remove.isError && ' '}
@@ -165,6 +219,9 @@ export function MemberRow({
     </>
   );
 }
+
+const selectClass =
+  'mt-0 bg-canvas text-ink text-sm rounded-sm border border-hairline px-2 py-2 focus:outline-none';
 
 export function MemberTable({ nwid }: { nwid: string }) {
   const queryClient = useQueryClient();
@@ -180,21 +237,182 @@ export function MemberTable({ nwid }: { nwid: string }) {
     refetchInterval: 10000,
   });
 
+  const [search, setSearch] = useState('');
+  const [authFilter, setAuthFilter] = useState<AuthorizedFilter>('all');
+  const [onlineFilter, setOnlineFilter] = useState<OnlineFilter>('all');
+  // 'default' preserves the controller's ordering; anything else applies a sort.
+  const [sort, setSort] = useState<MemberSort | 'default'>('default');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
   const onChanged = () => queryClient.invalidateQueries({ queryKey: ['members', nwid] });
+
+  const visible = useMemo(
+    () =>
+      filterAndSortMembers(data?.members ?? [], {
+        search,
+        authorized: authFilter,
+        online: onlineFilter,
+        sort: sort === 'default' ? undefined : sort,
+        dir: 'asc',
+      }),
+    [data, search, authFilter, onlineFilter, sort],
+  );
+
+  function toggleSelect(memberId: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(memberId)) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  }
+
+  const bulk = useMutation({
+    mutationFn: async (action: 'authorize' | 'deauthorize' | 'delete') => {
+      const ids = [...selected];
+      for (const id of ids) {
+        if (action === 'delete') {
+          const res = await fetch(`/api/v1/networks/${nwid}/members/${id}`, { method: 'DELETE' });
+          if (!res.ok && res.status !== 204) {
+            const parsed = await res.json().catch(() => null);
+            throw new Error(parsed?.error?.message ?? `Delete failed for ${id}`);
+          }
+        } else {
+          const res = await fetch(`/api/v1/networks/${nwid}/members/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ authorized: action === 'authorize' }),
+          });
+          if (!res.ok) {
+            const parsed = await res.json().catch(() => null);
+            throw new Error(parsed?.error?.message ?? `Update failed for ${id}`);
+          }
+        }
+      }
+    },
+    onSuccess: () => {
+      setSelected(new Set());
+      onChanged();
+    },
+  });
+
+  function runBulk(action: 'authorize' | 'deauthorize' | 'delete') {
+    if (action === 'delete' && !window.confirm(`Remove ${selected.size} selected member(s)?`)) {
+      return;
+    }
+    bulk.mutate(action);
+  }
+
+  const allVisibleSelected = visible.length > 0 && visible.every((m) => selected.has(m.memberId));
 
   return (
     <Card className="overflow-x-auto">
       <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Members</h2>
+
+      {data && data.members.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4 items-center">
+          <Input
+            placeholder="Search name, ID, or IP"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="mt-0 w-56"
+            aria-label="Search members"
+          />
+          <select
+            className={selectClass}
+            value={authFilter}
+            onChange={(e) => setAuthFilter(e.target.value as AuthorizedFilter)}
+            aria-label="Filter by authorization"
+          >
+            <option value="all">All</option>
+            <option value="authorized">Authorized</option>
+            <option value="pending">Pending</option>
+          </select>
+          <select
+            className={selectClass}
+            value={onlineFilter}
+            onChange={(e) => setOnlineFilter(e.target.value as OnlineFilter)}
+            aria-label="Filter by presence"
+          >
+            <option value="all">Any status</option>
+            <option value="online">Online only</option>
+            <option value="offline">Offline only</option>
+          </select>
+          <select
+            className={selectClass}
+            value={sort}
+            onChange={(e) => setSort(e.target.value as MemberSort | 'default')}
+            aria-label="Sort members"
+          >
+            <option value="default">Sort: Default</option>
+            <option value="name">Sort: Name</option>
+            <option value="id">Sort: ID</option>
+            <option value="status">Sort: Auth</option>
+            <option value="lastAuthorized">Sort: Last authorized</option>
+          </select>
+        </div>
+      )}
+
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-canvas-soft rounded-sm border border-hairline">
+          <span className="text-sm text-ink-mute">{selected.size} selected</span>
+          <Button
+            className="px-3 py-2 text-sm"
+            disabled={degraded || bulk.isPending}
+            onClick={() => runBulk('authorize')}
+          >
+            Authorize selected
+          </Button>
+          <Button
+            variant="outline"
+            className="px-3 py-2 text-sm"
+            disabled={degraded || bulk.isPending}
+            onClick={() => runBulk('deauthorize')}
+          >
+            Deauthorize selected
+          </Button>
+          <Button
+            variant="outline"
+            className="px-3 py-2 text-sm"
+            disabled={degraded || bulk.isPending}
+            onClick={() => runBulk('delete')}
+          >
+            Delete selected
+          </Button>
+          <Button variant="outline" className="px-3 py-2 text-sm" onClick={() => setSelected(new Set())}>
+            Clear
+          </Button>
+        </div>
+      )}
+      {bulk.isError && (
+        <p role="alert" className="text-sm text-ink mb-2">
+          {(bulk.error as Error).message}
+        </p>
+      )}
+
       {isLoading && <p className="text-ink-mute">Loading…</p>}
       {data && data.members.length === 0 && (
         <p className="text-ink-mute">
           No members yet. Join this network from a device, then authorize it here.
         </p>
       )}
-      {data && data.members.length > 0 && (
+      {data && data.members.length > 0 && visible.length === 0 && (
+        <p className="text-ink-mute">No members match the current filters.</p>
+      )}
+      {visible.length > 0 && (
         <table className="w-full text-left">
           <thead>
             <tr className="text-xs text-ink-faint uppercase">
+              <th className="pb-2 pr-2">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={(e) =>
+                    setSelected(e.target.checked ? new Set(visible.map((m) => m.memberId)) : new Set())
+                  }
+                  aria-label="Select all members"
+                />
+              </th>
               <th className="pb-2 pr-4">Status</th>
               <th className="pb-2 pr-4">Member</th>
               <th className="pb-2 pr-4">Auth</th>
@@ -206,13 +424,15 @@ export function MemberTable({ nwid }: { nwid: string }) {
             </tr>
           </thead>
           <tbody>
-            {data.members.map((m) => (
+            {visible.map((m) => (
               <MemberRow
                 key={m.memberId}
                 member={m}
                 nwid={nwid}
                 degraded={degraded}
                 onChanged={onChanged}
+                selected={selected.has(m.memberId)}
+                onToggleSelect={toggleSelect}
               />
             ))}
           </tbody>

@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { apiError, handleRouteError } from '@/lib/api/errors';
-import { ControllerApiError, ControllerUnreachableError } from '@/lib/controller/client';
+import {
+  ControllerApiError,
+  ControllerUnreachableError,
+  InvalidControllerIdError,
+} from '@/lib/controller/client';
 import { AuthTokenError } from '@/lib/controller/token';
 
 describe('apiError', () => {
@@ -40,6 +44,22 @@ describe('handleRouteError', () => {
     const res = handleRouteError(new ControllerApiError(404, 'no such network'));
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe('NOT_FOUND');
+  });
+
+  it('maps a controller auth failure (401/403) to a 502 degraded state', async () => {
+    for (const status of [401, 403]) {
+      const res = handleRouteError(new ControllerApiError(status, 'unauthorized'));
+      expect(res.status).toBe(502);
+      const body = await res.json();
+      expect(body.error.code).toBe('CONTROLLER_UNREACHABLE');
+      expect(body.error.message).toMatch(/credentials/i);
+    }
+  });
+
+  it('maps InvalidControllerIdError to 400 VALIDATION_ERROR', async () => {
+    const res = handleRouteError(new InvalidControllerIdError('Invalid network id: ...'));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
   });
 
   it('maps unknown errors to 500 INTERNAL', async () => {
