@@ -93,9 +93,20 @@ describe('networks routes', () => {
   });
 
   it('POST /networks validates the body (400 VALIDATION_ERROR)', async () => {
-    const res = await createPost(req('http://x/api/v1/networks', 'POST', { name: '' }));
+    // name is optional now (blank => named after the nwid), so use an over-long
+    // name to exercise validation.
+    const res = await createPost(
+      req('http://x/api/v1/networks', 'POST', { name: 'x'.repeat(101) }),
+    );
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('POST /networks with no name creates a network named after its nwid', async () => {
+    const res = await createPost(req('http://x/api/v1/networks', 'POST', {}));
+    expect(res.status).toBe(201);
+    const meta = await getDb().networkMeta.findUnique({ where: { nwid: NWID } });
+    expect(meta?.name).toBe(NWID);
   });
 
   it('POST /networks creates and writes an audit entry', async () => {

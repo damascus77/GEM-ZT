@@ -86,6 +86,17 @@ describe('networks service', () => {
     expect(meta?.description).toBe('house');
   });
 
+  it('createNetwork with no name uses the generated nwid as the name', async () => {
+    const { data } = await createNetwork({});
+    expect(mockClient.createNetwork).toHaveBeenCalledWith('abcdef0123', {
+      name: '',
+      private: true,
+    });
+    expect(data.name).toBe(NWID);
+    const meta = await getDb().networkMeta.findUnique({ where: { nwid: NWID } });
+    expect(meta?.name).toBe(NWID);
+  });
+
   it('createNetwork returns metaWarning (not an error) when the meta upsert fails', async () => {
     await getDb().$disconnect();
     const spy = vi

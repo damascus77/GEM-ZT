@@ -33,10 +33,12 @@ export function NetworkList() {
   const [name, setName] = useState('');
   const create = useMutation({
     mutationFn: async () => {
+      const trimmed = name.trim();
       const res = await fetch('/api/v1/networks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        // Omit name when blank → the server names the network after its nwid.
+        body: JSON.stringify(trimmed ? { name: trimmed } : {}),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -62,13 +64,12 @@ export function NetworkList() {
           }}
         >
           <Input
-            placeholder="New network name"
+            placeholder="New network name (optional)"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            required
             className="mt-0 w-56"
           />
-          <Button type="submit" disabled={create.isPending || name === ''}>
+          <Button type="submit" disabled={create.isPending}>
             Create network
           </Button>
         </form>

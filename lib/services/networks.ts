@@ -29,7 +29,8 @@ export interface NetworkDetail {
 
 export const createNetworkSchema = z
   .object({
-    name: z.string().min(1).max(100),
+    // Optional: when omitted/blank, the network is named after its generated nwid.
+    name: z.string().max(100).optional(),
     description: z.string().max(500).optional(),
   })
   .strict();
@@ -148,16 +149,19 @@ export async function createNetwork(
 ): Promise<WriteResult<NetworkDetail>> {
   const client = await getControllerClient();
   const status = await client.getStatus();
+  const requestedName = input.name?.trim() ?? '';
   const created = await client.createNetwork(status.address, {
-    name: input.name,
+    name: requestedName,
     private: true,
   });
+  // No name given → name the network after its generated nwid.
+  const name = requestedName || created.id;
   let metaWarning: string | null = null;
   try {
     await getDb().networkMeta.upsert({
       where: { nwid: created.id },
-      create: { nwid: created.id, name: input.name, description: input.description ?? '' },
-      update: { name: input.name, description: input.description ?? '' },
+      create: { nwid: created.id, name, description: input.description ?? '' },
+      update: { name, description: input.description ?? '' },
     });
   } catch (e) {
     console.error('[gem-zt] network meta upsert failed:', e);

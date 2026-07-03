@@ -53,4 +53,24 @@ describe('NetworkList', () => {
     expect(postCall[0]).toBe('/api/v1/networks');
     expect(JSON.parse(postCall[1]!.body as string)).toEqual({ name: 'office' });
   });
+
+  it('creates with no name (empty body) when the name field is blank', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return new Response(JSON.stringify({ network: networks[0], metaWarning: null }), {
+          status: 201,
+        });
+      }
+      return new Response(JSON.stringify({ networks }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithQuery(<NetworkList />);
+    // Do not type a name — the Create button must be enabled and post an empty body.
+    const button = screen.getByRole('button', { name: /create network/i });
+    expect(button).not.toBeDisabled();
+    await userEvent.click(button);
+    const postCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')!;
+    expect(postCall[0]).toBe('/api/v1/networks');
+    expect(JSON.parse(postCall[1]!.body as string)).toEqual({});
+  });
 });
