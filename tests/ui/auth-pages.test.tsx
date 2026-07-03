@@ -1,0 +1,79 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { renderWithQuery } from '../helpers/render';
+
+const push = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push, replace: push }),
+}));
+
+import LoginPage from '@/app/(auth)/login/page';
+import SetupPage from '@/app/(auth)/setup/page';
+
+beforeEach(() => {
+  push.mockReset();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('LoginPage', () => {
+  it('POSTs credentials to /api/v1/auth/login and redirects to /networks', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ user: {} }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithQuery(<LoginPage />);
+    await userEvent.type(screen.getByLabelText(/username/i), 'admin');
+    await userEvent.type(screen.getByLabelText(/password/i), 'password12345');
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/networks'));
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/v1/auth/login');
+    expect(JSON.parse(init.body)).toEqual({ username: 'admin', password: 'password12345' });
+  });
+
+  it('shows the error envelope message on 401', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({ error: { code: 'UNAUTHORIZED', message: 'Invalid username or password.' } }),
+          { status: 401 },
+        ),
+      ),
+    );
+    renderWithQuery(<LoginPage />);
+    await userEvent.type(screen.getByLabelText(/username/i), 'admin');
+    await userEvent.type(screen.getByLabelText(/password/i), 'wrong');
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid username or password.');
+  });
+});
+
+describe('SetupPage', () => {
+  it('refuses to submit when passwords do not match', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithQuery(<SetupPage />);
+    await userEvent.type(screen.getByLabelText(/username/i), 'admin');
+    await userEvent.type(screen.getByLabelText(/^password$/i), 'password12345');
+    await userEvent.type(screen.getByLabelText(/confirm password/i), 'different');
+    await userEvent.click(screen.getByRole('button', { name: /create admin account/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Passwords do not match.');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('POSTs to /api/v1/setup and redirects to /networks on success', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ user: {} }), { status: 201 }));
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithQuery(<SetupPage />);
+    await userEvent.type(screen.getByLabelText(/username/i), 'admin');
+    await userEvent.type(screen.getByLabelText(/^password$/i), 'password12345');
+    await userEvent.type(screen.getByLabelText(/confirm password/i), 'password12345');
+    await userEvent.click(screen.getByRole('button', { name: /create admin account/i }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/networks'));
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/setup');
+  });
+});

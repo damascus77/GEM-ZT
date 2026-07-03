@@ -1,0 +1,30 @@
+services:
+  zerotier-controller:
+    image: zerotier/zerotier:1.14.2
+    restart: unless-stopped
+    environment:
+      - ZT_OVERRIDE_LOCAL_CONF=true
+      - ZT_ALLOW_MANAGEMENT_FROM=0.0.0.0/0
+    volumes:
+      - controller_data:/var/lib/zerotier-one
+    ports:
+      - "9993:9993/udp"
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - zerotier-controller
+    environment:
+      - DATABASE_URL=file:/data/gemzt.db
+      - ZT_CONTROLLER_URL=http://zerotier-controller:9993
+      - ZT_TOKEN_PATH=/controller/authtoken.secret
+    volumes:
+      - app_data:/data
+      - controller_data:/controller:ro
+    ports:
+      - "3000:3000"
+
+volumes:
+  controller_data:
+  app_data:
