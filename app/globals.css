@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Neutral surface/text tokens as "R G B" triplets. Tailwind maps canvas/ink/etc.
+   to rgb(var(--c-*) / <alpha>). The .dark class (set on <html>) flips them. */
+:root {
+  --c-canvas: 255 255 255; /* #ffffff */
+  --c-canvas-soft: 250 250 248; /* #fafaf8 */
+  --c-ink: 41 40 39; /* #292827 */
+  --c-ink-mute: 115 112 109; /* #73706d */
+  --c-ink-faint: 154 151 148; /* #9a9794 */
+  --c-hairline: 232 228 221; /* #e8e4dd */
+}
+.dark {
+  --c-canvas: 28 26 46; /* #1c1a2e — card / input surface */
+  --c-canvas-soft: 16 14 28; /* #100e1c — page background */
+  --c-ink: 233 231 241; /* near-white */
+  --c-ink-mute: 165 162 184;
+  --c-ink-faint: 120 117 143;
+  --c-hairline: 48 43 68; /* #302b44 */
+}
+
 /* DESIGN.md: Inter Variable substitute for Super Sans VF — sub-default weights */
 body {
   font-variation-settings: 'wght' 460;

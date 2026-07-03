@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { DegradedBanner } from '@/components/DegradedBanner';
 import { SignOutButton } from '@/components/SignOutButton';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const nav = [
   { href: '/networks', label: 'Networks' },
@@ -25,7 +26,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="mt-auto px-6 py-5">
+        <div className="mt-auto px-6 py-5 flex flex-col gap-3 items-start">
+          <ThemeToggle className="text-sm text-on-dark-faint hover:text-on-primary" />
           <SignOutButton />
         </div>
       </aside>

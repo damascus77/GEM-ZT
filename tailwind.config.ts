@@ -2,24 +2,28 @@ import type { Config } from 'tailwindcss';
 
 const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        // Fixed brand accents (same in light + dark).
         primary: '#1b1938',
         'primary-deep': '#0e0c1f',
         'on-primary': '#ffffff',
-        ink: '#292827',
-        'ink-mute': '#73706d',
-        'ink-faint': '#9a9794',
-        canvas: '#ffffff',
-        'canvas-soft': '#fafaf8',
         'violet-soft': '#c9b4fa',
         'teal-deep': '#0e3030',
         'teal-mid': '#155555',
-        hairline: '#e8e4dd',
         'hairline-dark': '#3f3a52',
         'on-dark-mute': '#bcbac9',
         'on-dark-faint': '#5a5772',
+        // Neutral surface/text tokens — driven by CSS variables so the whole app
+        // flips between light and dark via a `.dark` class on <html>.
+        canvas: 'rgb(var(--c-canvas) / <alpha-value>)',
+        'canvas-soft': 'rgb(var(--c-canvas-soft) / <alpha-value>)',
+        ink: 'rgb(var(--c-ink) / <alpha-value>)',
+        'ink-mute': 'rgb(var(--c-ink-mute) / <alpha-value>)',
+        'ink-faint': 'rgb(var(--c-ink-faint) / <alpha-value>)',
+        hairline: 'rgb(var(--c-hairline) / <alpha-value>)',
       },
       borderRadius: {
         xs: '4px',
