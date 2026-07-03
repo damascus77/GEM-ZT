@@ -47,12 +47,12 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
 
   useEffect(() => {
     if (data && !seeded) {
-      setName(data.network.name);
-      setDescription(data.network.description);
-      setIsPrivate(data.network.config.private);
-      setEnableBroadcast(data.network.config.enableBroadcast);
-      setMtu(data.network.config.mtu);
-      setMulticastLimit(data.network.config.multicastLimit);
+      setName(data.network.name ?? '');
+      setDescription(data.network.description ?? '');
+      setIsPrivate(data.network.config.private ?? true);
+      setEnableBroadcast(data.network.config.enableBroadcast ?? true);
+      setMtu(data.network.config.mtu ?? 2800);
+      setMulticastLimit(data.network.config.multicastLimit ?? 32);
       setSeeded(true);
     }
   }, [data, seeded]);

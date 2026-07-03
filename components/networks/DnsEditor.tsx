@@ -31,8 +31,8 @@ export function DnsEditor({ nwid }: { nwid: string }) {
 
   useEffect(() => {
     if (data && !seeded) {
-      setDomain(data.network.config.dns.domain);
-      setServers(data.network.config.dns.servers.join('\n'));
+      setDomain(data.network.config.dns?.domain ?? '');
+      setServers((data.network.config.dns?.servers ?? []).join('\n'));
       setSeeded(true);
     }
   }, [data, seeded]);

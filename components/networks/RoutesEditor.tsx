@@ -56,12 +56,14 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
   useEffect(() => {
     if (data && !seeded) {
       const c = data.network.config;
-      setRoutes(c.routes.map((r) => ({ target: r.target, via: r.via ?? null })));
-      setPools(c.ipAssignmentPools);
-      setV4zt(c.v4AssignMode.zt);
-      setV6zt(c.v6AssignMode.zt);
-      setV6plane(c.v6AssignMode['6plane']);
-      setV6rfc(c.v6AssignMode.rfc4193);
+      // The live controller may omit or partially populate these on a fresh
+      // network, so default every field rather than dereferencing blindly.
+      setRoutes((c.routes ?? []).map((r) => ({ target: r.target, via: r.via ?? null })));
+      setPools(c.ipAssignmentPools ?? []);
+      setV4zt(c.v4AssignMode?.zt ?? false);
+      setV6zt(c.v6AssignMode?.zt ?? false);
+      setV6plane(c.v6AssignMode?.['6plane'] ?? false);
+      setV6rfc(c.v6AssignMode?.rfc4193 ?? false);
       setSeeded(true);
     }
   }, [data, seeded]);
