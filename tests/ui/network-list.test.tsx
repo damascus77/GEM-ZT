@@ -1,0 +1,56 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { renderWithQuery } from '../helpers/render';
+import { NetworkList } from '@/components/networks/NetworkList';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+const networks = [
+  {
+    nwid: 'abcdef0123456789',
+    name: 'home-lan',
+    description: 'house',
+    tags: ['home'],
+    private: true,
+    memberCount: 3,
+  },
+];
+
+describe('NetworkList', () => {
+  it('renders networks from GET /api/v1/networks', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ networks }), { status: 200 })),
+    );
+    renderWithQuery(<NetworkList />);
+    expect(await screen.findByText('home-lan')).toBeInTheDocument();
+    expect(screen.getByText('abcdef0123456789')).toBeInTheDocument();
+    expect(screen.getByText('Private')).toBeInTheDocument();
+    expect(screen.getByText('3 members')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: /home-lan/i });
+    expect(link).toHaveAttribute('href', '/networks/abcdef0123456789');
+  });
+
+  it('POSTs the create form to /api/v1/networks', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        return new Response(
+          JSON.stringify({ network: networks[0], metaWarning: null }),
+          { status: 201 },
+        );
+      }
+      return new Response(JSON.stringify({ networks }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithQuery(<NetworkList />);
+    await userEvent.type(screen.getByPlaceholderText(/new network name/i), 'office');
+    await userEvent.click(screen.getByRole('button', { name: /create network/i }));
+    const postCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')!;
+    expect(postCall[0]).toBe('/api/v1/networks');
+    expect(JSON.parse(postCall[1]!.body as string)).toEqual({ name: 'office' });
+  });
+});
