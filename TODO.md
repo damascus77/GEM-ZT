@@ -50,18 +50,25 @@ v1 today, but each is worth closing.
 
 ## 2. Issues you may encounter (review)
 
+> **Hardening pass done 2026-07-03** (commits `de29dec`, `1f6e9f0`): ✅ backup/restore docs +
+> `down -v` warning (README), ✅ member "Managed IPs" stale-input wipe guard, ✅ rules-editor
+> default-template overwrite warning, ✅ `/setup` bootstrap-token guard (`GEMZT_SETUP_TOKEN`).
+
 **Top priorities, in order:**
-1. **[P0]** Backup/restore + `down -v` destroys the controller identity forever.
-2. **[P1]** `/setup` takeover if the box is reachable or `app_data` is lost.
+1. ✅ **[P0]** ~~Backup/restore + `down -v` destroys the controller identity forever.~~ (done — README)
+2. ✅ **[P1]** ~~`/setup` takeover if the box is reachable or `app_data` is lost.~~ (done — `GEMZT_SETUP_TOKEN`)
 3. **[P1]** `prisma db push` on boot has no migration history (schema-change footgun).
-4. **[P1]** Stale "Managed IPs" input can wipe a member's live auto-assigned IP.
+4. ✅ **[P1]** ~~Stale "Managed IPs" input can wipe a member's live auto-assigned IP.~~ (done — re-seed guard)
 5. **[P1]** Member action failures (authorize/IP/remove) are silent.
-6. **[P1]** Rules editor can silently overwrite live rules with the default template.
+6. ✅ **[P1]** ~~Rules editor can silently overwrite live rules with the default template.~~ (done — warning)
 7. **[P1]** Member list is N+1 against the controller every 5s per open tab.
 
+**Still open — next most impactful:** #3 (migrations), #5 (silent member-action errors),
+#7 (member-list N+1), plus the SQLite-lock and healthcheck items below.
+
 ### Data & persistence
-- **[P0] No backup/restore story; `docker compose down -v` irreversibly destroys the controller
-  identity and every network.** `controller_data` holds `identity.secret`, whose node ID is the prefix
+- ✅ **[DONE] [P0] No backup/restore story; `docker compose down -v` irreversibly destroys the controller
+  identity and every network.** *(Fixed 2026-07-03: README Backup & Restore section + `down -v` warning.)* `controller_data` holds `identity.secret`, whose node ID is the prefix
   of every nwid — lose it and no network can be recreated with the same ID; every joined device is
   orphaned. Nothing documents backing up `controller_data` + `app_data` (and hot-copying the SQLite file
   is unsafe). Add documented backup/restore (stop-and-tar or `sqlite3 .backup` + tar of `controller_data`)
@@ -70,8 +77,8 @@ v1 today, but each is worth closing.
   the deployment.** `Dockerfile` runs `npx prisma db push --skip-generate` every boot; a future schema
   change needing data loss fails non-interactively → crash-loop (and rolling back to an older image against
   a newer DB does the same). Switch to `prisma migrate deploy` + committed migrations.
-- **[P1] Rules editor silently replaces live custom rules with the default template when `rulesSource`
-  metadata is missing.** `getRules` returns `meta?.rulesSource || DEFAULT_RULES_SOURCE` (`lib/services/rules.ts:22`)
+- ✅ **[DONE] [P1] Rules editor silently replaces live custom rules with the default template when `rulesSource`
+  metadata is missing.** *(Fixed: `getRules` returns `sourceIsDefault`; editor warns before a save can overwrite.)* `getRules` returns `meta?.rulesSource || DEFAULT_RULES_SOURCE` (`lib/services/rules.ts:22`)
   with no check that it matches `network.rules`. If `app_data` is lost/restored (or a network predates
   GEM-ZT), the editor shows the default and one "Compile & save" overwrites the controller's real rules.
   Detect source/compiled divergence and warn instead of presenting the default as current.
@@ -95,7 +102,8 @@ v1 today, but each is worth closing.
   entries). Validate `^[0-9a-f]{16}$` / `^[0-9a-f]{10}$` at the route layer. (`lib/controller/client.ts`, routes)
 
 ### Security & auth
-- **[P1] First-boot (and post-DB-loss) admin takeover: `/setup` is open to whoever reaches port 3000 first.**
+- ✅ **[DONE] [P1] First-boot (and post-DB-loss) admin takeover: `/setup` is open to whoever reaches port 3000 first.**
+  *(Fixed: optional `GEMZT_SETUP_TOKEN` — when set, `/setup` requires it. Reverse-proxy guidance in README.)*
   The only gate is `userCount() > 0` (`app/api/v1/setup/route.ts`), and compose publishes `3000` on all
   interfaces. If the box is reachable beyond the operator — or `app_data` is ever lost (silently resetting
   to `needsSetup`) — someone else becomes admin of the real controller. Gate setup with a bootstrap-token env
@@ -117,8 +125,9 @@ v1 today, but each is worth closing.
   needs `ZT_AUTH_TOKEN` or permission handling). (`Dockerfile`)
 
 ### UX / error-handling
-- **[P1] Stale "Managed IPs" input can wipe a member's auto-assigned IP.** The input seeds once at mount and
-  never reflects later server changes (`components/members/MemberTable.tsx`). Flow: authorize → controller
+- ✅ **[DONE] [P1] Stale "Managed IPs" input can wipe a member's auto-assigned IP.** *(Fixed: `MemberRow` re-seeds
+  from the server unless mid-edit, and re-syncs after save.)* The input previously seeded once at mount and
+  never reflected later server changes (`components/members/MemberTable.tsx`). Flow: authorize → controller
   auto-assigns an IP → input still shows the old list → "Save IPs" PATCHes the stale list, deleting the live
   assignment. Re-seed when server data changes (or diff before save).
 - **[P1] Authorize / Deauthorize / Save IPs / Remove failures are silent.** The MemberRow mutations throw but
