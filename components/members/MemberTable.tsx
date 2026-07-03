@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -29,7 +29,7 @@ function PresencePill({ online }: { online: boolean | null }) {
   return <Pill className="text-ink-faint">Unknown</Pill>;
 }
 
-function MemberRow({
+export function MemberRow({
   member,
   nwid,
   degraded,
@@ -40,7 +40,15 @@ function MemberRow({
   degraded: boolean;
   onChanged: () => void;
 }) {
-  const [ips, setIps] = useState(member.ipAssignments.join(', '));
+  const serverIps = member.ipAssignments.join(', ');
+  const [ips, setIps] = useState(serverIps);
+  // Re-seed from the server (e.g. the controller auto-assigns an IP after
+  // authorization) UNLESS the operator is mid-edit. Without this, a stale input
+  // seeded before auto-assignment would wipe the live IP on the next "Save IPs".
+  const [ipsDirty, setIpsDirty] = useState(false);
+  useEffect(() => {
+    if (!ipsDirty) setIps(serverIps);
+  }, [serverIps, ipsDirty]);
 
   const patch = useMutation({
     mutationFn: async (body: Record<string, unknown>) => {
@@ -91,7 +99,10 @@ function MemberRow({
         <div className="flex gap-2">
           <Input
             value={ips}
-            onChange={(e) => setIps(e.target.value)}
+            onChange={(e) => {
+              setIps(e.target.value);
+              setIpsDirty(true);
+            }}
             className="mt-0"
             aria-label={`IP assignments for ${member.memberId}`}
           />
@@ -100,12 +111,17 @@ function MemberRow({
             className="px-3 py-2 text-sm shrink-0"
             disabled={degraded || patch.isPending}
             onClick={() =>
-              patch.mutate({
-                ipAssignments: ips
-                  .split(',')
-                  .map((s) => s.trim())
-                  .filter((s) => s !== ''),
-              })
+              patch.mutate(
+                {
+                  ipAssignments: ips
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter((s) => s !== ''),
+                },
+                // Clear the dirty flag so the input re-syncs to the server's
+                // canonical list once the write lands.
+                { onSuccess: () => setIpsDirty(false) },
+              )
             }
           >
             Save IPs

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderWithQuery } from '../helpers/render';
-import { MemberTable } from '@/components/members/MemberTable';
+import { MemberTable, MemberRow, type MemberViewClient } from '@/components/members/MemberTable';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -113,5 +114,55 @@ describe('MemberTable', () => {
       expect(del).toBeDefined();
       expect(del![0]).toBe(`/api/v1/networks/${NWID}/members/deadbeef01`);
     });
+  });
+});
+
+describe('MemberRow IP input re-seed (stale-IP guard)', () => {
+  const base: MemberViewClient = {
+    memberId: 'deadbeef01',
+    nwid: NWID,
+    name: '',
+    notes: '',
+    authorized: true,
+    activeBridge: false,
+    ipAssignments: [],
+    lastAuthorizedTime: 0,
+    online: null,
+    latency: null,
+    physicalAddress: null,
+    clientVersion: null,
+  };
+
+  function wrap(member: MemberViewClient) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return (
+      <QueryClientProvider client={client}>
+        <table>
+          <tbody>
+            <MemberRow member={member} nwid={NWID} degraded={false} onChanged={() => {}} />
+          </tbody>
+        </table>
+      </QueryClientProvider>
+    );
+  }
+
+  it('re-seeds the IP input when the server assignment changes and the field is untouched', () => {
+    const { rerender } = render(wrap({ ...base, ipAssignments: [] }));
+    const input = screen.getByLabelText('IP assignments for deadbeef01');
+    expect(input).toHaveValue('');
+    // Controller auto-assigns an IP after authorization → input must reflect it,
+    // otherwise a later "Save IPs" would PATCH the stale (empty) list and wipe it.
+    rerender(wrap({ ...base, ipAssignments: ['10.147.17.10'] }));
+    expect(screen.getByLabelText('IP assignments for deadbeef01')).toHaveValue('10.147.17.10');
+  });
+
+  it('does not clobber an in-progress edit when the server value changes', async () => {
+    const { rerender } = render(wrap({ ...base, ipAssignments: ['10.147.17.10'] }));
+    const input = screen.getByLabelText('IP assignments for deadbeef01');
+    await userEvent.clear(input);
+    await userEvent.type(input, '10.0.0.9');
+    // A background poll brings a different server value; the operator's edit wins.
+    rerender(wrap({ ...base, ipAssignments: ['10.147.17.99'] }));
+    expect(screen.getByLabelText('IP assignments for deadbeef01')).toHaveValue('10.0.0.9');
   });
 });

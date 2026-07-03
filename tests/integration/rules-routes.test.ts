@@ -64,6 +64,8 @@ describe('rules routes', () => {
     const body = await res.json();
     expect(body.source).toContain('accept;');
     expect(body.rules).toEqual([{ type: 'ACTION_ACCEPT' }]);
+    // No stored rulesSource → showing the default template → callers must warn.
+    expect(body.sourceIsDefault).toBe(true);
   });
 
   it('PUT compiles, pushes to the controller first, stores the source, audits', async () => {
@@ -82,10 +84,12 @@ describe('rules routes', () => {
     expect(audit?.targetId).toBe(NWID);
   });
 
-  it('GET returns the stored source after a PUT', async () => {
+  it('GET returns the stored source after a PUT (no longer flagged as default)', async () => {
     await rulesPut(req('PUT', { source: 'accept;' }), { params: { nwid: NWID } });
     const res = await rulesGet(req('GET'), { params: { nwid: NWID } });
-    expect((await res.json()).source).toBe('accept;');
+    const body = await res.json();
+    expect(body.source).toBe('accept;');
+    expect(body.sourceIsDefault).toBe(false);
   });
 
   it('PUT returns 422 RULES_COMPILE_ERROR with line info for bad source', async () => {

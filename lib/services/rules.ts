@@ -12,15 +12,23 @@ const META_UPSERT_WARNING =
   'Rules were applied to the controller, but saving the rules source failed. ' +
   'The network enforces the new rules; re-save to keep the editable source.';
 
-export async function getRules(nwid: string): Promise<{ source: string; rules: unknown[] }> {
+export async function getRules(
+  nwid: string,
+): Promise<{ source: string; rules: unknown[]; sourceIsDefault: boolean }> {
   const client = await getControllerClient();
   const network = await client.getNetwork(nwid);
   const meta = await getDb()
     .networkMeta.findUnique({ where: { nwid } })
     .catch(() => null);
+  const stored = meta?.rulesSource;
+  // When no source is on record (network predates GEM-ZT, or app_data was lost/
+  // restored) we fall back to the default template. That template does NOT
+  // necessarily match the rules the controller is actually enforcing, so callers
+  // must warn before letting a save overwrite the live rules.
   return {
-    source: meta?.rulesSource || DEFAULT_RULES_SOURCE,
+    source: stored || DEFAULT_RULES_SOURCE,
     rules: network.rules,
+    sourceIsDefault: !stored,
   };
 }
 

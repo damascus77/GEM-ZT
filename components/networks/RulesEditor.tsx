@@ -9,6 +9,7 @@ import { useControllerStatus } from '@/components/DegradedBanner';
 interface RulesResponse {
   source: string;
   rules: unknown[];
+  sourceIsDefault?: boolean;
 }
 
 export function RulesEditor({ nwid }: { nwid: string }) {
@@ -89,6 +90,13 @@ export function RulesEditor({ nwid }: { nwid: string }) {
 
       {tab === 'source' && (
         <div className="flex flex-col gap-3">
+          {data?.sourceIsDefault && (
+            <p role="alert" className="text-sm text-ink bg-canvas-soft border border-hairline rounded-sm p-3">
+              <span className="wght-600">No saved rule source for this network.</span> The editor is
+              showing the default template, which may not match the rules currently enforced on the
+              controller (check the Compiled JSON tab). “Compile &amp; save” will replace the live rules.
+            </p>
+          )}
           <label className="text-sm text-ink-mute">
             Rules source
             <textarea
