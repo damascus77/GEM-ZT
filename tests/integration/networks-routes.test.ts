@@ -144,6 +144,21 @@ describe('networks routes', () => {
     expect(audit?.targetId).toBe(NWID);
   });
 
+  it('PATCH audits before/after snapshots', async () => {
+    const res = await detailPatch(
+      req(`http://x/api/v1/networks/${NWID}`, 'PATCH', { mtu: 1400 }),
+      { params: { nwid: NWID } },
+    );
+    expect(res.status).toBe(200);
+    const audit = await getDb().auditLog.findFirst({
+      where: { action: 'network.update' },
+      orderBy: { createdAt: 'desc' },
+    });
+    const detail = JSON.parse(audit!.detail);
+    expect(detail.before.config.mtu).toBe(2800);
+    expect(detail.after).toEqual({ mtu: 1400 });
+  });
+
   it('PATCH rejects unknown fields (strict schema)', async () => {
     const res = await detailPatch(
       req(`http://x/api/v1/networks/${NWID}`, 'PATCH', { nope: true }),

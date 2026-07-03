@@ -1,12 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Pill } from '@/components/ui/Pill';
+import {
+  filterAndSortNetworks,
+  type NetworkSort,
+  type VisibilityFilter,
+} from '@/lib/util/networkFilter';
+
+const selectClass =
+  'mt-0 bg-canvas text-ink text-sm rounded-sm border border-hairline px-2 py-2 focus:outline-none';
 
 export interface NetworkSummaryView {
   nwid: string;
@@ -31,6 +39,21 @@ export function NetworkList() {
     refetchInterval: 5000,
   });
   const [name, setName] = useState('');
+  const [search, setSearch] = useState('');
+  const [visibility, setVisibility] = useState<VisibilityFilter>('all');
+  const [sort, setSort] = useState<NetworkSort | 'default'>('default');
+
+  const visible = useMemo(
+    () =>
+      filterAndSortNetworks(data ?? [], {
+        search,
+        visibility,
+        sort: sort === 'default' ? undefined : sort,
+        dir: 'asc',
+      }),
+    [data, search, visibility, sort],
+  );
+
   const create = useMutation({
     mutationFn: async () => {
       const trimmed = name.trim();
@@ -79,6 +102,37 @@ export function NetworkList() {
           {(create.error as Error).message}
         </p>
       )}
+      {data && data.length > 0 && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <Input
+            placeholder="Search name or network ID"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="mt-0 w-64"
+            aria-label="Search networks"
+          />
+          <select
+            className={selectClass}
+            value={visibility}
+            onChange={(e) => setVisibility(e.target.value as VisibilityFilter)}
+            aria-label="Filter by visibility"
+          >
+            <option value="all">All</option>
+            <option value="private">Private only</option>
+            <option value="public">Public only</option>
+          </select>
+          <select
+            className={selectClass}
+            value={sort}
+            onChange={(e) => setSort(e.target.value as NetworkSort | 'default')}
+            aria-label="Sort networks"
+          >
+            <option value="default">Sort: Default</option>
+            <option value="name">Sort: Name</option>
+            <option value="members">Sort: Members</option>
+          </select>
+        </div>
+      )}
       {isLoading && <p className="text-ink-mute">Loading…</p>}
       {isError && (
         <p role="alert" className="text-ink-mute">
@@ -86,7 +140,7 @@ export function NetworkList() {
         </p>
       )}
       <div className="grid gap-4">
-        {data?.map((n) => (
+        {visible.map((n) => (
           <Link key={n.nwid} href={`/networks/${n.nwid}`}>
             <Card className="p-6 hover:shadow-float transition-shadow">
               <div className="flex items-center justify-between gap-4">
@@ -109,6 +163,9 @@ export function NetworkList() {
         ))}
         {data?.length === 0 && (
           <p className="text-ink-mute">No networks yet — create your first one above.</p>
+        )}
+        {data && data.length > 0 && visible.length === 0 && (
+          <p className="text-ink-mute">No networks match the current filters.</p>
         )}
       </div>
     </div>

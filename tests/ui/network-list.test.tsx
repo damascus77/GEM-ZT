@@ -18,6 +18,14 @@ const networks = [
     private: true,
     memberCount: 3,
   },
+  {
+    nwid: 'bbbbbbbb00000002',
+    name: 'guest-wifi',
+    description: '',
+    tags: [],
+    private: false,
+    memberCount: 12,
+  },
 ];
 
 describe('NetworkList', () => {
@@ -33,6 +41,19 @@ describe('NetworkList', () => {
     expect(screen.getByText('3 members')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /home-lan/i });
     expect(link).toHaveAttribute('href', '/networks/abcdef0123456789');
+  });
+
+  it('filters the list by search text', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ networks }), { status: 200 })),
+    );
+    renderWithQuery(<NetworkList />);
+    await screen.findByText('home-lan');
+    expect(screen.getByText('guest-wifi')).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/search networks/i), 'guest');
+    expect(screen.getByText('guest-wifi')).toBeInTheDocument();
+    expect(screen.queryByText('home-lan')).not.toBeInTheDocument();
   });
 
   it('POSTs the create form to /api/v1/networks', async () => {

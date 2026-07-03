@@ -26,6 +26,8 @@ export interface MemberView {
   latency: number | null;
   physicalAddress: string | null;
   clientVersion: string | null;
+  capabilities: number[];
+  tags: [number, number][];
 }
 
 export const updateMemberSchema = z
@@ -77,6 +79,8 @@ function toView(
     latency: peer && peer.latency >= 0 ? peer.latency : null,
     physicalAddress: activePath?.address ?? null,
     clientVersion: peer && peer.version !== '-1.-1.-1' ? peer.version : null,
+    capabilities: m.capabilities,
+    tags: m.tags,
   };
 }
 

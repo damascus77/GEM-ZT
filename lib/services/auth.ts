@@ -76,10 +76,12 @@ export function createSession(userId: string): Promise<Session> {
   });
 }
 
-export async function login(
-  username: string,
-  password: string,
-): Promise<{ user: User; session: Session } | null> {
+/**
+ * Verify a username/password pair only — no session is created. Used by the
+ * login route so a TOTP challenge (for 2FA-enabled users) can be interposed
+ * before a session is ever issued.
+ */
+export async function authenticateUser(username: string, password: string): Promise<User | null> {
   const user = await getDb().user.findUnique({ where: { username } });
   if (!user) {
     // Pay the argon2 cost anyway so timing doesn't reveal that the user is absent.
@@ -87,6 +89,15 @@ export async function login(
     return null;
   }
   if (!(await verifyPassword(user.passwordHash, password))) return null;
+  return user;
+}
+
+export async function login(
+  username: string,
+  password: string,
+): Promise<{ user: User; session: Session } | null> {
+  const user = await authenticateUser(username, password);
+  if (!user) return null;
   const session = await createSession(user.id);
   return { user, session };
 }

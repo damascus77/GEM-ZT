@@ -76,6 +76,22 @@ export const openApiSpec = {
         responses: { '204': { description: 'Logged out' } },
       },
     },
+    '/auth/totp/enroll': {
+      post: {
+        tags: ['auth'],
+        summary:
+          'Generate a new TOTP secret for the current user (overwrites any prior ' +
+          'unconfirmed secret); totpEnabled stays false until confirmed via /auth/totp/enable',
+        responses: { '200': { description: '{ secret, otpauthUri }' } },
+      },
+    },
+    '/auth/totp/enable': {
+      post: {
+        tags: ['auth'],
+        summary: 'Confirm TOTP enrollment with a current code; sets totpEnabled=true',
+        responses: { '200': { description: '{ enabled: true }' }, '400': errorResponse },
+      },
+    },
     '/me': {
       get: {
         tags: ['auth'],
@@ -184,6 +200,17 @@ export const openApiSpec = {
         responses: { '204': { description: 'Removed' }, '502': errorResponse },
       },
     },
+    '/networks/{nwid}/presence': {
+      get: {
+        tags: ['members'],
+        summary:
+          'Presence history for members with recorded samples: last-seen timestamp + recent ' +
+          'online/offline samples (oldest first), sampled opportunistically while the members ' +
+          'list is viewed',
+        parameters: [{ name: 'nwid', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: ok('{ presence }'),
+      },
+    },
     '/networks/{nwid}/rules': {
       get: {
         tags: ['rules'],
@@ -220,11 +247,77 @@ export const openApiSpec = {
         responses: { '201': { description: '{ network, metaWarning }' }, '404': errorResponse, '502': errorResponse },
       },
     },
+    '/templates': {
+      get: {
+        tags: ['templates'],
+        summary: 'List saved network templates',
+        responses: { '200': { description: '{ templates[] }' } },
+      },
+      post: {
+        tags: ['templates'],
+        summary: 'Save a network as a named template ({ nwid, name })',
+        responses: { '201': { description: '{ template }' }, '400': errorResponse, '404': errorResponse },
+      },
+    },
+    '/templates/{id}': {
+      delete: {
+        tags: ['templates'],
+        summary: 'Delete a template',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '204': { description: 'Deleted' }, '404': errorResponse },
+      },
+    },
+    '/templates/{id}/apply': {
+      post: {
+        tags: ['templates'],
+        summary: 'Create a new network from a template',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '201': { description: '{ network, metaWarning }' }, '404': errorResponse, '502': errorResponse },
+      },
+    },
     '/metrics': {
       get: {
         tags: ['meta'],
         summary: 'Prometheus text-exposition metrics: controller liveness + inventory counts',
         responses: { '200': { description: 'text/plain metrics' }, '502': errorResponse },
+      },
+    },
+    '/pending': {
+      get: {
+        tags: ['members'],
+        summary: 'Devices awaiting authorization across all networks',
+        responses: ok('{ pending[] }'),
+      },
+    },
+    '/backup': {
+      get: {
+        tags: ['backup'],
+        summary:
+          'Export a JSON backup of all networks (config + rules), members, and GEM-ZT metadata',
+        responses: { ...ok('BackupData JSON, served as a file attachment') },
+      },
+    },
+    '/backup/restore': {
+      post: {
+        tags: ['backup'],
+        summary:
+          'Replay a backup against the live controller: updates networks that still exist, ' +
+          're-creates ones that do not (new nwid), restores joined members, skips the rest',
+        responses: { '200': { description: 'RestoreSummary JSON' }, '400': errorResponse },
+      },
+    },
+    '/settings/webhook': {
+      get: {
+        tags: ['settings'],
+        summary: 'Get the configured outbound webhook URL for new-unauthorized-member alerts',
+        responses: { '200': { description: '{ url: string | null }' } },
+      },
+      put: {
+        tags: ['settings'],
+        summary:
+          'Set (or clear, with null) the outbound webhook URL for new-unauthorized-member ' +
+          'alerts; must be a valid http/https URL',
+        responses: { '200': { description: '{ url: string | null }' }, '400': errorResponse },
       },
     },
     '/openapi.json': {

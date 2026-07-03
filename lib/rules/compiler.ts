@@ -48,3 +48,25 @@ export function compileRules(source: string): CompileResult {
   }
   return { ok: true, rules, caps, tags };
 }
+
+// Named cap/tag blocks in the rules source each compile to a numeric id
+// (caps[name] = { id, default, rules }, tags[name] = { id, default, enums, flags }).
+// The UI needs simple name->id maps to render per-member capability/tag controls.
+// Pure and non-throwing: a source with a syntax error just yields empty maps
+// rather than breaking whatever page called this.
+export function capabilityTagMaps(
+  source: string,
+): { capabilities: Record<string, number>; tags: Record<string, number> } {
+  const result = compileRules(source);
+  if (!result.ok) {
+    return { capabilities: {}, tags: {} };
+  }
+  const toIdMap = (entries: Record<string, unknown>): Record<string, number> => {
+    const map: Record<string, number> = {};
+    for (const [name, value] of Object.entries(entries)) {
+      map[name] = (value as { id: number }).id;
+    }
+    return map;
+  };
+  return { capabilities: toIdMap(result.caps), tags: toIdMap(result.tags) };
+}

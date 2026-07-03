@@ -1,0 +1,3 @@
+# Keeps an empty public/ directory in the repo so the Dockerfile's
+# `COPY --from=builder /app/public ./public` step succeeds (Docker COPY fails
+# if the source path does not exist). Next.js serves static files placed here.

@@ -24,13 +24,16 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (auth instanceof Response) return auth;
   try {
     const body = putRulesSchema.parse(await req.json());
+    const before = await getRules(params.nwid)
+      .then((r) => r.source)
+      .catch(() => null);
     const { data, metaWarning } = await setRules(params.nwid, body.source);
     await logAudit({
       userId: auth.user.id,
       action: 'network.rules.update',
       targetType: 'network',
       targetId: params.nwid,
-      detail: { sourceLength: body.source.length },
+      detail: { before, after: body.source },
     });
     return NextResponse.json({ ...data, metaWarning });
   } catch (e) {

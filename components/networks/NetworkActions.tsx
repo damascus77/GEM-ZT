@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
@@ -27,6 +28,26 @@ export function NetworkActions({ nwid }: { nwid: string }) {
     },
   });
 
+  const [templateName, setTemplateName] = useState('');
+  const saveTemplate = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/v1/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nwid, name: templateName.trim() }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error?.message ?? 'Save template failed');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setTemplateName('');
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+    },
+  });
+
   const remove = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/v1/networks/${nwid}`, { method: 'DELETE' });
@@ -45,12 +66,44 @@ export function NetworkActions({ nwid }: { nwid: string }) {
     <Card>
       <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Actions</h2>
 
-      <Button onClick={() => clone.mutate()} disabled={clone.isPending}>
+      <Link href={`/networks/${nwid}/join`}>
+        <Button variant="outline">Join instructions</Button>
+      </Link>
+
+      <Button className="ml-2" onClick={() => clone.mutate()} disabled={clone.isPending}>
         Clone network
       </Button>
       {clone.isError && (
         <p role="alert" className="text-sm text-ink mt-2">
           {(clone.error as Error).message}
+        </p>
+      )}
+
+      <div className="mt-4 flex gap-2 items-center flex-wrap">
+        <Input
+          value={templateName}
+          onChange={(e) => setTemplateName(e.target.value)}
+          className="mt-0 w-56"
+          placeholder="Template name"
+          aria-label="Template name"
+        />
+        <Button
+          variant="outline"
+          className="shrink-0"
+          disabled={templateName.trim() === '' || saveTemplate.isPending}
+          onClick={() => saveTemplate.mutate()}
+        >
+          Save as template
+        </Button>
+      </div>
+      {saveTemplate.isError && (
+        <p role="alert" className="text-sm text-ink mt-2">
+          {(saveTemplate.error as Error).message}
+        </p>
+      )}
+      {saveTemplate.isSuccess && (
+        <p role="status" className="text-sm text-ink-mute mt-2">
+          Saved as template.
         </p>
       )}
 

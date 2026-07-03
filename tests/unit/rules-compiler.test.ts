@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   compileRules,
+  capabilityTagMaps,
   DEFAULT_RULES_SOURCE,
   RulesCompileError,
 } from '@/lib/rules/compiler';
@@ -64,5 +65,35 @@ describe('compileRules', () => {
     expect(err.line).toBe(3);
     expect(err.col).toBe(1);
     expect(err.message).toBe('line 3: unrecognized keyword');
+  });
+});
+
+describe('capabilityTagMaps', () => {
+  it('maps named cap/tag blocks to their numeric ids', () => {
+    const src = [
+      'tag department',
+      '  id 1000',
+      '  enum 100 sales',
+      '  enum 200 eng',
+      ';',
+      'cap superuser',
+      '  id 2000',
+      '  accept;',
+      ';',
+      'accept;',
+    ].join('\n');
+    expect(capabilityTagMaps(src)).toEqual({
+      capabilities: { superuser: 2000 },
+      tags: { department: 1000 },
+    });
+  });
+
+  it('returns empty maps when the source has no caps or tags', () => {
+    expect(capabilityTagMaps('accept;')).toEqual({ capabilities: {}, tags: {} });
+  });
+
+  it('returns empty maps on a compile failure instead of throwing', () => {
+    expect(() => capabilityTagMaps('acceptt;')).not.toThrow();
+    expect(capabilityTagMaps('acceptt;')).toEqual({ capabilities: {}, tags: {} });
   });
 });

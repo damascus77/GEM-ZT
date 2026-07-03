@@ -1,0 +1,63 @@
+image: node:20
+
+stages:
+  - test
+  - build
+
+variables:
+  DATABASE_URL: "file:./ci.db"
+
+cache:
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - node_modules/
+
+test:
+  stage: test
+  script:
+    - npm ci
+    - npx prisma generate
+    - npm run typecheck
+    - npm run lint
+    - npm run test
+
+# Opportunistic e2e job: tests/e2e/controller.e2e.test.ts spins up a real
+# zerotier-one controller via `docker compose -f docker-compose.e2e.yml`
+# (docker:dind), then drives it through the ControllerClient. That needs a
+# privileged Docker-in-Docker runner and the ability to pull the zerotier
+# image, which isn't guaranteed on every shared runner. allow_failure keeps
+# the pipeline green by default while still exercising the suite whenever a
+# capable runner is available.
+e2e:
+  stage: test
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  allow_failure: true
+  before_script:
+    - apk add --no-cache nodejs npm docker-cli-compose
+    - npm ci
+    - npx prisma generate
+  script:
+    - npm run test:e2e
+
+# Builds the production image to prove the Dockerfile still works. Not every
+# runner in this project has Docker-in-Docker enabled/available, so this is
+# allowed to fail (and can also be triggered manually) rather than blocking
+# the pipeline.
+docker-build:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  allow_failure: true
+  script:
+    - docker build -t gemzt:ci .

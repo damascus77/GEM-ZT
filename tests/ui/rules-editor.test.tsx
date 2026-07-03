@@ -78,4 +78,36 @@ describe('RulesEditor', () => {
     await userEvent.click(screen.getByRole('button', { name: /compile & save/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('line 1: unrecognized keyword');
   });
+
+  it('previews a diff of the compiled rules when the edited source changes', async () => {
+    stubFetch();
+    renderWithQuery(<RulesEditor nwid={NWID} />);
+    const editor = await screen.findByLabelText(/rules source/i);
+    await userEvent.clear(editor);
+    await userEvent.type(editor, 'drop;');
+    await userEvent.click(screen.getByRole('button', { name: /preview changes/i }));
+
+    expect(await screen.findByText(/ACTION_DROP/)).toBeInTheDocument();
+    expect(screen.getByText(/ACTION_ACCEPT/)).toBeInTheDocument();
+  });
+
+  it('shows "No changes" when the edited source compiles to the same rules', async () => {
+    stubFetch();
+    renderWithQuery(<RulesEditor nwid={NWID} />);
+    await screen.findByLabelText(/rules source/i);
+    await userEvent.click(screen.getByRole('button', { name: /preview changes/i }));
+
+    expect(await screen.findByText(/no changes/i)).toBeInTheDocument();
+  });
+
+  it('shows the compile error instead of a diff when the edited source fails to compile', async () => {
+    stubFetch();
+    renderWithQuery(<RulesEditor nwid={NWID} />);
+    const editor = await screen.findByLabelText(/rules source/i);
+    await userEvent.clear(editor);
+    await userEvent.type(editor, 'not a valid rule');
+    await userEvent.click(screen.getByRole('button', { name: /preview changes/i }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+  });
 });

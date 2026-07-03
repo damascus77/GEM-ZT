@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
+import { diffJsonLines } from '@/lib/util/jsonDiff';
 
 interface AuditEntryRow {
   id: string;
@@ -13,6 +14,49 @@ interface AuditEntryRow {
   targetId: string;
   detail: unknown;
   createdAt: string;
+}
+
+// Update routes log `detail: { before, after }` so the audit page can render a
+// readable diff. Older entries (and non-update actions) log a plain detail
+// object instead, which is rendered as-is for backward compatibility.
+function isBeforeAfterDetail(
+  detail: unknown,
+): detail is { before: unknown; after: unknown } {
+  return (
+    typeof detail === 'object' &&
+    detail !== null &&
+    'before' in detail &&
+    'after' in detail
+  );
+}
+
+function AuditDetail({ detail }: { detail: unknown }) {
+  if (isBeforeAfterDetail(detail)) {
+    const lines = diffJsonLines(detail.before, detail.after);
+    return (
+      <pre
+        data-testid="audit-diff"
+        className="bg-canvas-soft border border-hairline rounded-sm p-2 text-xs font-mono overflow-x-auto max-w-md whitespace-pre-wrap break-all"
+      >
+        {lines.map((line, i) => (
+          <div
+            key={i}
+            className={
+              line.type === 'added'
+                ? 'text-teal-deep'
+                : line.type === 'removed'
+                  ? 'text-ink-faint line-through'
+                  : 'text-ink-mute'
+            }
+          >
+            {line.type === 'added' ? '+ ' : line.type === 'removed' ? '- ' : '  '}
+            {line.text}
+          </div>
+        ))}
+      </pre>
+    );
+  }
+  return <>{JSON.stringify(detail)}</>;
 }
 
 export default function AuditPage() {
@@ -57,7 +101,7 @@ export default function AuditPage() {
                   </td>
                   <td className="py-3 pr-4 text-sm font-mono text-ink-mute">{e.targetId}</td>
                   <td className="py-3 text-xs font-mono text-ink-mute break-all">
-                    {JSON.stringify(e.detail)}
+                    <AuditDetail detail={e.detail} />
                   </td>
                 </tr>
               ))}

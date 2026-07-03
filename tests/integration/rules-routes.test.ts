@@ -68,6 +68,27 @@ describe('rules routes', () => {
     expect(body.sourceIsDefault).toBe(true);
   });
 
+  it('GET returns capability and tag name->id maps parsed from the stored source', async () => {
+    const source = [
+      'tag department',
+      '  id 1000',
+      '  enum 100 sales',
+      '  enum 200 eng',
+      ';',
+      'cap superuser',
+      '  id 2000',
+      '  accept;',
+      ';',
+      'accept;',
+    ].join('\n');
+    await rulesPut(req('PUT', { source }), { params: { nwid: NWID } });
+    const res = await rulesGet(req('GET'), { params: { nwid: NWID } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.capabilities).toEqual({ superuser: 2000 });
+    expect(body.tags).toEqual({ department: 1000 });
+  });
+
   it('PUT compiles, pushes to the controller first, stores the source, audits', async () => {
     const res = await rulesPut(req('PUT', { source: 'accept;' }), { params: { nwid: NWID } });
     expect(res.status).toBe(200);
@@ -82,6 +103,19 @@ describe('rules routes', () => {
     expect(meta?.rulesSource).toBe('accept;');
     const audit = await getDb().auditLog.findFirst({ where: { action: 'network.rules.update' } });
     expect(audit?.targetId).toBe(NWID);
+  });
+
+  it('PUT audits before/after source snapshots', async () => {
+    const res = await rulesPut(req('PUT', { source: 'accept;' }), { params: { nwid: NWID } });
+    expect(res.status).toBe(200);
+    const audit = await getDb().auditLog.findFirst({
+      where: { action: 'network.rules.update' },
+      orderBy: { createdAt: 'desc' },
+    });
+    const detail = JSON.parse(audit!.detail);
+    // No stored rulesSource yet → "before" falls back to the default template.
+    expect(typeof detail.before).toBe('string');
+    expect(detail.after).toBe('accept;');
   });
 
   it('GET returns the stored source after a PUT (no longer flagged as default)', async () => {

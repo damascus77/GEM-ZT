@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useControllerStatus } from '@/components/DegradedBanner';
+import { compileRules } from '@/lib/rules/compiler';
+import { diffJsonLines, hasChanges, type DiffLine } from '@/lib/util/jsonDiff';
 
 interface RulesResponse {
   source: string;
@@ -30,6 +32,9 @@ export function RulesEditor({ nwid }: { nwid: string }) {
   const [source, setSource] = useState('');
   const [seeded, setSeeded] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewLines, setPreviewLines] = useState<DiffLine[] | null>(null);
+  const [previewHasChanges, setPreviewHasChanges] = useState(false);
 
   useEffect(() => {
     if (data && !seeded) {
@@ -37,6 +42,27 @@ export function RulesEditor({ nwid }: { nwid: string }) {
       setSeeded(true);
     }
   }, [data, seeded]);
+
+  // Any edit invalidates the last preview so a stale diff is never shown.
+  useEffect(() => {
+    setPreviewError(null);
+    setPreviewLines(null);
+    setPreviewHasChanges(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source]);
+
+  function previewChanges() {
+    const compiled = compileRules(source);
+    if (!compiled.ok) {
+      setPreviewError(`line ${compiled.error.line}: ${compiled.error.message}`);
+      setPreviewLines(null);
+      return;
+    }
+    const liveRules = data?.rules ?? [];
+    setPreviewError(null);
+    setPreviewLines(diffJsonLines(liveRules, compiled.rules));
+    setPreviewHasChanges(hasChanges(liveRules, compiled.rules));
+  }
 
   const save = useMutation({
     mutationFn: async () => {
@@ -113,11 +139,47 @@ export function RulesEditor({ nwid }: { nwid: string }) {
             </p>
           )}
           {warning && <p className="text-sm text-ink-mute">{warning}</p>}
-          <div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={previewChanges} disabled={degraded}>
+              Preview changes
+            </Button>
             <Button onClick={() => save.mutate()} disabled={save.isPending || degraded}>
               Compile & save
             </Button>
           </div>
+
+          {previewError && (
+            <p role="alert" className="text-sm text-ink">
+              {previewError}
+            </p>
+          )}
+
+          {previewLines && (
+            <div>
+              <h3 className="text-sm wght-540 text-ink-mute mb-1">Preview: compiled rules diff</h3>
+              {previewHasChanges ? (
+                <pre className="bg-canvas-soft border border-hairline rounded-sm p-4 text-xs font-mono overflow-x-auto">
+                  {previewLines.map((line, i) => (
+                    <div
+                      key={i}
+                      className={
+                        line.type === 'added'
+                          ? 'text-teal-deep'
+                          : line.type === 'removed'
+                            ? 'text-ink-faint line-through'
+                            : 'text-ink-mute'
+                      }
+                    >
+                      {line.type === 'added' ? '+ ' : line.type === 'removed' ? '- ' : '  '}
+                      {line.text}
+                    </div>
+                  ))}
+                </pre>
+              ) : (
+                <p className="text-sm text-ink-mute">No changes</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

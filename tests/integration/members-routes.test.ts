@@ -118,6 +118,23 @@ describe('members routes', () => {
     expect(audit?.targetId).toBe(`${NWID}/${MID}`);
   });
 
+  it('PATCH audits before/after snapshots', async () => {
+    const res = await memberPatch(
+      req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'PATCH', {
+        authorized: true,
+      }),
+      { params: { nwid: NWID, memberId: MID } },
+    );
+    expect(res.status).toBe(200);
+    const audit = await getDb().auditLog.findFirst({
+      where: { action: 'member.update' },
+      orderBy: { createdAt: 'desc' },
+    });
+    const detail = JSON.parse(audit!.detail);
+    expect(detail.before.authorized).toBe(false);
+    expect(detail.after).toEqual({ authorized: true });
+  });
+
   it('PATCH rejects invalid IPs with VALIDATION_ERROR', async () => {
     const res = await memberPatch(
       req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'PATCH', {

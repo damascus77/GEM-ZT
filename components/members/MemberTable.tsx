@@ -13,6 +13,7 @@ import {
   type OnlineFilter,
   type MemberSort,
 } from '@/lib/util/memberFilter';
+import { timeAgo } from '@/lib/util/timeAgo';
 
 export interface MemberViewClient {
   memberId: string;
@@ -28,12 +29,83 @@ export interface MemberViewClient {
   latency: number | null;
   physicalAddress: string | null;
   clientVersion: string | null;
+  capabilities: number[];
+  tags: [number, number][];
+}
+
+export interface RulesMaps {
+  capabilities: Record<string, number>;
+  tags: Record<string, number>;
+}
+
+export interface PresenceEntry {
+  lastSeen: string | null;
+  samples: boolean[];
+}
+
+function TagInput({
+  label,
+  value,
+  disabled,
+  onCommit,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  onCommit: (value: string) => void;
+}) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  return (
+    <input
+      type="number"
+      className="w-16 bg-canvas text-ink text-xs rounded-sm border border-hairline px-1 py-0.5"
+      value={text}
+      disabled={disabled}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => onCommit(text)}
+      aria-label={label}
+    />
+  );
 }
 
 function PresencePill({ online }: { online: boolean | null }) {
   if (online === true) return <Pill className="border-teal-mid text-teal-deep">Online</Pill>;
   if (online === false) return <Pill>Offline</Pill>;
   return <Pill className="text-ink-faint">Unknown</Pill>;
+}
+
+function PresenceSparkline({ memberId, samples }: { memberId: string; samples: boolean[] }) {
+  return (
+    <div className="flex items-end gap-px" aria-label={`Presence history for ${memberId}`}>
+      {samples.map((online, i) => (
+        <div
+          key={i}
+          className={`w-1 h-3 rounded-[1px] ${online ? 'bg-teal-mid' : 'bg-ink-faint/30'}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MemberPresenceInfo({
+  memberId,
+  presence,
+}: {
+  memberId: string;
+  presence?: PresenceEntry;
+}) {
+  if (!presence) return null;
+  return (
+    <div className="flex flex-col gap-1 mt-1">
+      <span className="text-xs text-ink-faint whitespace-nowrap">
+        Last seen: {timeAgo(presence.lastSeen)}
+      </span>
+      {presence.samples.length > 0 && (
+        <PresenceSparkline memberId={memberId} samples={presence.samples} />
+      )}
+    </div>
+  );
 }
 
 export function MemberRow({
@@ -43,6 +115,8 @@ export function MemberRow({
   onChanged,
   selected,
   onToggleSelect,
+  rulesMaps,
+  presence,
 }: {
   member: MemberViewClient;
   nwid: string;
@@ -50,6 +124,8 @@ export function MemberRow({
   onChanged: () => void;
   selected?: boolean;
   onToggleSelect?: (memberId: string) => void;
+  rulesMaps?: RulesMaps;
+  presence?: PresenceEntry;
 }) {
   const serverIps = member.ipAssignments.join(', ');
   const [ips, setIps] = useState(serverIps);
@@ -98,6 +174,26 @@ export function MemberRow({
     }
   }
 
+  const capabilitiesMap = rulesMaps?.capabilities ?? {};
+  const tagsMap = rulesMaps?.tags ?? {};
+  const hasCapabilities = Object.keys(capabilitiesMap).length > 0;
+  const hasTags = Object.keys(tagsMap).length > 0;
+
+  function toggleCapability(id: number, checked: boolean) {
+    const next = checked
+      ? [...member.capabilities, id]
+      : member.capabilities.filter((c) => c !== id);
+    patch.mutate({ capabilities: next });
+  }
+
+  function setTag(id: number, value: string) {
+    const withoutId = member.tags.filter(([tagId]) => tagId !== id);
+    const trimmed = value.trim();
+    const next: [number, number][] =
+      trimmed === '' ? withoutId : [...withoutId, [id, Number(trimmed)]];
+    patch.mutate({ tags: next });
+  }
+
   return (
     <>
       <tr className="border-t border-hairline align-top">
@@ -113,6 +209,7 @@ export function MemberRow({
         </td>
         <td className="py-3 pr-4">
           <PresencePill online={member.online} />
+          <MemberPresenceInfo memberId={member.memberId} presence={presence} />
         </td>
         <td className="py-3 pr-4">
           <div className="text-ink wght-540">{member.name || '—'}</div>
@@ -149,6 +246,40 @@ export function MemberRow({
               No auto IP
             </label>
           </div>
+          {hasCapabilities && (
+            <div className="flex flex-col gap-1 mt-2 text-xs text-ink-mute">
+              {Object.entries(capabilitiesMap).map(([name, id]) => (
+                <label key={id} className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={member.capabilities.includes(id)}
+                    disabled={degraded || patch.isPending}
+                    onChange={(e) => toggleCapability(id, e.target.checked)}
+                    aria-label={`Capability ${name} for ${member.memberId}`}
+                  />
+                  {name}
+                </label>
+              ))}
+            </div>
+          )}
+          {hasTags && (
+            <div className="flex flex-col gap-1 mt-2 text-xs text-ink-mute">
+              {Object.entries(tagsMap).map(([name, id]) => {
+                const pair = member.tags.find(([tagId]) => tagId === id);
+                return (
+                  <label key={id} className="flex items-center gap-1">
+                    <TagInput
+                      label={`Tag ${name} for ${member.memberId}`}
+                      value={pair ? String(pair[1]) : ''}
+                      disabled={degraded || patch.isPending}
+                      onCommit={(value) => setTag(id, value)}
+                    />
+                    {name}
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </td>
         <td className="py-3 pr-4 min-w-52">
           <div className="flex gap-2">
@@ -236,6 +367,29 @@ export function MemberTable({ nwid }: { nwid: string }) {
     },
     refetchInterval: 10000,
   });
+
+  const { data: rulesData } = useQuery<RulesMaps>({
+    queryKey: ['rules', nwid],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/networks/${nwid}/rules`);
+      if (!res.ok) throw new Error('Failed to load rules');
+      return res.json();
+    },
+  });
+  const rulesMaps: RulesMaps = {
+    capabilities: rulesData?.capabilities ?? {},
+    tags: rulesData?.tags ?? {},
+  };
+
+  const { data: presenceData } = useQuery<{ presence: Record<string, PresenceEntry> }>({
+    queryKey: ['presence', nwid],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/networks/${nwid}/presence`);
+      if (!res.ok) throw new Error('Failed to load presence');
+      return res.json();
+    },
+  });
+  const presenceMap: Record<string, PresenceEntry> = presenceData?.presence ?? {};
 
   const [search, setSearch] = useState('');
   const [authFilter, setAuthFilter] = useState<AuthorizedFilter>('all');
@@ -350,6 +504,15 @@ export function MemberTable({ nwid }: { nwid: string }) {
             <option value="status">Sort: Auth</option>
             <option value="lastAuthorized">Sort: Last authorized</option>
           </select>
+          <Button
+            variant="outline"
+            className="px-3 py-2 text-sm"
+            onClick={() =>
+              setSelected(new Set(visible.filter((m) => m.online === false).map((m) => m.memberId)))
+            }
+          >
+            Select offline
+          </Button>
         </div>
       )}
 
@@ -433,6 +596,8 @@ export function MemberTable({ nwid }: { nwid: string }) {
                 onChanged={onChanged}
                 selected={selected.has(m.memberId)}
                 onToggleSelect={toggleSelect}
+                rulesMaps={rulesMaps}
+                presence={presenceMap[m.memberId]}
               />
             ))}
           </tbody>

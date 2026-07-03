@@ -5,6 +5,8 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 
 const nav = [
   { href: '/networks', label: 'Networks' },
+  { href: '/pending', label: 'Pending' },
+  { href: '/status', label: 'Status' },
   { href: '/apikeys', label: 'API Keys' },
   { href: '/audit', label: 'Audit Log' },
   { href: '/docs', label: 'API Docs' },

@@ -22,7 +22,9 @@ afterEach(() => {
 
 describe('LoginPage', () => {
   it('POSTs credentials to /api/v1/auth/login and redirects to /networks', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ user: {} }), { status: 200 }));
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) =>
+      new Response(JSON.stringify({ user: {} }), { status: 200 }),
+    );
     vi.stubGlobal('fetch', fetchMock);
     renderWithQuery(<LoginPage />);
     await userEvent.type(screen.getByLabelText(/username/i), 'admin');
@@ -31,7 +33,7 @@ describe('LoginPage', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/networks'));
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/v1/auth/login');
-    expect(JSON.parse(init.body)).toEqual({ username: 'admin', password: 'password12345' });
+    expect(JSON.parse(init!.body as string)).toEqual({ username: 'admin', password: 'password12345' });
   });
 
   it('shows the error envelope message on 401', async () => {
@@ -56,7 +58,7 @@ describe('SetupPage', () => {
   // The page fetches /api/v1/setup/status on mount to learn whether a setup token
   // is required; stub it alongside the POST.
   function stubSetupFetch(requiresToken = false) {
-    const fetchMock = vi.fn(async (url: string) => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).includes('/setup/status')) {
         return new Response(
           JSON.stringify({ needsSetup: true, requiresToken }),

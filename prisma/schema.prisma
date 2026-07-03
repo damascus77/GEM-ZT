@@ -15,6 +15,8 @@ model User {
   username     String     @unique
   passwordHash String
   role         String     @default("admin")
+  totpSecret   String?
+  totpEnabled  Boolean    @default(false)
   createdAt    DateTime   @default(now())
   apiKeys      ApiKey[]
   sessions     Session[]
@@ -72,4 +74,21 @@ model AuditLog {
 model Setting {
   key   String @id
   value String
+}
+
+model NetworkTemplate {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  config    String
+  createdAt DateTime @default(now())
+}
+
+model MemberPresence {
+  id        String   @id @default(cuid())
+  nwid      String
+  memberId  String
+  online    Boolean
+  sampledAt DateTime @default(now())
+
+  @@index([nwid, memberId, sampledAt])
 }

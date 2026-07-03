@@ -2,6 +2,7 @@ import { getControllerClient } from '@/lib/controller';
 import type { ControllerNetwork } from '@/lib/controller/types';
 import { getDb } from '@/lib/db/client';
 import {
+  capabilityTagMaps,
   compileRules,
   DEFAULT_RULES_SOURCE,
   RulesCompileError,
@@ -12,9 +13,13 @@ const META_UPSERT_WARNING =
   'Rules were applied to the controller, but saving the rules source failed. ' +
   'The network enforces the new rules; re-save to keep the editable source.';
 
-export async function getRules(
-  nwid: string,
-): Promise<{ source: string; rules: unknown[]; sourceIsDefault: boolean }> {
+export async function getRules(nwid: string): Promise<{
+  source: string;
+  rules: unknown[];
+  sourceIsDefault: boolean;
+  capabilities: Record<string, number>;
+  tags: Record<string, number>;
+}> {
   const client = await getControllerClient();
   const network = await client.getNetwork(nwid);
   const meta = await getDb()
@@ -25,10 +30,14 @@ export async function getRules(
   // restored) we fall back to the default template. That template does NOT
   // necessarily match the rules the controller is actually enforcing, so callers
   // must warn before letting a save overwrite the live rules.
+  const source = stored || DEFAULT_RULES_SOURCE;
+  const { capabilities, tags } = capabilityTagMaps(source);
   return {
-    source: stored || DEFAULT_RULES_SOURCE,
+    source,
     rules: network.rules,
     sourceIsDefault: !stored,
+    capabilities,
+    tags,
   };
 }
 

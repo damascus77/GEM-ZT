@@ -31,15 +31,17 @@ v1 today, but each is worth closing.
   parsed case-insensitively per RFC 7235; token stays case-sensitive. `lib/api/auth.ts`.)*
 
 ### Tooling / CI / deps
-- **[P1] Add `typecheck` + lint scripts and wire into CI.** No `tsc --noEmit`/lint script exists;
-  this is exactly why the `vitest.config.ts` type error only surfaced in a Docker `next build`. Add
-  `"typecheck": "tsc --noEmit"` (test files currently emit minor type nits — clean those up) + ESLint.
-- **[P1] Actually run the CI-gated e2e (Task 32) + `docker compose build` in CI.** They were deferred
-  ("Docker unavailable") and have never run automatically. Add a CI job: `npm run test:e2e` and a build.
-- **[P2] Bump `next`** — `npm ci` reports 6 vulnerabilities (3 moderate / 2 high / 1 critical), all from
-  the pinned `next@14.2.x` transitive tree. Take a `next` minor/patch bump.
-- **[P2] Prisma 5.22 → 7.x** major upgrade available (surfaced in container logs). Optional; follow the
-  migration guide if taken.
+- ✅ **[DONE] [P1]** ~~Add `typecheck` + lint scripts and wire into CI.~~ *(Done: `typecheck`/`lint` scripts,
+  `.eslintrc.json` (next/core-web-vitals), all tsc nits cleaned, `.gitlab-ci.yml` runs typecheck+lint+test.)*
+- ✅ **[DONE] [P1]** ~~Actually run the CI-gated e2e + `docker compose build` in CI.~~ *(Done: `.gitlab-ci.yml`
+  has an `e2e` job (DinD, `allow_failure`) and a `docker-build` job (`docker build`, `allow_failure`).)*
+- ⚠️ **[PARTIAL] [P2] Bump `next`** — bumped to the latest **14.2.35** patch (picks up 31 patch releases),
+  but the npm-audit CVEs are NOT cleared on 14.2.x: they require a **Next 15/16 major upgrade** (see new item
+  below). Kept the harmless patch bump; tests green.
+- **[P2] Next 14 → 15/16 major upgrade** to clear the outstanding `next` security advisories (App Router
+  breaking changes — schedule as its own task; too large for a one-shot).
+- **[P2] Prisma 5.22 → 7.x** major upgrade available. Optional; follow the migration guide if taken.
+  *(Deferred — large/risky, not attempted this pass.)*
 
 ### Cleanup
 - ✅ **[DONE] [P2]** ~~Remove dead `isValidCidr` import~~ in `components/networks/RoutesEditor.tsx` and
@@ -67,10 +69,12 @@ v1 today, but each is worth closing.
 > error surfacing, ✅ member-list fan-out bounded (cap 8) + poll slowed to 10s, ✅ `prisma migrate deploy`
 > at container start (see README "Upgrading" — existing db-push'd DBs need a one-time `migrate resolve`).
 
-**Still open — next most impactful:** compose healthchecks (P2), multi-stage image + non-root (P2),
-`next` security bump (P2), plus the feature roadmap in §3. *(Done 2026-07-03: SQLite
-`connection_limit=1`+WAL, session/audit retention, CSPRNG session tokens, cookie `Secure`, login rate
-limiting — see §2 Data & Security.)*
+**Still open — the larger efforts left:** Next 14→15/16 major upgrade (clears audit CVEs), Prisma 5→7,
+multi-user/orgs/roles, OIDC/SSO, private root / custom planet (mkworld), the visual flow-rule builder,
+and SMTP email + a background notification scheduler. *(A large tooling/security/feature wave landed
+2026-07-04 — CI+lint+typecheck, multi-stage Docker, backup/restore, TOTP 2FA, per-member tags/caps,
+pending queue + join page, presence history, rules/audit diffs, metrics dashboard, new-member webhook,
+per-IP login limiting — see the ✅ items throughout §1–§3.)*
 
 ### Data & persistence
 - ✅ **[DONE] [P0] No backup/restore story; `docker compose down -v` irreversibly destroys the controller
@@ -126,9 +130,10 @@ limiting — see §2 Data & Security.)*
 - ✅ **[DONE] [P2] No healthchecks; `depends_on` is start-order only.** *(Fixed: controller healthcheck on
   `authtoken.secret` + app `depends_on: condition: service_healthy`; app healthcheck hits
   `/api/v1/setup/status` via Node's global fetch. `docker-compose.yml`)*
-- **[P2] Single-stage image ships devDependencies + source and runs as root.** Move to Next standalone
-  multi-stage + `USER node` (note: the ro-mounted `authtoken.secret` is 0600/foreign-UID, so dropping root
-  needs `ZT_AUTH_TOKEN` or permission handling). (`Dockerfile`)
+- ✅ **[DONE] [P2]** ~~Single-stage image ships devDependencies + source and runs as root.~~ *(Fixed: Next
+  standalone multi-stage `Dockerfile` running `USER node`; `output:'standalone'` in next.config; a
+  `docker-entrypoint.sh` runs `prisma migrate deploy` then `node server.js`; non-root operators set
+  `ZT_AUTH_TOKEN` per the documented note. NOT built here — no Docker in the dev env.)*
 
 ### UX / error-handling
 - ✅ **[DONE] [P1] Stale "Managed IPs" input can wipe a member's auto-assigned IP.** *(Fixed: `MemberRow` re-seeds
@@ -153,24 +158,26 @@ Tags here: **[P1]** high-value / expected of a ZTNET alternative · **[P2]** val
 **[P3]** longer-term / larger effort.
 
 ### ZTNET-parity features
-- **[P1] Member tags & capabilities UI.** Parse tag/capability names from the stored flow-rule source
-  (the vendored `rule-compiler.js` already emits name→id maps) and render per-member dropdowns/checkboxes
-  in `MemberTable`. The API already accepts `capabilities`/`tags` on PATCH — UI-only, and it's what makes
-  ZeroTier flow rules usable per-device. Medium effort (`components/members/`).
+- ✅ **[DONE] [P1] Member tags & capabilities UI.** *(Done: `capabilityTagMaps()` parses name→id maps from the
+  rules source, surfaced via GET /networks/{nwid}/rules; `MemberTable` renders per-member capability checkboxes
+  + tag value inputs and PATCHes capabilities/tags.)*
 - ✅ **[DONE] [P1] Member search, filter, and sort.** *(Done: `lib/util/memberFilter.ts` + a toolbar in
   `MemberTable` — free-text name/ID/IP search, authorized/pending + online/offline filters, and column
-  sort. NetworkList search still open.)*
+  sort. NetworkList search also done — `lib/util/networkFilter.ts`.)*
 - **[P1] IPv4/IPv6 assign-mode toggles + full per-member controls.** UI for `v4AssignMode.zt`, `v6AssignMode`
   (`zt`/`6plane`/`rfc4193`) in `NetworkSettings` — *(network-level v4/v6 toggles already shipped in
   `RoutesEditor`)*. ✅ Per-member `noAutoAssignIps`/`activeBridge` toggles now render in `MemberTable`.
 - ✅ **[DONE] [P1] Dark mode.** *(Done 2026-07-03: CSS-variable theming — neutral tokens flip under a `.dark`
   class; defaults to dark with a no-flash inline script + `localStorage` toggle in the sidebar/auth screen.
   Palette may want visual tuning — the `.dark` values live in `app/globals.css`.)*
-- **[P2] Email + webhook notifications.** SMTP settings (the `Setting` model is ready) + outbound webhooks
-  for events: unauthorized member appeared, member deauthorized, controller degraded. "A new device knocked"
-  is the single most useful push for a homelab. Medium (a diff poller + dispatch in `lib/services/`).
-- **[P2] TOTP 2FA for admin login.** Add a TOTP secret to `User`, verify at `auth/login`. Small, meaningful
-  hardening for an internet-exposed panel.
+- ⚠️ **[PARTIAL] [P2] Email + webhook notifications.** *(Webhook slice done: `lib/services/webhooks.ts` fires
+  a JSON webhook on "new unauthorized member appeared", configurable via GET/PUT /api/v1/settings/webhook,
+  triggered opportunistically from the members-list route. STILL OPEN: SMTP email, more events
+  (deauthorized / controller degraded), and a background scheduler — currently only fires while a member
+  list is being viewed.)*
+- ✅ **[DONE] [P2] TOTP 2FA for admin login.** *(Done: dependency-free RFC 6238 TOTP (`lib/services/totp.ts`),
+  `User.totpSecret`/`totpEnabled` + migration, enroll/enable endpoints, and enforcement at `/auth/login`
+  — no session issued until the code verifies.)*
 - **[P2] Multi-user, organizations, and roles.** ZTNET's headline feature and the explicit v1 deferral
   (spec §11). `User.role`, the audit log, and API-key model were built to grow into this. Large — schedule
   as its own wave (auth middleware + every service authorization check + UI).
@@ -181,33 +188,36 @@ Tags here: **[P1]** high-value / expected of a ZTNET alternative · **[P2]** val
   the controller API gives no help here.
 
 ### Beyond ZTNET (UX & operator wins)
-- **[P1] Config backup & restore.** One-click export of all controller network configs + members + GEM-ZT
-  metadata (names/notes/rules source) as one JSON, and a restore that replays it against the controller API.
-  Top operator anxiety with a self-hosted controller. Medium (new service over existing `networks`/`members`).
-  (Pairs with the [P0] identity-backup issue in §2.)
+- ✅ **[DONE] [P1] Config backup & restore.** *(Done: `lib/services/backup.ts` — `exportBackup()` →
+  GET /api/v1/backup (JSON download) and `restoreBackup()` → POST /api/v1/backup/restore (replays networks,
+  members, meta, rules; updates existing networks in place, recreates missing ones, skips un-joined members).
+  `BackupControls` on the networks page. Note: an existing network with compiled rules but no stored
+  rulesSource won't re-push rules on restore — edge case, low-risk.)*
 - ✅ **[DONE] [P1] Bulk member actions.** *(Done: checkbox selection + select-all → authorize / deauthorize /
-  delete selected in `MemberTable`. "Delete offline > N days" not yet added.)*
+  delete selected in `MemberTable`, plus a "Select offline" quick-select for cleanup. True "offline > N days"
+  needs last-seen history — see the presence-history item below.)*
 - ✅ **[DONE] [P1] Inline validation & conflict feedback for routes/pools/DNS.** *(Done:
   `lib/util/networkValidation.ts` warns on overlapping routes, pools outside every managed route, `via`
   gateways not inside a route, and malformed DNS servers — surfaced advisorily in `RoutesEditor`/`DnsEditor`.)*
-- **[P2] Pending-member approval queue + shareable join page.** A cross-network "devices awaiting
-  authorization" dashboard view, plus a per-network join page (network ID, per-OS `zerotier-cli join`
-  instructions, QR) optionally carrying a time-limited self-authorize token. Onboarding becomes "send a link".
-  Medium (new route group + token table).
-- ✅ **[DONE] [P2] Clone network.** *(Done: `cloneNetwork()` service + `POST /networks/{nwid}/clone` +
-  "Clone network" button in `NetworkActions`; copies config, rules, and metadata into a new network.
-  Named saved templates are still open.)*
-- **[P2] Member presence history / last-seen timeline.** A lightweight poller sampling the `/peer` data
-  already read for live presence, persisted to SQLite, rendered as a per-member sparkline + "last seen 3d ago".
-  Answers "when did this node drop off?" — which nothing (including the controller API) answers today.
-  Medium (poller + table + UI).
-- **[P2] Flow-rule change preview + audit diffs.** Show a compiled-JSON diff (old vs new) before committing
-  rule changes, and store before/after in `AuditLog.detail` so the audit view renders real diffs for rules,
-  routes, and settings. Flow rules are the easiest way to lock yourself out; a diff is cheap insurance.
-  Small (compiler + audit plumbing already exist).
-- ✅ **[DONE] [P3] Prometheus metrics.** *(Done: `GET /api/v1/metrics` (text exposition) exposing controller
-  reachability + network/member/authorized/online counts via `lib/services/metrics.ts`. Liveness + inventory
-  only — the controller API has no per-member traffic. A status dashboard on top is still open.)*
+- ✅ **[DONE] [P2] Pending-member approval queue + shareable join page.** *(Done: `/pending` dashboard
+  aggregates unauthorized members across all networks with authorize/deny (`lib/services/pending.ts` +
+  GET /api/v1/pending); per-network `/networks/{nwid}/join` page with per-OS `zerotier-cli join` commands +
+  copy buttons. STILL OPEN: QR code and the time-limited self-authorize token (deferred to avoid a QR dep /
+  a token table).)*
+- ✅ **[DONE] [P2] Network templates / clone network.** *(Done: `cloneNetwork()` + `POST /networks/{nwid}/clone`
+  + "Clone network" button. Named templates also done — `NetworkTemplate` model (+ migration
+  `20260704120000_add_network_template`), `lib/services/templates.ts`, `/api/v1/templates[/{id}[/apply]]`,
+  "Save as template" in `NetworkActions` + a Templates list on the networks page.)*
+- ✅ **[DONE] [P2] Member presence history / last-seen timeline.** *(Done: `MemberPresence` model + migration,
+  `lib/services/presence.ts` (opportunistic throttled sampler wired into the members-list route, retention via
+  runRetention), GET /networks/{nwid}/presence, and per-member "last seen" + a div-based sparkline in
+  `MemberTable`. Honest limitation: samples only while a member list is being viewed — no background scheduler.)*
+- ✅ **[DONE] [P2] Flow-rule change preview + audit diffs.** *(Done: `lib/util/jsonDiff.ts` LCS diff; RulesEditor
+  "Preview changes" shows live-vs-compiled rules diff before save; network/member/rules update routes store
+  `{before, after}` in `AuditLog.detail` and the audit page renders the diff.)*
+- ✅ **[DONE] [P3] Prometheus metrics + status dashboard.** *(Done: `GET /api/v1/metrics` (text exposition)
+  via `lib/services/metrics.ts`, plus a `/status` dashboard page (`StatusDashboard` parses the metrics text)
+  showing controller reachability + inventory counts. Liveness + inventory only — no per-member traffic.)*
 - **[P3] Visual flow-rule builder.** Block-based editor (source/dest/port/action rows) that emits rule-language
   source, alongside the text editor, with a starter-preset library (default allow, isolate-clients,
   expose-one-server). Makes ZeroTier's most powerful capability approachable; the vendored compiler gives

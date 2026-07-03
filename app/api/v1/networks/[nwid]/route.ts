@@ -28,13 +28,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (auth instanceof Response) return auth;
   try {
     const body = updateNetworkSchema.parse(await req.json());
+    const before = await getNetwork(params.nwid).catch(() => null);
     const { data, metaWarning } = await updateNetwork(params.nwid, body);
     await logAudit({
       userId: auth.user.id,
       action: 'network.update',
       targetType: 'network',
       targetId: params.nwid,
-      detail: body,
+      detail: { before, after: body },
     });
     return NextResponse.json({ network: data, metaWarning });
   } catch (e) {

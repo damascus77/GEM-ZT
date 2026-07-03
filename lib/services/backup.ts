@@ -1,0 +1,246 @@
+import { z } from 'zod';
+import { getControllerClient } from '@/lib/controller';
+import { ControllerApiError } from '@/lib/controller/client';
+import { getDb } from '@/lib/db/client';
+import { mapWithConcurrency } from '@/lib/util/concurrency';
+import { isValidCidr } from '@/lib/util/cidr';
+import {
+  createNetworkFromConfig,
+  getNetwork,
+  toPortableConfig,
+  updateNetwork,
+  type PortableNetworkConfig,
+} from './networks';
+import { updateMember } from './members';
+import { setRules } from './rules';
+
+// Cap on simultaneous per-member controller GETs, matching listMembers.
+const MEMBER_FETCH_CONCURRENCY = 8;
+
+export interface BackupData {
+  version: 1;
+  networks: Array<{
+    nwid: string;
+    config: PortableNetworkConfig;
+    meta: { name: string; description: string; tags: string[]; rulesSource: string };
+    members: Array<{
+      memberId: string;
+      config: {
+        authorized: boolean;
+        activeBridge: boolean;
+        noAutoAssignIps: boolean;
+        ipAssignments: string[];
+        capabilities: number[];
+        tags: [number, number][];
+      };
+      meta: { name: string; notes: string };
+    }>;
+  }>;
+}
+
+const portableConfigSchema = z
+  .object({
+    private: z.boolean(),
+    enableBroadcast: z.boolean(),
+    mtu: z.number().int(),
+    multicastLimit: z.number().int(),
+    routes: z.array(
+      z
+        .object({
+          target: z.string().refine(isValidCidr, { message: 'must be a valid CIDR' }),
+          via: z.string().ip().nullable().optional(),
+        })
+        .strict(),
+    ),
+    ipAssignmentPools: z
+      .array(z.object({ ipRangeStart: z.string().ip(), ipRangeEnd: z.string().ip() }).strict()),
+    v4AssignMode: z.object({ zt: z.boolean() }).strict(),
+    v6AssignMode: z
+      .object({ zt: z.boolean(), '6plane': z.boolean(), rfc4193: z.boolean() })
+      .strict(),
+    dns: z.object({ domain: z.string(), servers: z.array(z.string()) }).strict(),
+    rules: z.array(z.unknown()),
+    capabilities: z.array(z.unknown()),
+    tags: z.array(z.unknown()),
+  })
+  .strict();
+
+const backupMemberSchema = z
+  .object({
+    memberId: z.string().min(1),
+    config: z
+      .object({
+        authorized: z.boolean(),
+        activeBridge: z.boolean(),
+        noAutoAssignIps: z.boolean(),
+        ipAssignments: z.array(z.string()),
+        capabilities: z.array(z.number()),
+        tags: z.array(z.tuple([z.number(), z.number()])),
+      })
+      .strict(),
+    meta: z.object({ name: z.string(), notes: z.string() }).strict(),
+  })
+  .strict();
+
+const backupNetworkSchema = z
+  .object({
+    nwid: z.string().min(1),
+    config: portableConfigSchema,
+    meta: z
+      .object({
+        name: z.string(),
+        description: z.string(),
+        tags: z.array(z.string()),
+        rulesSource: z.string(),
+      })
+      .strict(),
+    members: z.array(backupMemberSchema),
+  })
+  .strict();
+
+export const backupSchema = z
+  .object({
+    version: z.literal(1),
+    networks: z.array(backupNetworkSchema),
+  })
+  .strict();
+
+export interface RestoreSummary {
+  networksCreated: number;
+  networksUpdated: number;
+  membersRestored: number;
+  membersSkipped: number;
+  warnings: string[];
+}
+
+export async function exportBackup(): Promise<BackupData> {
+  const client = await getControllerClient();
+  const nwids = await client.listNetworkIds();
+
+  const networks = await Promise.all(
+    nwids.map(async (nwid) => {
+      const [config, memberIds, networkMeta] = await Promise.all([
+        client.getNetwork(nwid),
+        client.listMemberIds(nwid),
+        getDb()
+          .networkMeta.findUnique({ where: { nwid } })
+          .catch(() => null),
+      ]);
+
+      const memberIdList = Object.keys(memberIds);
+      const [members, memberMetas] = await Promise.all([
+        mapWithConcurrency(memberIdList, MEMBER_FETCH_CONCURRENCY, (memberId) =>
+          client.getMember(nwid, memberId),
+        ),
+        getDb()
+          .memberMeta.findMany({ where: { nwid } })
+          .catch(() => []),
+      ]);
+      const memberMetaMap = new Map(memberMetas.map((m) => [m.memberId, m]));
+
+      return {
+        nwid,
+        config: toPortableConfig(config),
+        meta: {
+          name: networkMeta?.name ?? '',
+          description: networkMeta?.description ?? '',
+          tags: networkMeta ? (JSON.parse(networkMeta.tags) as string[]) : [],
+          rulesSource: networkMeta?.rulesSource ?? '',
+        },
+        members: members.map((m) => {
+          const meta = memberMetaMap.get(m.id);
+          return {
+            memberId: m.id,
+            config: {
+              authorized: m.authorized,
+              activeBridge: m.activeBridge,
+              noAutoAssignIps: m.noAutoAssignIps,
+              ipAssignments: m.ipAssignments,
+              capabilities: m.capabilities,
+              tags: m.tags,
+            },
+            meta: {
+              name: meta?.name ?? '',
+              notes: meta?.notes ?? '',
+            },
+          };
+        }),
+      };
+    }),
+  );
+
+  return { version: 1, networks };
+}
+
+/**
+ * Replay a backup against the live controller. Networks are matched by nwid,
+ * but nwids are controller-assigned — if a network's nwid is no longer on the
+ * controller, restore mints a NEW network (new nwid) rather than forcing the
+ * old one. Members that aren't currently joined to the controller are skipped
+ * (they're auto-created only when a device joins).
+ */
+export async function restoreBackup(data: BackupData): Promise<RestoreSummary> {
+  const summary: RestoreSummary = {
+    networksCreated: 0,
+    networksUpdated: 0,
+    membersRestored: 0,
+    membersSkipped: 0,
+    warnings: [],
+  };
+
+  for (const net of data.networks) {
+    const existing = await getNetwork(net.nwid);
+    let targetNwid: string;
+
+    if (existing) {
+      await updateNetwork(net.nwid, {
+        ...net.config,
+        name: net.meta.name,
+        description: net.meta.description,
+        tags: net.meta.tags,
+      });
+      if (net.meta.rulesSource) {
+        await setRules(net.nwid, net.meta.rulesSource);
+      }
+      targetNwid = net.nwid;
+      summary.networksUpdated += 1;
+    } else {
+      const created = await createNetworkFromConfig({
+        config: net.config,
+        name: net.meta.name,
+        description: net.meta.description,
+        tags: JSON.stringify(net.meta.tags),
+        rulesSource: net.meta.rulesSource,
+      });
+      targetNwid = created.data.nwid;
+      summary.networksCreated += 1;
+    }
+
+    for (const member of net.members) {
+      try {
+        await updateMember(targetNwid, member.memberId, {
+          authorized: member.config.authorized,
+          activeBridge: member.config.activeBridge,
+          noAutoAssignIps: member.config.noAutoAssignIps,
+          ipAssignments: member.config.ipAssignments,
+          capabilities: member.config.capabilities,
+          tags: member.config.tags,
+          name: member.meta.name,
+          notes: member.meta.notes,
+        });
+        summary.membersRestored += 1;
+      } catch (e) {
+        if (e instanceof ControllerApiError && e.status === 404) {
+          summary.membersSkipped += 1;
+          summary.warnings.push(
+            `member ${member.memberId} on network ${targetNwid} not joined yet — config skipped`,
+          );
+          continue;
+        }
+        throw e;
+      }
+    }
+  }
+
+  return summary;
+}

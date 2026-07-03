@@ -28,6 +28,8 @@ const members = [
     latency: 42,
     physicalAddress: '203.0.113.9/41234',
     clientVersion: '1.14.2',
+    capabilities: [2000],
+    tags: [[1000, 5]] as [number, number][],
   },
   {
     memberId: 'deadbeef02',
@@ -43,10 +45,23 @@ const members = [
     latency: null,
     physicalAddress: null,
     clientVersion: null,
+    capabilities: [] as number[],
+    tags: [] as [number, number][],
   },
 ];
 
-function stubFetch() {
+const rulesMaps = {
+  source: '',
+  rules: [],
+  sourceIsDefault: true,
+  capabilities: { superuser: 2000 },
+  tags: { department: 1000 },
+};
+
+function stubFetch({
+  withRules = false,
+  presence,
+}: { withRules?: boolean; presence?: Record<string, unknown> } = {}) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === 'PATCH' || init?.method === 'DELETE') {
       return new Response(JSON.stringify({ member: members[1], metaWarning: null }), {
@@ -58,6 +73,13 @@ function stubFetch() {
         JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
         { status: 200 },
       );
+    }
+    if (String(url).includes('/rules')) {
+      if (!withRules) return new Response(JSON.stringify({}), { status: 200 });
+      return new Response(JSON.stringify(rulesMaps), { status: 200 });
+    }
+    if (String(url).includes('/presence')) {
+      return new Response(JSON.stringify({ presence: presence ?? {} }), { status: 200 });
     }
     return new Response(JSON.stringify({ members }), { status: 200 });
   });
@@ -76,6 +98,27 @@ describe('MemberTable', () => {
     expect(screen.getByText('203.0.113.9/41234')).toBeInTheDocument();
     expect(screen.getByText('Unknown')).toBeInTheDocument();
     expect(screen.getByDisplayValue('10.147.17.10')).toBeInTheDocument();
+  });
+
+  it('renders last-seen text and a presence sparkline when presence data is stubbed', async () => {
+    const recent = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    stubFetch({
+      presence: {
+        deadbeef01: { lastSeen: recent, samples: [true, false, true] },
+      },
+    });
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('laptop');
+    expect(await screen.findByText(/last seen: 5m ago/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Presence history for deadbeef01')).toBeInTheDocument();
+  });
+
+  it('renders no presence UI when the presence query is not stubbed (degrades gracefully)', async () => {
+    stubFetch();
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('laptop');
+    expect(screen.queryByText(/last seen:/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Presence history for/i)).not.toBeInTheDocument();
   });
 
   it('PATCHes authorized=true when clicking Authorize on a pending member', async () => {
@@ -208,6 +251,31 @@ describe('MemberTable', () => {
     });
   });
 
+  it('"Select offline" selects only currently-offline members for bulk cleanup', async () => {
+    const withOffline = [
+      { ...members[0] }, // laptop, online: true
+      { ...members[1], memberId: 'deadbeef03', online: false }, // offline
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url).includes('/controller/status')) {
+          return new Response(
+            JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
+            { status: 200 },
+          );
+        }
+        return new Response(JSON.stringify({ members: withOffline }), { status: 200 });
+      }),
+    );
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('deadbeef03');
+    await userEvent.click(screen.getByRole('button', { name: /select offline/i }));
+    expect(screen.getByLabelText('Select member deadbeef03')).toBeChecked();
+    expect(screen.getByLabelText('Select member deadbeef01')).not.toBeChecked();
+    expect(screen.getByText(/1 selected/)).toBeInTheDocument();
+  });
+
   it('toggles noAutoAssignIps via the per-member checkbox', async () => {
     const fetchMock = stubFetch();
     renderWithQuery(<MemberTable nwid={NWID} />);
@@ -219,6 +287,59 @@ describe('MemberTable', () => {
       );
       expect(patch).toBeDefined();
       expect(JSON.parse(patch![1]!.body as string)).toEqual({ noAutoAssignIps: true });
+    });
+  });
+
+  it('renders no capability/tag controls when the rules maps are missing (not stubbed)', async () => {
+    stubFetch({ withRules: false });
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('laptop');
+    expect(screen.queryByLabelText(/^capability /i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^tag /i)).not.toBeInTheDocument();
+  });
+
+  it('renders a capability checkbox reflecting current state and PATCHes the toggled set', async () => {
+    const fetchMock = stubFetch({ withRules: true });
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('deadbeef02');
+
+    // deadbeef01 already has capability 2000 -> checked.
+    const checkedBox = screen.getByLabelText('Capability superuser for deadbeef01');
+    expect(checkedBox).toBeChecked();
+
+    // deadbeef02 has no capabilities -> unchecked; toggling it on PATCHes [2000].
+    const uncheckedBox = screen.getByLabelText('Capability superuser for deadbeef02');
+    expect(uncheckedBox).not.toBeChecked();
+    await userEvent.click(uncheckedBox);
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(
+        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH',
+      );
+      expect(patch).toBeDefined();
+      expect(JSON.parse(patch![1]!.body as string)).toEqual({ capabilities: [2000] });
+    });
+  });
+
+  it('renders a tag input reflecting current value and PATCHes the upserted tag set', async () => {
+    const fetchMock = stubFetch({ withRules: true });
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('deadbeef02');
+
+    // deadbeef01 has tag [1000, 5] -> input shows 5.
+    const tagInput1 = screen.getByLabelText('Tag department for deadbeef01') as HTMLInputElement;
+    expect(tagInput1.value).toBe('5');
+
+    // deadbeef02 has no tags -> empty input; setting it PATCHes [[1000, 7]].
+    const tagInput2 = screen.getByLabelText('Tag department for deadbeef02') as HTMLInputElement;
+    expect(tagInput2.value).toBe('');
+    await userEvent.type(tagInput2, '7');
+    await userEvent.tab();
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(
+        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH',
+      );
+      expect(patch).toBeDefined();
+      expect(JSON.parse(patch![1]!.body as string)).toEqual({ tags: [[1000, 7]] });
     });
   });
 });
@@ -238,6 +359,8 @@ describe('MemberRow IP input re-seed (stale-IP guard)', () => {
     latency: null,
     physicalAddress: null,
     clientVersion: null,
+    capabilities: [],
+    tags: [],
   };
 
   function wrap(member: MemberViewClient) {
