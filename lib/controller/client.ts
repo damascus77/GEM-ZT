@@ -64,4 +64,27 @@ export class ControllerClient {
   getStatus(): Promise<ControllerStatus> {
     return this.request<ControllerStatus>('GET', '/status');
   }
+
+  listNetworkIds(): Promise<string[]> {
+    return this.request<string[]>('GET', '/controller/network');
+  }
+
+  getNetwork(nwid: string): Promise<ControllerNetwork> {
+    return this.request<ControllerNetwork>('GET', `/controller/network/${nwid}`);
+  }
+
+  createNetwork(
+    nodeId: string,
+    config: Partial<ControllerNetwork> = {},
+  ): Promise<ControllerNetwork> {
+    return this.request<ControllerNetwork>('POST', `/controller/network/${nodeId}______`, config);
+  }
+
+  updateNetwork(nwid: string, config: Partial<ControllerNetwork>): Promise<ControllerNetwork> {
+    return this.request<ControllerNetwork>('POST', `/controller/network/${nwid}`, config);
+  }
+
+  async deleteNetwork(nwid: string): Promise<void> {
+    await this.request<unknown>('DELETE', `/controller/network/${nwid}`);
+  }
 }
