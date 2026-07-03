@@ -57,14 +57,18 @@ v1 today, but each is worth closing.
 **Top priorities, in order:**
 1. ✅ **[P0]** ~~Backup/restore + `down -v` destroys the controller identity forever.~~ (done — README)
 2. ✅ **[P1]** ~~`/setup` takeover if the box is reachable or `app_data` is lost.~~ (done — `GEMZT_SETUP_TOKEN`)
-3. **[P1]** `prisma db push` on boot has no migration history (schema-change footgun).
+3. ✅ **[P1]** ~~`prisma db push` on boot has no migration history (schema-change footgun).~~ (done — `migrate deploy`)
 4. ✅ **[P1]** ~~Stale "Managed IPs" input can wipe a member's live auto-assigned IP.~~ (done — re-seed guard)
-5. **[P1]** Member action failures (authorize/IP/remove) are silent.
+5. ✅ **[P1]** ~~Member action failures (authorize/IP/remove) are silent.~~ (done — row alert)
 6. ✅ **[P1]** ~~Rules editor can silently overwrite live rules with the default template.~~ (done — warning)
-7. **[P1]** Member list is N+1 against the controller every 5s per open tab.
+7. ✅ **[P1]** ~~Member list is N+1 against the controller every 5s per open tab.~~ (done — concurrency cap 8 + 10s poll)
 
-**Still open — next most impactful:** #3 (migrations), #5 (silent member-action errors),
-#7 (member-list N+1), plus the SQLite-lock and healthcheck items below.
+> **Second hardening pass done 2026-07-03** (commits `e981182`, `beae224`, `8b2eb55`): ✅ member-action
+> error surfacing, ✅ member-list fan-out bounded (cap 8) + poll slowed to 10s, ✅ `prisma migrate deploy`
+> at container start (see README "Upgrading" — existing db-push'd DBs need a one-time `migrate resolve`).
+
+**Still open — next most impactful:** SQLite `?connection_limit=1`/WAL (P2), compose healthchecks (P2),
+session-token CSPRNG + cookie `Secure` (P2), plus the tracked items in §1 and the feature roadmap in §3.
 
 ### Data & persistence
 - ✅ **[DONE] [P0] No backup/restore story; `docker compose down -v` irreversibly destroys the controller
@@ -73,8 +77,8 @@ v1 today, but each is worth closing.
   orphaned. Nothing documents backing up `controller_data` + `app_data` (and hot-copying the SQLite file
   is unsafe). Add documented backup/restore (stop-and-tar or `sqlite3 .backup` + tar of `controller_data`)
   and a loud warning about `down -v`. (`docker-compose.yml`)
-- **[P1] Startup `prisma db push` has no migration history — first lossy schema change bricks or drifts
-  the deployment.** `Dockerfile` runs `npx prisma db push --skip-generate` every boot; a future schema
+- ✅ **[DONE] [P1] Startup `prisma db push` has no migration history — first lossy schema change bricks or drifts
+  the deployment.** *(Fixed: committed `prisma/migrations/` + `migrate deploy` at start. Existing db-push'd DBs need a one-time `migrate resolve` — see README "Upgrading".)* `Dockerfile` runs `npx prisma db push --skip-generate` every boot; a future schema
   change needing data loss fails non-interactively → crash-loop (and rolling back to an older image against
   a newer DB does the same). Switch to `prisma migrate deploy` + committed migrations.
 - ✅ **[DONE] [P1] Rules editor silently replaces live custom rules with the default template when `rulesSource`
@@ -90,7 +94,7 @@ v1 today, but each is worth closing.
   if that same session is presented again; `AuditLog` grows forever (500-row read cap only). Add retention/cleanup.
 
 ### Controller integration
-- **[P1] Member list is N+1 against the controller every 5s per open tab.** `listMembers` fires an
+- ✅ **[DONE] [P1] Member list is N+1 against the controller every 5s per open tab.** *(Fixed: `mapWithConcurrency` caps per-member GETs at 8; poll interval 5s→10s. The per-member GET count is inherent — no bulk controller endpoint — but bursts are bounded.)* `listMembers` fires an
   unbounded parallel `getMember` per member + a full `/peer` fetch (`lib/services/members.ts`), on a 5s
   `refetchInterval` — ~100 members ≈ ~100 controller requests per poll per tab, and `updateMember` re-runs
   `loadContext` after every write. Cache peers, batch, or lengthen the interval.
@@ -130,9 +134,9 @@ v1 today, but each is worth closing.
   never reflected later server changes (`components/members/MemberTable.tsx`). Flow: authorize → controller
   auto-assigns an IP → input still shows the old list → "Save IPs" PATCHes the stale list, deleting the live
   assignment. Re-seed when server data changes (or diff before save).
-- **[P1] Authorize / Deauthorize / Save IPs / Remove failures are silent.** The MemberRow mutations throw but
-  nothing renders `patch.error`/`remove.error` (`components/members/MemberTable.tsx`) — during a controller
-  hiccup the click just does nothing. Render mutation errors like `NetworkSettings` does.
+- ✅ **[DONE] [P1] Authorize / Deauthorize / Save IPs / Remove failures are silent.** *(Fixed: `MemberRow` renders a
+  `role="alert"` row showing the mutation error.)* Follow-up polish: the Remove/DELETE path still shows a fixed
+  "Delete failed" rather than parsing the response body's `error.message`.
 - **[P2] Settings/Routes/DNS editors seed once and save whole stale snapshots.** A tab left open across an
   external change reverts it on save (whole-object PATCH). Send only dirty fields or re-seed on server change.
   (`components/networks/*`)

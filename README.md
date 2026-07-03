@@ -129,3 +129,22 @@ npm run build     # prisma generate + next build
 
 See [`TODO.md`](TODO.md) for the backlog (known follow-ups, an issue review, and a feature
 roadmap) and `docs/superpowers/` for the design spec and implementation plan.
+
+## Upgrading
+
+The container now applies schema changes with **`prisma migrate deploy`** at startup (committed
+migrations under `prisma/migrations/`), instead of `prisma db push`. `migrate deploy` is
+non-interactive and only applies pending migrations — so a future schema change can't crash-loop
+or silently drift the deployment.
+
+**One-time baseline for a deployment created before migrations existed.** If your `app_data` DB was
+first created by an older image (which used `db push`), it has no migration-tracking table, and
+`migrate deploy` will fail with `P3005` ("database schema is not empty"). Baseline it once, then
+redeploy:
+
+```bash
+docker compose run --rm app npx prisma migrate resolve --applied 20260703164130_init
+docker compose up -d --build
+```
+
+Fresh installs need nothing — `migrate deploy` creates the schema from scratch.
