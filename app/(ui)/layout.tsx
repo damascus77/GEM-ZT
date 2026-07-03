@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { DegradedBanner } from '@/components/DegradedBanner';
 
 const nav = [
   { href: '/networks', label: 'Networks' },
@@ -30,6 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </form>
       </aside>
       <div className="flex-1 flex flex-col bg-canvas-soft">
+        <DegradedBanner />
         <main className="max-w-[1100px] w-full mx-auto px-6 py-8">{children}</main>
       </div>
     </div>
