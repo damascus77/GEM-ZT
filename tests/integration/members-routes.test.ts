@@ -1,0 +1,141 @@
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
+
+vi.mock('@/lib/controller', () => ({ getControllerClient: vi.fn() }));
+
+import { getControllerClient } from '@/lib/controller';
+import { ControllerApiError } from '@/lib/controller/client';
+import { setupTestDb } from '../helpers/db';
+import { createTestUserAndSession } from '../helpers/auth';
+import { getDb } from '@/lib/db/client';
+import { GET as membersGet } from '@/app/api/v1/networks/[nwid]/members/route';
+import {
+  GET as memberGet,
+  PATCH as memberPatch,
+  DELETE as memberDelete,
+} from '@/app/api/v1/networks/[nwid]/members/[memberId]/route';
+
+const NWID = 'abcdef0123456789';
+const MID = 'deadbeef01';
+
+const fakeMember = {
+  id: MID,
+  nwid: NWID,
+  authorized: false,
+  activeBridge: false,
+  ipAssignments: [],
+  noAutoAssignIps: false,
+  capabilities: [],
+  tags: [],
+  lastAuthorizedTime: 0,
+  creationTime: 1,
+  revision: 1,
+  vMajor: 1,
+  vMinor: 14,
+  vRev: 2,
+};
+
+const mockClient = {
+  listMemberIds: vi.fn(),
+  getMember: vi.fn(),
+  updateMember: vi.fn(),
+  deleteMember: vi.fn(),
+  listPeers: vi.fn(),
+};
+
+let cookie: string;
+
+beforeAll(async () => {
+  setupTestDb();
+  ({ cookie } = await createTestUserAndSession());
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
+  mockClient.listMemberIds.mockResolvedValue({ [MID]: 1 });
+  mockClient.getMember.mockResolvedValue(fakeMember);
+  mockClient.updateMember.mockResolvedValue({ ...fakeMember, authorized: true });
+  mockClient.deleteMember.mockResolvedValue(undefined);
+  mockClient.listPeers.mockResolvedValue([]);
+});
+
+afterAll(async () => {
+  await getDb().$disconnect();
+});
+
+function req(url: string, method: string, body?: unknown) {
+  return new Request(url, {
+    method,
+    headers: { 'Content-Type': 'application/json', cookie },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+}
+
+describe('members routes', () => {
+  it('requires auth', async () => {
+    const res = await membersGet(new Request(`http://x/api/v1/networks/${NWID}/members`), {
+      params: { nwid: NWID },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('GET lists members with presence fields', async () => {
+    const res = await membersGet(req(`http://x/api/v1/networks/${NWID}/members`, 'GET'), {
+      params: { nwid: NWID },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.members[0].memberId).toBe(MID);
+    expect(body.members[0].online).toBeNull();
+  });
+
+  it('GET single member 404s when unknown', async () => {
+    mockClient.getMember.mockRejectedValueOnce(new ControllerApiError(404, 'gone'));
+    const res = await memberGet(
+      req(`http://x/api/v1/networks/${NWID}/members/ffffffffff`, 'GET'),
+      { params: { nwid: NWID, memberId: 'ffffffffff' } },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it('PATCH authorizes a member, assigns an IP, and audits', async () => {
+    const res = await memberPatch(
+      req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'PATCH', {
+        authorized: true,
+        ipAssignments: ['10.147.17.10'],
+        name: 'laptop',
+      }),
+      { params: { nwid: NWID, memberId: MID } },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.member.authorized).toBe(true);
+    expect(mockClient.updateMember).toHaveBeenCalledWith(NWID, MID, {
+      authorized: true,
+      ipAssignments: ['10.147.17.10'],
+    });
+    const audit = await getDb().auditLog.findFirst({ where: { action: 'member.update' } });
+    expect(audit?.targetId).toBe(`${NWID}/${MID}`);
+  });
+
+  it('PATCH rejects invalid IPs with VALIDATION_ERROR', async () => {
+    const res = await memberPatch(
+      req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'PATCH', {
+        ipAssignments: ['not-an-ip'],
+      }),
+      { params: { nwid: NWID, memberId: MID } },
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('DELETE removes the member and audits', async () => {
+    const res = await memberDelete(
+      req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'DELETE'),
+      { params: { nwid: NWID, memberId: MID } },
+    );
+    expect(res.status).toBe(204);
+    const audit = await getDb().auditLog.findFirst({ where: { action: 'member.delete' } });
+    expect(audit?.targetId).toBe(`${NWID}/${MID}`);
+  });
+});
