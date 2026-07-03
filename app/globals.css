@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* DESIGN.md: Inter Variable substitute for Super Sans VF — sub-default weights */
+body {
+  font-variation-settings: 'wght' 460;
+}
+.wght-460 {
+  font-variation-settings: 'wght' 460;
+}
+.wght-540 {
+  font-variation-settings: 'wght' 540;
+}
+.wght-600 {
+  font-variation-settings: 'wght' 600;
+}
