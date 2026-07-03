@@ -116,6 +116,29 @@ describe('members service', () => {
     expect(members[0].online).toBeNull();
   });
 
+  it('bounds concurrent per-member controller fetches and preserves order', async () => {
+    const ids = Array.from({ length: 20 }, (_, i) => `member${String(i).padStart(2, '0')}`);
+    const idMap: Record<string, number> = {};
+    for (const id of ids) idMap[id] = 1;
+    mockClient.listMemberIds.mockResolvedValue(idMap);
+
+    let inFlight = 0;
+    let peak = 0;
+    mockClient.getMember.mockImplementation(async (_nwid: string, id: string) => {
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      inFlight--;
+      return fakeMember(id);
+    });
+
+    const members = await listMembers(NWID);
+
+    expect(peak).toBeLessThanOrEqual(8);
+    expect(members).toHaveLength(20);
+    expect(members.map((m) => m.memberId)).toEqual(ids);
+  });
+
   it('getMember returns a single view and null on controller 404', async () => {
     const m = await getMember(NWID, 'deadbeef01');
     expect(m?.memberId).toBe('deadbeef01');

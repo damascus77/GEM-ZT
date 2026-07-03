@@ -177,7 +177,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
       if (!res.ok) throw new Error('Failed to load members');
       return res.json();
     },
-    refetchInterval: 5000,
+    refetchInterval: 10000,
   });
 
   const onChanged = () => queryClient.invalidateQueries({ queryKey: ['members', nwid] });

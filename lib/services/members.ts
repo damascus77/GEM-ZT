@@ -3,7 +3,14 @@ import { getControllerClient } from '@/lib/controller';
 import { ControllerApiError } from '@/lib/controller/client';
 import type { ControllerMember, ControllerPeer } from '@/lib/controller/types';
 import { getDb } from '@/lib/db/client';
+import { mapWithConcurrency } from '@/lib/util/concurrency';
 import type { WriteResult } from './networks';
+
+// Cap on simultaneous per-member controller GETs in listMembers. The
+// controller has no bulk "get all members" endpoint, so we still issue one
+// GET per member, but bounding concurrency avoids bursting ~N simultaneous
+// requests at the controller on every poll.
+const MEMBER_FETCH_CONCURRENCY = 8;
 
 export interface MemberView {
   memberId: string;
@@ -90,7 +97,7 @@ export async function listMembers(nwid: string): Promise<MemberView[]> {
   const client = await getControllerClient();
   const ids = Object.keys(await client.listMemberIds(nwid));
   const [members, { peerMap, metaMap }] = await Promise.all([
-    Promise.all(ids.map((id) => client.getMember(nwid, id))),
+    mapWithConcurrency(ids, MEMBER_FETCH_CONCURRENCY, (id) => client.getMember(nwid, id)),
     loadContext(nwid),
   ]);
   return members.map((m) => toView(m, peerMap.get(m.id), metaMap.get(m.id)));
