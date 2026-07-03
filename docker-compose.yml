@@ -22,6 +22,9 @@ services:
       - DATABASE_URL=file:/data/gemzt.db
       - ZT_CONTROLLER_URL=http://zerotier-controller:9993
       - ZT_TOKEN_PATH=/controller/authtoken.secret
+      # Optional but recommended: set GEMZT_SETUP_TOKEN in a .env file to require a
+      # token when creating the admin account (guards first-run + app_data-loss re-open).
+      - GEMZT_SETUP_TOKEN=${GEMZT_SETUP_TOKEN:-}
     volumes:
       - app_data:/data
       - controller_data:/controller:ro
