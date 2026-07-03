@@ -3,6 +3,7 @@ import { getControllerClient } from '@/lib/controller';
 import { ControllerApiError } from '@/lib/controller/client';
 import type { ControllerNetwork } from '@/lib/controller/types';
 import { getDb } from '@/lib/db/client';
+import { isValidCidr } from '@/lib/util/cidr';
 
 export interface WriteResult<T> {
   data: T;
@@ -42,6 +43,44 @@ export const updateNetworkSchema = z
     enableBroadcast: z.boolean().optional(),
     mtu: z.number().int().min(1280).max(10000).optional(),
     multicastLimit: z.number().int().min(0).optional(),
+    routes: z
+      .array(
+        z
+          .object({
+            target: z.string().refine(isValidCidr, { message: 'must be a valid CIDR' }),
+            via: z.string().ip().nullable().optional(),
+          })
+          .strict(),
+      )
+      .max(128)
+      .optional(),
+    ipAssignmentPools: z
+      .array(
+        z
+          .object({
+            ipRangeStart: z.string().ip(),
+            ipRangeEnd: z.string().ip(),
+          })
+          .strict(),
+      )
+      .max(64)
+      .optional(),
+    v4AssignMode: z.object({ zt: z.boolean() }).strict().optional(),
+    v6AssignMode: z
+      .object({
+        zt: z.boolean().optional(),
+        '6plane': z.boolean().optional(),
+        rfc4193: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+    dns: z
+      .object({
+        domain: z.string().max(253),
+        servers: z.array(z.string().ip()).max(8),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -54,6 +93,11 @@ const CONTROLLER_KEYS = [
   'enableBroadcast',
   'mtu',
   'multicastLimit',
+  'routes',
+  'ipAssignmentPools',
+  'v4AssignMode',
+  'v6AssignMode',
+  'dns',
 ] as const satisfies readonly (keyof UpdateNetworkInput)[];
 
 const META_UPSERT_WARNING =
