@@ -1,4 +1,5 @@
 import { NetworkSettings } from '@/components/networks/NetworkSettings';
+import { MemberTable } from '@/components/members/MemberTable';
 
 export default function NetworkDetailPage({ params }: { params: { nwid: string } }) {
   return (
@@ -8,6 +9,7 @@ export default function NetworkDetailPage({ params }: { params: { nwid: string }
         <p className="text-sm text-ink-mute font-mono">{params.nwid}</p>
       </div>
       <NetworkSettings nwid={params.nwid} />
+      <MemberTable nwid={params.nwid} />
     </div>
   );
 }
