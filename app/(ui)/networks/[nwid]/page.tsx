@@ -2,6 +2,7 @@ import { NetworkSettings } from '@/components/networks/NetworkSettings';
 import { MemberTable } from '@/components/members/MemberTable';
 import { RoutesEditor } from '@/components/networks/RoutesEditor';
 import { DnsEditor } from '@/components/networks/DnsEditor';
+import { RulesEditor } from '@/components/networks/RulesEditor';
 
 export default function NetworkDetailPage({ params }: { params: { nwid: string } }) {
   return (
@@ -14,6 +15,7 @@ export default function NetworkDetailPage({ params }: { params: { nwid: string }
       <MemberTable nwid={params.nwid} />
       <RoutesEditor nwid={params.nwid} />
       <DnsEditor nwid={params.nwid} />
+      <RulesEditor nwid={params.nwid} />
     </div>
   );
 }
