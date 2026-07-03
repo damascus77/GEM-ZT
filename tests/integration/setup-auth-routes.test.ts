@@ -7,11 +7,21 @@ import { POST as loginPost } from '@/app/api/v1/auth/login/route';
 import { POST as logoutPost } from '@/app/api/v1/auth/logout/route';
 import { GET as meGet } from '@/app/api/v1/me/route';
 
+// This suite asserts token-less setup. Vitest loads .env into process.env, so a
+// GEMZT_SETUP_TOKEN configured for the real deployment would otherwise force /setup
+// to 403 here — explicitly clear it for this suite and restore it afterward.
+let savedSetupToken: string | undefined;
+
 beforeAll(() => {
+  savedSetupToken = process.env.GEMZT_SETUP_TOKEN;
+  // Empty string = "no token required" per the route logic (`expectedToken !== ''`).
+  // Assigning '' is reliable across platforms where `delete process.env.X` is not.
+  process.env.GEMZT_SETUP_TOKEN = '';
   setupTestDb();
 });
 
 afterAll(async () => {
+  process.env.GEMZT_SETUP_TOKEN = savedSetupToken ?? '';
   await getDb().$disconnect();
 });
 

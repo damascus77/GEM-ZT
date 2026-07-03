@@ -17,13 +17,16 @@ function jsonReq(body: unknown) {
 // Isolated file so GEMZT_SETUP_TOKEN and the fresh DB don't affect other suites
 // (vitest runs each test file in its own worker).
 describe('setup bootstrap token', () => {
+  let savedSetupToken: string | undefined;
+
   beforeAll(() => {
+    savedSetupToken = process.env.GEMZT_SETUP_TOKEN;
     process.env.GEMZT_SETUP_TOKEN = TOKEN;
     setupTestDb();
   });
 
   afterAll(async () => {
-    delete process.env.GEMZT_SETUP_TOKEN;
+    process.env.GEMZT_SETUP_TOKEN = savedSetupToken ?? '';
     await getDb().$disconnect();
   });
 
