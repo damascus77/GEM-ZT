@@ -5,9 +5,11 @@ import { parse } from 'yaml';
 const compose = parse(readFileSync('docker-compose.yml', 'utf8'));
 
 describe('docker-compose topology', () => {
-  it('runs the official zerotier-one image with persistent volume and UDP 9993', () => {
+  it('runs the zyclonite/zerotier controller image with persistent volume and UDP 9993', () => {
     const c = compose.services['zerotier-controller'];
-    expect(c.image).toMatch(/^zerotier\/zerotier:1\./);
+    // zyclonite/zerotier honors ZT_ALLOW_MANAGEMENT_FROM so the app container can
+    // reach the controller's local API (the official image only allows 127.0.0.1).
+    expect(c.image).toMatch(/^zyclonite\/zerotier:1\./);
     expect(c.volumes).toContain('controller_data:/var/lib/zerotier-one');
     expect(c.ports).toContain('9993:9993/udp');
     expect(c.restart).toBe('unless-stopped');
