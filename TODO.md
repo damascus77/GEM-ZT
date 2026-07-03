@@ -160,8 +160,9 @@ Tags here: **[P1]** high-value / expected of a ZTNET alternative · **[P2]** val
 - **[P1] IPv4/IPv6 assign-mode toggles + full per-member controls.** UI for `v4AssignMode.zt`, `v6AssignMode`
   (`zt`/`6plane`/`rfc4193`) in `NetworkSettings`, plus per-member `noAutoAssignIps`/`activeBridge`. Schemas
   already support all of it (`lib/services/networks.ts`); nothing surfaces it. Small.
-- **[P1] Dark mode.** Theme toggle persisted in `Setting`/localStorage with a dark variant of the design
-  tokens. Table stakes for an ops tool. Small-medium (design-token audit).
+- ✅ **[DONE] [P1] Dark mode.** *(Done 2026-07-03: CSS-variable theming — neutral tokens flip under a `.dark`
+  class; defaults to dark with a no-flash inline script + `localStorage` toggle in the sidebar/auth screen.
+  Palette may want visual tuning — the `.dark` values live in `app/globals.css`.)*
 - **[P2] Email + webhook notifications.** SMTP settings (the `Setting` model is ready) + outbound webhooks
   for events: unauthorized member appeared, member deauthorized, controller degraded. "A new device knocked"
   is the single most useful push for a homelab. Medium (a diff poller + dispatch in `lib/services/`).
