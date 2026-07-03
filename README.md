@@ -139,12 +139,14 @@ or silently drift the deployment.
 
 **One-time baseline for a deployment created before migrations existed.** If your `app_data` DB was
 first created by an older image (which used `db push`), it has no migration-tracking table, and
-`migrate deploy` will fail with `P3005` ("database schema is not empty"). Baseline it once, then
-redeploy:
+`migrate deploy` will fail with `P3005` ("database schema is not empty"). Baseline it once — **build the
+image first** so the one-off container actually contains the migration (otherwise `migrate resolve` fails
+with `P3017 migration could not be found`):
 
 ```bash
+docker compose build          # rebuild the app image so it contains prisma/migrations/
 docker compose run --rm app npx prisma migrate resolve --applied 20260703164130_init
-docker compose up -d --build
+docker compose up -d          # start the new image; migrate deploy now sees the baseline and is a no-op
 ```
 
 Fresh installs need nothing — `migrate deploy` creates the schema from scratch.
