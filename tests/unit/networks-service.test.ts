@@ -6,7 +6,7 @@ import { getControllerClient } from '@/lib/controller';
 import { ControllerApiError } from '@/lib/controller/client';
 import type { ControllerNetwork } from '@/lib/controller/types';
 import { setupTestDb } from '../helpers/db';
-import { getDb } from '@/lib/db/client';
+import { getDb, resetDbForTests } from '@/lib/db/client';
 import {
   listNetworks,
   createNetwork,
@@ -94,7 +94,7 @@ describe('networks service', () => {
     const { data, metaWarning } = await createNetwork({ name: 'still-works' });
     expect(data.nwid).toBe(NWID);
     expect(metaWarning).toContain('metadata');
-    spy.mockRestore();
+    resetDbForTests();
   });
 
   it('listNetworks joins controller networks with metadata and member counts', async () => {
