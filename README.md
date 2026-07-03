@@ -150,3 +150,6 @@ docker compose up -d          # start the new image; migrate deploy now sees the
 ```
 
 Fresh installs need nothing — `migrate deploy` creates the schema from scratch.
+
+If `migrate resolve` reports `P3008 (already recorded as applied)`, the baseline is already
+done — skip it and just run `docker compose up -d --build`.
