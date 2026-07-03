@@ -13,7 +13,12 @@ export function useControllerStatus() {
   return useQuery<ControllerStatusView>({
     queryKey: ['controller-status'],
     queryFn: async () => {
-      const res = await fetch('/api/v1/controller/status');
+      let res: Response;
+      try {
+        res = await fetch('/api/v1/controller/status');
+      } catch {
+        return { degraded: true };
+      }
       if (res.status === 502) return { degraded: true };
       if (!res.ok) throw new Error('Failed to load controller status');
       const body = await res.json();

@@ -25,6 +25,18 @@ describe('DegradedBanner', () => {
     expect(alert).toHaveTextContent(/changes are disabled/i);
   });
 
+  it('shows a persistent alert when fetch rejects (offline/network error)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    renderWithQuery(<DegradedBanner />);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/controller degraded/i);
+  });
+
   it('renders nothing when the controller is healthy', async () => {
     vi.stubGlobal(
       'fetch',

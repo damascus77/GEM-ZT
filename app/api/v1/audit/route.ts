@@ -7,8 +7,9 @@ export async function GET(req: Request) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   try {
-    const limitParam = new URL(req.url).searchParams.get('limit');
-    const limit = limitParam ? Number.parseInt(limitParam, 10) || 100 : 100;
+    const raw = new URL(req.url).searchParams.get('limit');
+    const n = raw === null ? 100 : Number(raw);
+    const limit = Number.isFinite(n) ? n : 100;
     return NextResponse.json({ entries: await listAuditLog(limit) });
   } catch (e) {
     return handleRouteError(e);

@@ -54,4 +54,21 @@ describe('GET /api/v1/audit', () => {
     );
     expect((await res.json()).entries).toHaveLength(1);
   });
+
+  it('clamps ?limit=0 to the service floor of 1 (not the default of 100)', async () => {
+    const res = await auditGet(
+      new Request('http://x/api/v1/audit?limit=0', { headers: { cookie } }),
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).entries).toHaveLength(1);
+  });
+
+  it('clamps a huge ?limit= to the service ceiling without erroring', async () => {
+    const res = await auditGet(
+      new Request('http://x/api/v1/audit?limit=9999', { headers: { cookie } }),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.entries.length).toBeGreaterThan(0);
+  });
 });

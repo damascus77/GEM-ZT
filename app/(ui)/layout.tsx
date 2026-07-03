@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { DegradedBanner } from '@/components/DegradedBanner';
+import { SignOutButton } from '@/components/SignOutButton';
 
 const nav = [
   { href: '/networks', label: 'Networks' },
@@ -24,11 +25,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
-        <form action="/api/v1/auth/logout" method="post" className="mt-auto px-6 py-5">
-          <button type="submit" className="text-sm text-on-dark-faint hover:text-on-primary">
-            Sign out
-          </button>
-        </form>
+        <div className="mt-auto px-6 py-5">
+          <SignOutButton />
+        </div>
       </aside>
       <div className="flex-1 flex flex-col bg-canvas-soft">
         <DegradedBanner />

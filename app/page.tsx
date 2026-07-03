@@ -9,16 +9,21 @@ export default function RootRedirect() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const setup = await fetch('/api/v1/setup/status');
-      const { needsSetup } = await setup.json();
-      if (cancelled) return;
-      if (needsSetup) {
-        router.replace('/setup');
-        return;
+      try {
+        const setup = await fetch('/api/v1/setup/status');
+        const { needsSetup } = await setup.json();
+        if (cancelled) return;
+        if (needsSetup) {
+          router.replace('/setup');
+          return;
+        }
+        const me = await fetch('/api/v1/me');
+        if (cancelled) return;
+        router.replace(me.ok ? '/networks' : '/login');
+      } catch {
+        if (cancelled) return;
+        router.replace('/login');
       }
-      const me = await fetch('/api/v1/me');
-      if (cancelled) return;
-      router.replace(me.ok ? '/networks' : '/login');
     })();
     return () => {
       cancelled = true;
