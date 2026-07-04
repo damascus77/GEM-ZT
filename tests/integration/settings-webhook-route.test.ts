@@ -61,6 +61,19 @@ describe('settings webhook route', () => {
     expect(res.status).toBe(400);
   });
 
+  it('PUT rejects SSRF-unsafe URLs (private/loopback/metadata) with 400 and does not persist', async () => {
+    for (const url of [
+      'http://169.254.169.254/latest/meta-data/',
+      'http://localhost:9993/controller/network',
+      'http://192.168.1.1/hook',
+    ]) {
+      const res = await webhookPut(req('PUT', { url }));
+      expect(res.status, url).toBe(400);
+    }
+    const getRes = await webhookGet(req('GET'));
+    expect(await getRes.json()).toEqual({ url: null });
+  });
+
   it('PUT with null clears the url', async () => {
     await webhookPut(req('PUT', { url: 'https://example.com/hook' }));
     const res = await webhookPut(req('PUT', { url: null }));

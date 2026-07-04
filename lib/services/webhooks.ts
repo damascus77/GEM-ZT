@@ -1,7 +1,13 @@
 import { getDb } from '@/lib/db/client';
+import { isSafeWebhookUrl } from '@/lib/util/ssrf';
 import { listMembers } from './members';
 
 const NEW_MEMBER_WEBHOOK_URL_KEY = 'webhook.new_member_url';
+
+// Cap on a single webhook delivery. Without it a webhook host that accepts the
+// connection but never responds would hang the members-list request (which
+// awaits dispatch) for up to undici's ~300s default headers timeout.
+const WEBHOOK_TIMEOUT_MS = 5000;
 
 function knownSetKey(nwid: string): string {
   return `webhook.known.${nwid}`;
@@ -41,11 +47,22 @@ export function diffNewUnauthorized(
  * best-effort.
  */
 export async function dispatchWebhook(url: string, payload: unknown): Promise<boolean> {
+  // Defense in depth: the URL is also validated when it's saved, but re-check
+  // here so a value that predates this guard (or was written directly to the DB)
+  // can't drive a server-side request to an internal address.
+  if (!isSafeWebhookUrl(url)) {
+    console.error('[gem-zt] refusing to dispatch webhook to unsafe URL:', url);
+    return false;
+  }
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      // Bound the request and refuse redirects (a 30x to an internal address
+      // would otherwise bypass the URL check above).
+      signal: AbortSignal.timeout(WEBHOOK_TIMEOUT_MS),
+      redirect: 'error',
     });
     return res.ok;
   } catch {

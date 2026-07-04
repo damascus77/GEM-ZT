@@ -88,6 +88,30 @@ describe('dispatchWebhook', () => {
     await expect(dispatchWebhook('https://example.com/hook', {})).resolves.toBe(false);
     vi.unstubAllGlobals();
   });
+
+  it('sends a bounded, non-redirect-following request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal('fetch', fetchMock);
+    await dispatchWebhook('https://example.com/hook', {});
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.redirect).toBe('error');
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    vi.unstubAllGlobals();
+  });
+
+  it('refuses to fetch an SSRF-unsafe URL (private/loopback/metadata) and returns false', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    for (const url of [
+      'http://169.254.169.254/latest/meta-data/',
+      'http://localhost:9993/controller/network',
+      'http://127.0.0.1/',
+    ]) {
+      expect(await dispatchWebhook(url, {})).toBe(false);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('webhook URL settings', () => {

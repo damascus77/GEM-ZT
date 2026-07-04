@@ -3,9 +3,19 @@ import { z } from 'zod';
 import { requireAuth } from '@/lib/api/auth';
 import { handleRouteError } from '@/lib/api/errors';
 import { getNewMemberWebhookUrl, setNewMemberWebhookUrl } from '@/lib/services/webhooks';
+import { isSafeWebhookUrl } from '@/lib/util/ssrf';
 
 const putWebhookSchema = z
-  .object({ url: z.string().url().nullable() })
+  .object({
+    url: z
+      .string()
+      .url()
+      .refine(isSafeWebhookUrl, {
+        message:
+          'must be an http(s) URL that is not a private, loopback, or link-local address',
+      })
+      .nullable(),
+  })
   .strict();
 
 export async function GET(req: Request) {
