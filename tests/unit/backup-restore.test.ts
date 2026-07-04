@@ -217,7 +217,9 @@ describe('restoreBackup', () => {
     await expect(restoreBackup(makeBackup())).rejects.toThrow('boom');
   });
 
-  it('skips setRules when rulesSource is empty', async () => {
+  it('pushes the backup rules/capabilities/tags directly when rulesSource is empty', async () => {
+    // No editable source on record (pre-GEM-ZT network) must NOT mean the
+    // network's access policy is silently left untouched on restore.
     const backup = makeBackup();
     backup.networks[0].meta.rulesSource = '';
     backup.networks[0].members = [];
@@ -225,7 +227,13 @@ describe('restoreBackup', () => {
     const rulesCall = mockClient.updateNetwork.mock.calls.find((c) =>
       Object.prototype.hasOwnProperty.call(c[1], 'rules'),
     );
-    expect(rulesCall).toBeFalsy();
+    expect(rulesCall).toBeTruthy();
+    expect(rulesCall![0]).toBe(EXISTING_NWID);
+    expect(rulesCall![1]).toEqual({
+      rules: portableConfig.rules,
+      capabilities: portableConfig.capabilities,
+      tags: portableConfig.tags,
+    });
   });
 
   it('handles an empty backup', async () => {

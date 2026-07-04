@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { getControllerClient } from '@/lib/controller';
 import { ControllerApiError } from '@/lib/controller/client';
+import type { ControllerNetwork } from '@/lib/controller/types';
 import { getDb } from '@/lib/db/client';
 import { mapWithConcurrency } from '@/lib/util/concurrency';
 import { isValidCidr } from '@/lib/util/cidr';
@@ -201,6 +202,19 @@ export async function restoreBackup(data: BackupData): Promise<RestoreSummary> {
       });
       if (net.meta.rulesSource) {
         await setRules(net.nwid, net.meta.rulesSource);
+      } else {
+        // updateNetwork's CONTROLLER_KEYS deliberately excludes rules/
+        // capabilities/tags — they normally flow through setRules from the
+        // editable source. With no source on record (network predates GEM-ZT,
+        // or meta was lost), push the backup's captured compiled values
+        // directly; otherwise restore silently keeps the live rules, which is
+        // security-relevant since rules are the network's access policy.
+        const client = await getControllerClient();
+        await client.updateNetwork(net.nwid, {
+          rules: net.config.rules,
+          capabilities: net.config.capabilities,
+          tags: net.config.tags,
+        } as Partial<ControllerNetwork>);
       }
       targetNwid = net.nwid;
       summary.networksUpdated += 1;
