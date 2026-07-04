@@ -2,6 +2,8 @@ import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiError, handleRouteError } from '@/lib/api/errors';
+import { clientIp } from '@/lib/api/net';
+import { createRateLimiter } from '@/lib/services/rateLimit';
 import {
   createSession,
   createUser,
@@ -9,6 +11,13 @@ import {
   sessionCookieOptions,
   userCount,
 } from '@/lib/services/auth';
+
+// Per-IP limiter on failed setup-token attempts. The constant-time compare
+// blocks the timing channel but not online brute force, and setup re-opens if
+// app_data is lost — so a short/human token needs a throttle too.
+const SETUP_MAX_ATTEMPTS = Number(process.env.GEMZT_SETUP_MAX_ATTEMPTS ?? 10);
+const SETUP_WINDOW_MS = Number(process.env.GEMZT_SETUP_WINDOW_MS ?? 15 * 60 * 1000);
+const setupLimiter = createRateLimiter({ limit: SETUP_MAX_ATTEMPTS, windowMs: SETUP_WINDOW_MS });
 
 const setupSchema = z
   .object({
@@ -27,6 +36,13 @@ function tokenMatches(provided: string | undefined, expected: string): boolean {
 
 export async function POST(req: Request) {
   try {
+    const ipKey = clientIp(req);
+    const gate = setupLimiter.check(ipKey);
+    if (!gate.allowed) {
+      return apiError('RATE_LIMITED', 'Too many setup attempts. Try again later.', 429, {
+        'Retry-After': String(Math.ceil(gate.retryAfterMs / 1000)),
+      });
+    }
     const body = setupSchema.parse(await req.json());
     if ((await userCount()) > 0) {
       return apiError('SETUP_ALREADY_COMPLETE', 'Setup has already been completed.', 409);
@@ -36,6 +52,7 @@ export async function POST(req: Request) {
     // if app_data is ever lost and setup silently re-opens.
     const expectedToken = process.env.GEMZT_SETUP_TOKEN ?? '';
     if (expectedToken !== '' && !tokenMatches(body.setupToken, expectedToken)) {
+      setupLimiter.recordFailure(ipKey);
       return apiError(
         'SETUP_TOKEN_INVALID',
         'A valid setup token is required to create the admin account.',

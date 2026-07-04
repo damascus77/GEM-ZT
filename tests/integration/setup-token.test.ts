@@ -52,6 +52,27 @@ describe('setup bootstrap token', () => {
     expect(await getDb().user.count()).toBe(0);
   });
 
+  it('rate-limits repeated wrong-token attempts from one IP (429)', async () => {
+    // Distinct IP so this is isolated from the earlier no-token/wrong-token
+    // attempts (which key off the default 'unknown').
+    const ip = '198.51.100.9';
+    const attempt = () =>
+      setupPost(
+        new Request('http://x/api/v1/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-forwarded-for': ip },
+          body: JSON.stringify({ username: 'admin', password: 'password12345', setupToken: 'wrong' }),
+        }),
+      );
+    for (let i = 0; i < 10; i++) {
+      expect((await attempt()).status).toBe(403);
+    }
+    const blocked = await attempt();
+    expect(blocked.status).toBe(429);
+    expect((await blocked.json()).error.code).toBe('RATE_LIMITED');
+    expect(await getDb().user.count()).toBe(0);
+  });
+
   it('creates the admin when the correct token is supplied (201)', async () => {
     const res = await setupPost(
       jsonReq({ username: 'admin', password: 'password12345', setupToken: TOKEN }),
