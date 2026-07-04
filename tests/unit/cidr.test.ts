@@ -56,8 +56,33 @@ describe('cidrToPool', () => {
     });
   });
 
-  it('throws on invalid or IPv6 input', () => {
-    expect(() => cidrToPool('fd00::/64')).toThrow('Invalid IPv4 CIDR');
-    expect(() => cidrToPool('nope')).toThrow('Invalid IPv4 CIDR');
+  it('throws on invalid input', () => {
+    expect(() => cidrToPool('nope')).toThrow('Invalid CIDR');
+    expect(() => cidrToPool('300.1.1.1/24')).toThrow('Invalid CIDR');
+  });
+
+  it('converts an IPv6 /112 to a usable start/end range', () => {
+    expect(cidrToPool('fd00::/112')).toEqual({
+      ipRangeStart: 'fd00::',
+      ipRangeEnd: 'fd00::ffff',
+    });
+  });
+
+  it('converts an IPv6 /32', () => {
+    expect(cidrToPool('2001:db8::/32')).toEqual({
+      ipRangeStart: '2001:db8::',
+      ipRangeEnd: '2001:db8:ffff:ffff:ffff:ffff:ffff:ffff',
+    });
+  });
+
+  it('handles IPv6 /127 and /128 without offsets (unlike IPv4, no address is excluded)', () => {
+    expect(cidrToPool('fd00::/127')).toEqual({
+      ipRangeStart: 'fd00::',
+      ipRangeEnd: 'fd00::1',
+    });
+    expect(cidrToPool('fd00::1/128')).toEqual({
+      ipRangeStart: 'fd00::1',
+      ipRangeEnd: 'fd00::1',
+    });
   });
 });
