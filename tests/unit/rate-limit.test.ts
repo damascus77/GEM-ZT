@@ -41,4 +41,17 @@ describe('createRateLimiter', () => {
     expect(rl.check('a').allowed).toBe(false);
     expect(rl.check('b').allowed).toBe(true);
   });
+
+  it('sweeps stale keys so the map does not grow unboundedly', () => {
+    let now = 0;
+    const rl = createRateLimiter({ limit: 5, windowMs: 1_000, now: () => now });
+    // Spray 100 distinct keys (spoofed IPs / sprayed usernames) that are never
+    // touched again.
+    for (let i = 0; i < 100; i++) rl.recordFailure(`k${i}`);
+    expect(rl.size()).toBe(100);
+    // After the window elapses, the next operation prunes all of them.
+    now += 2_001;
+    rl.recordFailure('trigger');
+    expect(rl.size()).toBe(1);
+  });
 });
