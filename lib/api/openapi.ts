@@ -92,6 +92,17 @@ export const openApiSpec = {
         responses: { '200': { description: '{ enabled: true }' }, '400': errorResponse },
       },
     },
+    '/auth/password': {
+      patch: {
+        tags: ['auth'],
+        summary: 'Change the current user\'s password; invalidates every other session',
+        responses: {
+          '204': { description: 'Password changed' },
+          '400': errorResponse,
+          '401': errorResponse,
+        },
+      },
+    },
     '/me': {
       get: {
         tags: ['auth'],
