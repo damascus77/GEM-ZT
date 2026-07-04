@@ -56,6 +56,31 @@ describe('POST /api/v1/auth/totp/enroll', () => {
   });
 });
 
+describe('POST /api/v1/auth/totp/enroll while already enabled', () => {
+  it('409s and leaves the active secret unchanged', async () => {
+    const { cookie: c, user } = await createTestUserAndSession();
+    const authReq = (m: string, b?: unknown) =>
+      new Request('http://x/api/v1/auth/totp/enroll', {
+        method: m,
+        headers: { 'Content-Type': 'application/json', cookie: c },
+        body: b !== undefined ? JSON.stringify(b) : undefined,
+      });
+    const enrolled = await (await enrollPost(authReq('POST'))).json();
+    await enablePost(
+      new Request('http://x/api/v1/auth/totp/enable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', cookie: c },
+        body: JSON.stringify({ code: totp(enrolled.secret) }),
+      }),
+    );
+    const res = await enrollPost(authReq('POST'));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error.code).toBe('TOTP_ALREADY_ENABLED');
+    const dbUser = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(dbUser.totpSecret).toBe(enrolled.secret);
+  });
+});
+
 describe('POST /api/v1/auth/totp/enable', () => {
   it('requires auth', async () => {
     const res = await enablePost(
