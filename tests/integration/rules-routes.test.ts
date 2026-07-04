@@ -54,13 +54,13 @@ function req(method: string, body?: unknown) {
 describe('rules routes', () => {
   it('requires auth', async () => {
     const res = await rulesGet(new Request(`http://x/api/v1/networks/${NWID}/rules`), {
-      params: { nwid: NWID },
+      params: Promise.resolve({ nwid: NWID }),
     });
     expect(res.status).toBe(401);
   });
 
   it('GET returns the default source and live compiled rules when no source is stored', async () => {
-    const res = await rulesGet(req('GET'), { params: { nwid: NWID } });
+    const res = await rulesGet(req('GET'), { params: Promise.resolve({ nwid: NWID }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.source).toContain('accept;');
@@ -82,8 +82,8 @@ describe('rules routes', () => {
       ';',
       'accept;',
     ].join('\n');
-    await rulesPut(req('PUT', { source }), { params: { nwid: NWID } });
-    const res = await rulesGet(req('GET'), { params: { nwid: NWID } });
+    await rulesPut(req('PUT', { source }), { params: Promise.resolve({ nwid: NWID }) });
+    const res = await rulesGet(req('GET'), { params: Promise.resolve({ nwid: NWID }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.capabilities).toEqual({ superuser: 2000 });
@@ -91,7 +91,7 @@ describe('rules routes', () => {
   });
 
   it('PUT compiles, pushes to the controller first, stores the source, audits', async () => {
-    const res = await rulesPut(req('PUT', { source: 'accept;' }), { params: { nwid: NWID } });
+    const res = await rulesPut(req('PUT', { source: 'accept;' }), { params: Promise.resolve({ nwid: NWID }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.source).toBe('accept;');
@@ -107,7 +107,7 @@ describe('rules routes', () => {
   });
 
   it('PUT audits before/after source snapshots', async () => {
-    const res = await rulesPut(req('PUT', { source: 'accept;' }), { params: { nwid: NWID } });
+    const res = await rulesPut(req('PUT', { source: 'accept;' }), { params: Promise.resolve({ nwid: NWID }) });
     expect(res.status).toBe(200);
     const audit = await getDb().auditLog.findFirst({
       where: { action: 'network.rules.update' },
@@ -120,15 +120,15 @@ describe('rules routes', () => {
   });
 
   it('GET returns the stored source after a PUT (no longer flagged as default)', async () => {
-    await rulesPut(req('PUT', { source: 'accept;' }), { params: { nwid: NWID } });
-    const res = await rulesGet(req('GET'), { params: { nwid: NWID } });
+    await rulesPut(req('PUT', { source: 'accept;' }), { params: Promise.resolve({ nwid: NWID }) });
+    const res = await rulesGet(req('GET'), { params: Promise.resolve({ nwid: NWID }) });
     const body = await res.json();
     expect(body.source).toBe('accept;');
     expect(body.sourceIsDefault).toBe(false);
   });
 
   it('PUT returns 422 RULES_COMPILE_ERROR with line info for bad source', async () => {
-    const res = await rulesPut(req('PUT', { source: 'acceptt;' }), { params: { nwid: NWID } });
+    const res = await rulesPut(req('PUT', { source: 'acceptt;' }), { params: Promise.resolve({ nwid: NWID }) });
     expect(res.status).toBe(422);
     const body = await res.json();
     expect(body.error.code).toBe('RULES_COMPILE_ERROR');
@@ -139,7 +139,7 @@ describe('rules routes', () => {
   it('PUT 404s for an unknown nwid instead of resurrecting a rules-only network', async () => {
     mockClient.getNetwork.mockRejectedValue(new ControllerApiError(404, 'gone'));
     const res = await rulesPut(req('PUT', { source: 'accept;' }), {
-      params: { nwid: '0000000000000000' },
+      params: Promise.resolve({ nwid: '0000000000000000' }),
     });
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe('NOT_FOUND');
@@ -147,7 +147,7 @@ describe('rules routes', () => {
   });
 
   it('PUT validates the body shape', async () => {
-    const res = await rulesPut(req('PUT', { nope: true }), { params: { nwid: NWID } });
+    const res = await rulesPut(req('PUT', { nope: true }), { params: Promise.resolve({ nwid: NWID }) });
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
   });
