@@ -73,28 +73,27 @@ const DEFAULT_SAMPLE_LIMIT = 48;
 
 /**
  * Presence for every member in the network that has at least one sample,
- * keyed by memberId. Fetches once and groups in JS rather than one query per
- * member.
+ * keyed by memberId.
+ *
+ * Previously this loaded the network's ENTIRE presence history into memory and
+ * kept only the last 48 per member — ~30 days x N members of rows per poll.
+ * Instead, resolve the member set with a DB-side GROUP BY, then fetch only the
+ * bounded slice each member actually needs (last-seen + last 48 samples), which
+ * the [nwid, memberId, sampledAt] index serves directly.
  */
 export async function getNetworkPresence(
   nwid: string,
 ): Promise<Record<string, NetworkPresenceEntry>> {
-  const rows = await getDb().memberPresence.findMany({
-    where: { nwid },
-    orderBy: { sampledAt: 'asc' },
-  });
-  const byMember = new Map<string, { online: boolean; sampledAt: Date }[]>();
-  for (const row of rows) {
-    const list = byMember.get(row.memberId);
-    if (list) list.push({ online: row.online, sampledAt: row.sampledAt });
-    else byMember.set(row.memberId, [{ online: row.online, sampledAt: row.sampledAt }]);
-  }
+  const members = await getDb().memberPresence.groupBy({ by: ['memberId'], where: { nwid } });
   const result: Record<string, NetworkPresenceEntry> = {};
-  for (const [memberId, samples] of byMember) {
-    const lastSeenSample = [...samples].reverse().find((s) => s.online);
+  for (const { memberId } of members) {
+    const [lastSeen, recent] = await Promise.all([
+      getLastSeen(nwid, memberId),
+      getRecentSamples(nwid, memberId, DEFAULT_SAMPLE_LIMIT),
+    ]);
     result[memberId] = {
-      lastSeen: lastSeenSample ? lastSeenSample.sampledAt.toISOString() : null,
-      samples: samples.slice(-DEFAULT_SAMPLE_LIMIT).map((s) => s.online),
+      lastSeen: lastSeen ? lastSeen.toISOString() : null,
+      samples: recent.map((s) => s.online),
     };
   }
   return result;
