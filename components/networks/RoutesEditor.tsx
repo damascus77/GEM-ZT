@@ -39,12 +39,13 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
 
   const [routes, setRoutes] = useState<RouteRow[]>([]);
   const [pools, setPools] = useState<PoolRow[]>([]);
-  const [v4zt, setV4zt] = useState(true);
+  const [v4zt, setV4zt] = useState(false);
   const [v6zt, setV6zt] = useState(false);
   const [v6plane, setV6plane] = useState(false);
   const [v6rfc, setV6rfc] = useState(false);
   const [cidr, setCidr] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [seeded, setSeeded] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   // Re-seed from the server unless the operator is mid-edit (see NetworkSettings).
@@ -59,6 +60,7 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
       setV6zt(c.v6AssignMode?.zt ?? false);
       setV6plane(c.v6AssignMode?.['6plane'] ?? false);
       setV6rfc(c.v6AssignMode?.rfc4193 ?? false);
+      setSeeded(true);
     }
   }, [data, dirty]);
 
@@ -99,6 +101,19 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
     } catch {
       setError('Enter a valid IPv4 CIDR, e.g. 10.10.0.0/16.');
     }
+  }
+
+  // Gate the whole editor (and its Save button) until the server state has
+  // seeded local state. Without this, Save is active while routes/pools are
+  // still the empty initial arrays, so an early click PATCHes empty arrays and
+  // wipes every managed route and IP pool on the live network.
+  if (!seeded) {
+    return (
+      <Card>
+        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Routes & IP pools</h2>
+        <p className="text-ink-mute">Loading…</p>
+      </Card>
+    );
   }
 
   return (
