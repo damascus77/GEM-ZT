@@ -209,10 +209,10 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
         ))}
         <div className="flex gap-2 items-center">
           <Input
-            placeholder="10.10.0.0/16"
+            placeholder="10.10.0.0/16 or fd00::/112"
             value={cidr}
             onChange={(e) => setCidr(e.target.value)}
-            className="mt-0 font-mono w-48"
+            className="mt-0 font-mono w-64"
           />
           <Button variant="outline" className="px-3 py-2 text-sm" onClick={addFromCidr}>
             Add pool from CIDR

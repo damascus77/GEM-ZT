@@ -122,6 +122,12 @@ their `*(Fixed: ...)*` notes) for reference.
 - ✅ **[DONE] [P2] TOTP 2FA for admin login.** *(Done: dependency-free RFC 6238 TOTP (`lib/services/totp.ts`),
   `User.totpSecret`/`totpEnabled` + migration, enroll/enable endpoints, and enforcement at `/auth/login`
   — no session issued until the code verifies.)*
+- ✅ **[DONE] [P1] IPv4/IPv6 assign-mode UI — IPv6 pools.** *(Fixed 2026-07-03: the
+  `v4AssignMode`/`v6AssignMode` checkboxes and per-member `activeBridge`/`noAutoAssignIps`
+  toggles were already shipped; this closed the remaining gap where "IPv6 from pools" had no
+  way to actually create an IPv6 pool. `cidrToPool()` now supports IPv6 CIDRs, and
+  `validateRoutesAndPools()` no longer misreports IPv6 pools as malformed. See
+  `docs/superpowers/specs/2026-07-03-ipv6-assign-mode-ui-design.md`.)*
 
 ### Beyond ZTNET (UX & operator wins)
 - ✅ **[DONE] [P1] Config backup & restore.** *(Done: `lib/services/backup.ts` — `exportBackup()` →
