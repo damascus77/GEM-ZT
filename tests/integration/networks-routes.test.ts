@@ -121,13 +121,13 @@ describe('networks routes', () => {
 
   it('GET /networks/{nwid} returns detail; 404 when the controller does not know it', async () => {
     const ok = await detailGet(req(`http://x/api/v1/networks/${NWID}`, 'GET'), {
-      params: { nwid: NWID },
+      params: Promise.resolve({ nwid: NWID }),
     });
     expect(ok.status).toBe(200);
     expect((await ok.json()).network.config.mtu).toBe(2800);
     mockClient.getNetwork.mockRejectedValueOnce(new ControllerApiError(404, 'gone'));
     const missing = await detailGet(req('http://x/api/v1/networks/0000000000000000', 'GET'), {
-      params: { nwid: '0000000000000000' },
+      params: Promise.resolve({ nwid: '0000000000000000' }),
     });
     expect(missing.status).toBe(404);
     expect((await missing.json()).error.code).toBe('NOT_FOUND');
@@ -136,7 +136,7 @@ describe('networks routes', () => {
   it('PATCH /networks/{nwid} updates and audits', async () => {
     const res = await detailPatch(
       req(`http://x/api/v1/networks/${NWID}`, 'PATCH', { mtu: 1400, description: 'd' }),
-      { params: { nwid: NWID } },
+      { params: Promise.resolve({ nwid: NWID }) },
     );
     expect(res.status).toBe(200);
     expect(mockClient.updateNetwork).toHaveBeenCalledWith(NWID, { mtu: 1400 });
@@ -147,7 +147,7 @@ describe('networks routes', () => {
   it('PATCH audits before/after snapshots', async () => {
     const res = await detailPatch(
       req(`http://x/api/v1/networks/${NWID}`, 'PATCH', { mtu: 1400 }),
-      { params: { nwid: NWID } },
+      { params: Promise.resolve({ nwid: NWID }) },
     );
     expect(res.status).toBe(200);
     const audit = await getDb().auditLog.findFirst({
@@ -165,7 +165,7 @@ describe('networks routes', () => {
     mockClient.getNetwork.mockRejectedValue(new ControllerApiError(404, 'gone'));
     const res = await detailPatch(
       req('http://x/api/v1/networks/0000000000000000', 'PATCH', { private: false }),
-      { params: { nwid: '0000000000000000' } },
+      { params: Promise.resolve({ nwid: '0000000000000000' }) },
     );
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe('NOT_FOUND');
@@ -175,14 +175,14 @@ describe('networks routes', () => {
   it('PATCH rejects unknown fields (strict schema)', async () => {
     const res = await detailPatch(
       req(`http://x/api/v1/networks/${NWID}`, 'PATCH', { nope: true }),
-      { params: { nwid: NWID } },
+      { params: Promise.resolve({ nwid: NWID }) },
     );
     expect(res.status).toBe(400);
   });
 
   it('DELETE /networks/{nwid} returns 204 and audits', async () => {
     const res = await detailDelete(req(`http://x/api/v1/networks/${NWID}`, 'DELETE'), {
-      params: { nwid: NWID },
+      params: Promise.resolve({ nwid: NWID }),
     });
     expect(res.status).toBe(204);
     const audit = await getDb().auditLog.findFirst({ where: { action: 'network.delete' } });

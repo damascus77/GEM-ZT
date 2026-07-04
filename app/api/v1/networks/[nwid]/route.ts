@@ -9,14 +9,15 @@ import {
   updateNetworkSchema,
 } from '@/lib/services/networks';
 
-type Ctx = { params: { nwid: string } };
+type Ctx = { params: Promise<{ nwid: string }> };
 
 export async function GET(req: Request, { params }: Ctx) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   try {
-    const network = await getNetwork(params.nwid);
-    if (!network) return apiError('NOT_FOUND', `Network ${params.nwid} not found.`, 404);
+    const { nwid } = await params;
+    const network = await getNetwork(nwid);
+    if (!network) return apiError('NOT_FOUND', `Network ${nwid} not found.`, 404);
     return NextResponse.json({ network });
   } catch (e) {
     return handleRouteError(e);
@@ -27,14 +28,15 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   try {
+    const { nwid } = await params;
     const body = updateNetworkSchema.parse(await req.json());
-    const before = await getNetwork(params.nwid).catch(() => null);
-    const { data, metaWarning } = await updateNetwork(params.nwid, body);
+    const before = await getNetwork(nwid).catch(() => null);
+    const { data, metaWarning } = await updateNetwork(nwid, body);
     await logAudit({
       userId: auth.user.id,
       action: 'network.update',
       targetType: 'network',
-      targetId: params.nwid,
+      targetId: nwid,
       detail: { before, after: body },
     });
     return NextResponse.json({ network: data, metaWarning });
@@ -47,12 +49,13 @@ export async function DELETE(req: Request, { params }: Ctx) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   try {
-    await deleteNetwork(params.nwid);
+    const { nwid } = await params;
+    await deleteNetwork(nwid);
     await logAudit({
       userId: auth.user.id,
       action: 'network.delete',
       targetType: 'network',
-      targetId: params.nwid,
+      targetId: nwid,
     });
     return new Response(null, { status: 204 });
   } catch (e) {
