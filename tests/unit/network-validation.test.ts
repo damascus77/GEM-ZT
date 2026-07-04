@@ -57,6 +57,14 @@ describe('validateRoutesAndPools', () => {
     });
     expect(w.some((m) => /malformed/i.test(m))).toBe(true);
   });
+
+  it('flags a pool that mixes address families', () => {
+    const w = validateRoutesAndPools({
+      routes: [],
+      pools: [{ ipRangeStart: 'fd00::', ipRangeEnd: '10.0.0.1' }],
+    });
+    expect(w.some((m) => /mixes address families/i.test(m))).toBe(true);
+  });
 });
 
 describe('validateDnsServers', () => {
