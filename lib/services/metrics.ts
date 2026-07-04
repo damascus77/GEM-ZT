@@ -59,7 +59,10 @@ export async function collectMetrics(): Promise<MetricsSnapshot> {
     const client = await getControllerClient();
     const [ids, peers] = await Promise.all([
       client.listNetworkIds(),
-      client.listPeers().catch(() => []),
+      client.listPeers().catch((e) => {
+        console.error('[gem-zt] listPeers failed in collectMetrics:', e);
+        return [];
+      }),
     ]);
     const onlineAddrs = new Set(
       peers.filter((p) => p.paths.some((path) => path.active)).map((p) => p.address),

@@ -90,10 +90,17 @@ async function loadContext(nwid: string): Promise<{
 }> {
   const client = await getControllerClient();
   const [peers, metas] = await Promise.all([
-    client.listPeers().catch(() => [] as ControllerPeer[]),
+    client.listPeers().catch((e) => {
+      // Presence/latency is best-effort; degrade gracefully but don't hide why.
+      console.error('[gem-zt] listPeers failed in loadContext:', e);
+      return [] as ControllerPeer[];
+    }),
     getDb()
       .memberMeta.findMany({ where: { nwid } })
-      .catch(() => []),
+      .catch((e) => {
+        console.error('[gem-zt] memberMeta read failed in loadContext:', e);
+        return [];
+      }),
   ]);
   return {
     peerMap: new Map(peers.map((p) => [p.address, p])),

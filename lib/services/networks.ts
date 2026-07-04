@@ -108,7 +108,10 @@ const META_UPSERT_WARNING =
 async function toDetail(config: ControllerNetwork): Promise<NetworkDetail> {
   const meta = await getDb()
     .networkMeta.findUnique({ where: { nwid: config.id } })
-    .catch(() => null);
+    .catch((e) => {
+      console.error('[gem-zt] networkMeta read failed in toDetail:', e);
+      return null;
+    });
   return {
     nwid: config.id,
     name: meta?.name || config.name || config.id,
@@ -123,7 +126,10 @@ export async function listNetworks(): Promise<NetworkSummary[]> {
   const ids = await client.listNetworkIds();
   const metas = await getDb()
     .networkMeta.findMany({ where: { nwid: { in: ids } } })
-    .catch(() => []);
+    .catch((e) => {
+      console.error('[gem-zt] networkMeta read failed in listNetworks:', e);
+      return [];
+    });
   const metaMap = new Map(metas.map((m) => [m.nwid, m]));
   return Promise.all(
     ids.map(async (nwid) => {
@@ -248,7 +254,12 @@ export async function cloneNetwork(nwid: string): Promise<WriteResult<NetworkDet
     if (e instanceof ControllerApiError && e.status === 404) return null;
     throw e;
   }
-  const sourceMeta = await getDb().networkMeta.findUnique({ where: { nwid } }).catch(() => null);
+  const sourceMeta = await getDb()
+    .networkMeta.findUnique({ where: { nwid } })
+    .catch((e) => {
+      console.error('[gem-zt] networkMeta read failed in cloneNetwork:', e);
+      return null;
+    });
   return createNetworkFromConfig({
     config: toPortableConfig(source),
     name: `${sourceMeta?.name || source.name || nwid} (copy)`,

@@ -24,7 +24,14 @@ export async function getRules(nwid: string): Promise<{
   const network = await client.getNetwork(nwid);
   const meta = await getDb()
     .networkMeta.findUnique({ where: { nwid } })
-    .catch(() => null);
+    .catch((e) => {
+      // Don't let a DB failure masquerade as "no stored source" silently — that
+      // would show the default template and risk overwriting live custom rules
+      // on save. We still fall back (below) so the editor stays usable, but log
+      // so the real cause is visible.
+      console.error('[gem-zt] networkMeta read failed in getRules:', e);
+      return null;
+    });
   const stored = meta?.rulesSource;
   // When no source is on record (network predates GEM-ZT, or app_data was lost/
   // restored) we fall back to the default template. That template does NOT
