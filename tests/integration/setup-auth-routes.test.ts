@@ -86,7 +86,7 @@ describe('setup + auth routes', () => {
     const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
     const ok = await meGet(new Request('http://x/api/v1/me', { headers: { cookie } }));
     expect(ok.status).toBe(200);
-    expect((await ok.json()).user.username).toBe('admin');
+    expect((await ok.json()).user).toMatchObject({ username: 'admin', totpEnabled: false });
     const anon = await meGet(new Request('http://x/api/v1/me'));
     expect(anon.status).toBe(401);
   });
