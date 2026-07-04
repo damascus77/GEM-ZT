@@ -16,6 +16,8 @@ import {
   sessionCookieOptions,
   clearSessionCookieHeader,
   purgeExpiredSessions,
+  setPassword,
+  invalidateOtherSessions,
 } from '@/lib/services/auth';
 
 beforeAll(() => {
@@ -124,5 +126,45 @@ describe('auth service', () => {
     expect(a.id).toMatch(/^[0-9a-f]{64}$/);
     expect(b.id).toMatch(/^[0-9a-f]{64}$/);
     expect(a.id).not.toBe(b.id);
+  });
+
+  it('setPassword replaces the password hash so the old password no longer verifies', async () => {
+    const user = await createUser('password-change-user', 'password12345');
+    await setPassword(user.id, 'new-password-999');
+    const updated = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(await verifyPassword(updated.passwordHash, 'new-password-999')).toBe(true);
+    expect(await verifyPassword(updated.passwordHash, 'password12345')).toBe(false);
+  });
+
+  it('invalidateOtherSessions deletes every session for the user except the excluded one', async () => {
+    const user = await createUser('multi-session-user', 'password12345');
+    const kept = await createSession(user.id);
+    const a = await createSession(user.id);
+    const b = await createSession(user.id);
+    const removed = await invalidateOtherSessions(user.id, kept.id);
+    expect(removed).toBe(2);
+    expect(await getSession(kept.id)).not.toBeNull();
+    expect(await getSession(a.id)).toBeNull();
+    expect(await getSession(b.id)).toBeNull();
+  });
+
+  it('invalidateOtherSessions with no exception deletes every session for the user', async () => {
+    const user = await createUser('all-sessions-user', 'password12345');
+    const a = await createSession(user.id);
+    const b = await createSession(user.id);
+    const removed = await invalidateOtherSessions(user.id);
+    expect(removed).toBe(2);
+    expect(await getSession(a.id)).toBeNull();
+    expect(await getSession(b.id)).toBeNull();
+  });
+
+  it('invalidateOtherSessions never touches another user\'s sessions', async () => {
+    const userA = await createUser('session-owner-a', 'password12345');
+    const userB = await createUser('session-owner-b', 'password12345');
+    const sessionA = await createSession(userA.id);
+    const sessionB = await createSession(userB.id);
+    await invalidateOtherSessions(userA.id);
+    expect(await getSession(sessionA.id)).toBeNull();
+    expect(await getSession(sessionB.id)).not.toBeNull();
   });
 });

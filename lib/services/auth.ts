@@ -132,3 +132,22 @@ export async function purgeExpiredSessions(): Promise<number> {
   });
   return count;
 }
+
+export async function setPassword(userId: string, password: string): Promise<void> {
+  const passwordHash = await hashPassword(password);
+  await getDb().user.update({ where: { id: userId }, data: { passwordHash } });
+}
+
+/**
+ * Delete every session belonging to `userId` except `exceptSessionId` (or all of
+ * them, if omitted). Used after a password change so a stolen/other-device
+ * session can't outlive the credential that issued it.
+ */
+export async function invalidateOtherSessions(
+  userId: string,
+  exceptSessionId?: string,
+): Promise<number> {
+  const where = exceptSessionId ? { userId, id: { not: exceptSessionId } } : { userId };
+  const { count } = await getDb().session.deleteMany({ where });
+  return count;
+}
