@@ -19,7 +19,7 @@ describe('TotpSettings', () => {
   });
 
   it('enrolls, shows the QR code and secret, then enables on a correct code', async () => {
-    const fetchMock = vi.fn(async (url: string) => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).includes('/totp/enroll')) {
         return new Response(
           JSON.stringify({ secret: 'ABCDEFGHIJKLMNOP', otpauthUri: 'otpauth://totp/GEM-ZT:admin?secret=ABCDEFGHIJKLMNOP' }),
@@ -72,7 +72,7 @@ describe('TotpSettings', () => {
   });
 
   it('disables 2FA with the current password when enabled', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ enabled: false }), { status: 200 }));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ enabled: false }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
     render(<TotpSettings initialEnabled={true} />);

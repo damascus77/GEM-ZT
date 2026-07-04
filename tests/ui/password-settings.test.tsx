@@ -23,7 +23,7 @@ describe('PasswordSettings', () => {
   });
 
   it('PATCHes /api/v1/auth/password and shows a success message', async () => {
-    const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetchMock);
     render(<PasswordSettings />);
     await userEvent.type(screen.getByLabelText(/current password/i), 'password12345');
@@ -33,8 +33,8 @@ describe('PasswordSettings', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(/other sessions/i);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/v1/auth/password');
-    expect(init.method).toBe('PATCH');
-    expect(JSON.parse(init.body)).toEqual({
+    expect(init!.method).toBe('PATCH');
+    expect(JSON.parse(init!.body as string)).toEqual({
       currentPassword: 'password12345',
       newPassword: 'new-password-999',
     });

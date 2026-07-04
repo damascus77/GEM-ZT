@@ -56,7 +56,7 @@ describe('LoginPage', () => {
 
 describe('SetupPage', () => {
   function stubSetupFetch() {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ user: {} }), { status: 201 }));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ user: {} }), { status: 201 }));
     vi.stubGlobal('fetch', fetchMock);
     return fetchMock;
   }
