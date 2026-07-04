@@ -57,8 +57,18 @@ export function validateRoutesAndPools(input: {
     }
   }
 
-  // Pools should fall within a managed route.
+  // Pools should fall within a managed route. IPv6 pools are format-checked
+  // only (see file-level comment) — skip the IPv4 containment math for them
+  // rather than misreporting them as malformed.
   for (const p of pools) {
+    const startIsV6 = looksLikeIpv6(p.ipRangeStart);
+    const endIsV6 = looksLikeIpv6(p.ipRangeEnd);
+    if (startIsV6 || endIsV6) {
+      if (!startIsV6 || !endIsV6) {
+        warnings.push(`Pool ${p.ipRangeStart}–${p.ipRangeEnd} mixes address families.`);
+      }
+      continue;
+    }
     const start = ipv4ToIntChecked(p.ipRangeStart);
     const end = ipv4ToIntChecked(p.ipRangeEnd);
     if (start === null || end === null) {

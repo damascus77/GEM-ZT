@@ -41,6 +41,22 @@ describe('validateRoutesAndPools', () => {
     });
     expect(w).toEqual([]);
   });
+
+  it('does not flag a well-formed IPv6 pool as malformed', () => {
+    const w = validateRoutesAndPools({
+      routes: [],
+      pools: [{ ipRangeStart: 'fd00::', ipRangeEnd: 'fd00::ffff' }],
+    });
+    expect(w.some((m) => /malformed/i.test(m))).toBe(false);
+  });
+
+  it('still flags a pool that is neither valid IPv4 nor IPv6-shaped', () => {
+    const w = validateRoutesAndPools({
+      routes: [],
+      pools: [{ ipRangeStart: 'not-an-address', ipRangeEnd: 'also-not-one' }],
+    });
+    expect(w.some((m) => /malformed/i.test(m))).toBe(true);
+  });
 });
 
 describe('validateDnsServers', () => {
