@@ -1,4 +1,3 @@
-import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiError, handleRouteError } from '@/lib/api/errors';
@@ -12,9 +11,8 @@ import {
   userCount,
 } from '@/lib/services/auth';
 
-// Per-IP limiter on failed setup-token attempts. The constant-time compare
-// blocks the timing channel but not online brute force, and setup re-opens if
-// app_data is lost — so a short/human token needs a throttle too.
+// Per-IP limiter on setup attempts. Setup re-opens if app_data is ever lost, so an
+// exposed instance still needs a throttle even with no token gate.
 const SETUP_MAX_ATTEMPTS = Number(process.env.GEMZT_SETUP_MAX_ATTEMPTS ?? 10);
 const SETUP_WINDOW_MS = Number(process.env.GEMZT_SETUP_WINDOW_MS ?? 15 * 60 * 1000);
 const setupLimiter = createRateLimiter({ limit: SETUP_MAX_ATTEMPTS, windowMs: SETUP_WINDOW_MS });
@@ -23,16 +21,8 @@ const setupSchema = z
   .object({
     username: z.string().min(3).max(32),
     password: z.string().min(10).max(128),
-    setupToken: z.string().optional(),
   })
   .strict();
-
-// Constant-time compare; false on length mismatch (timingSafeEqual requires equal lengths).
-function tokenMatches(provided: string | undefined, expected: string): boolean {
-  const a = Buffer.from(provided ?? '');
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
 
 export async function POST(req: Request) {
   try {
@@ -46,18 +36,6 @@ export async function POST(req: Request) {
     const body = setupSchema.parse(await req.json());
     if ((await userCount()) > 0) {
       return apiError('SETUP_ALREADY_COMPLETE', 'Setup has already been completed.', 409);
-    }
-    // Bootstrap guard: when GEMZT_SETUP_TOKEN is configured, creating the admin
-    // requires it. This closes the takeover window on first run and — critically —
-    // if app_data is ever lost and setup silently re-opens.
-    const expectedToken = process.env.GEMZT_SETUP_TOKEN ?? '';
-    if (expectedToken !== '' && !tokenMatches(body.setupToken, expectedToken)) {
-      setupLimiter.recordFailure(ipKey);
-      return apiError(
-        'SETUP_TOKEN_INVALID',
-        'A valid setup token is required to create the admin account.',
-        403,
-      );
     }
     const user = await createUser(body.username, body.password);
     const session = await createSession(user.id);

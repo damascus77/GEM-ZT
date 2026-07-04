@@ -97,11 +97,11 @@ The web panel is an admin surface for your controller — treat it like one.
 - **Don't expose port 3000 directly to the internet or an untrusted LAN.** Put it behind a
   reverse proxy that terminates TLS and (ideally) adds its own auth. Everything, including the
   login password, is plain HTTP otherwise.
-- **Set `GEMZT_SETUP_TOKEN` to lock down first-run setup.** The `/setup` endpoint that creates the
-  admin account is unauthenticated until a user exists — so whoever reaches the app first can claim
-  it, including if `app_data` is ever lost and setup silently re-opens. Generate a token
-  (`openssl rand -hex 32`), put it in a `.env` file next to the compose file, and the wizard will
-  require it to create the admin. Highly recommended if the panel is reachable by anyone but you.
+- **`/setup` is only reachable while no admin account exists.** It creates the first admin with no
+  token or default password; once that account exists, the endpoint refuses every further request
+  (`409 SETUP_ALREADY_COMPLETE`) — including if `app_data` is ever lost and setup silently re-opens,
+  at which point whoever reaches the app first claims it again. Don't expose the panel to anyone you
+  don't want to risk racing you to finish setup.
 - API access uses `Authorization: Bearer ztk_…` keys (managed under **API Keys**) or the session
   cookie. Full API reference is served at `/api/v1/openapi.json` and rendered under **API Docs**.
 
@@ -117,7 +117,6 @@ Environment variables (see `.env.example`; compose sets sensible defaults):
 | `ZT_CONTROLLER_URL` | `http://zerotier-controller:9993` | Controller local API |
 | `ZT_TOKEN_PATH` | `/controller/authtoken.secret` | Read-only-mounted controller auth token |
 | `ZT_AUTH_TOKEN` | *(unset)* | Overrides the token file if set |
-| `GEMZT_SETUP_TOKEN` | *(unset)* | If set, required to create the admin at first-run setup |
 
 ## Development
 

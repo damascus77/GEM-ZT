@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -11,17 +11,8 @@ export default function SetupPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [setupToken, setSetupToken] = useState('');
-  const [requiresToken, setRequiresToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/v1/setup/status')
-      .then((r) => r.json())
-      .then((d) => setRequiresToken(Boolean(d?.requiresToken)))
-      .catch(() => {});
-  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,7 +25,7 @@ export default function SetupPage() {
     const res = await fetch('/api/v1/setup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, ...(requiresToken ? { setupToken } : {}) }),
+      body: JSON.stringify({ username, password }),
     });
     setBusy(false);
     if (res.ok) {
@@ -75,12 +66,6 @@ export default function SetupPage() {
             required
           />
         </label>
-        {requiresToken && (
-          <label className="text-sm text-ink-mute">
-            Setup token
-            <Input value={setupToken} onChange={(e) => setSetupToken(e.target.value)} required />
-          </label>
-        )}
         {error && (
           <p role="alert" className="text-sm text-ink">
             {error}
