@@ -1,15 +1,21 @@
+import { isIP } from 'node:net';
+
 const IPV4_RE =
   /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\/(3[0-2]|[12]?\d)$/;
-const IPV6_RE = /^[0-9a-fA-F:]+\/(12[0-8]|1[01]\d|\d{1,2})$/;
+const IPV6_PREFIX_RE = /^(12[0-8]|1[01]\d|\d{1,2})$/; // 0..128
 
 export function isValidCidr(cidr: string): boolean {
   if (IPV4_RE.test(cidr)) return true;
-  if (!IPV6_RE.test(cidr)) return false;
-  const addr = cidr.split('/')[0];
-  // require at least one ':' and only valid groups
-  if (!addr.includes(':')) return false;
-  const groups = addr.split(':');
-  return groups.every((g) => g === '' || /^[0-9a-fA-F]{1,4}$/.test(g));
+  // IPv6: the old hand-rolled group check accepted structurally invalid
+  // addresses (>8 groups, multiple '::', all-empty). Delegate to node's inet
+  // validator, which rejects those. Split on the LAST '/' so the address (which
+  // contains ':') isn't mangled.
+  const slash = cidr.lastIndexOf('/');
+  if (slash === -1) return false;
+  const addr = cidr.slice(0, slash);
+  const prefix = cidr.slice(slash + 1);
+  if (!IPV6_PREFIX_RE.test(prefix)) return false;
+  return isIP(addr) === 6;
 }
 
 function ipv4ToInt(ip: string): number {

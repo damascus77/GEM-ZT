@@ -20,6 +20,14 @@ describe('isValidCidr', () => {
     expect(isValidCidr('fd00::/129')).toBe(false);
     expect(isValidCidr('banana/24')).toBe(false);
   });
+
+  it('rejects structurally invalid IPv6 (too many groups, double ::, all-empty)', () => {
+    expect(isValidCidr('1:2:3:4:5:6:7:8:9/64')).toBe(false); // 9 groups
+    expect(isValidCidr('1::2::3/64')).toBe(false); // two compressions
+    expect(isValidCidr(':::::/64')).toBe(false); // all-empty
+    expect(isValidCidr('gggg::/64')).toBe(false); // non-hex
+    expect(isValidCidr('fd00::1/64')).toBe(true); // sanity: still accepts valid
+  });
 });
 
 describe('cidrToPool', () => {
