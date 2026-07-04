@@ -54,6 +54,10 @@ export async function setRules(
     );
   }
   const client = await getControllerClient();
+  // GET-first: the controller upserts on POST, so a PUT of rules to a typo'd or
+  // already-deleted nwid would resurrect the network as a rules-only shell
+  // (no routes/pools/name). Confirm existence so the 404 propagates cleanly.
+  await client.getNetwork(nwid);
   const updated = await client.updateNetwork(nwid, {
     rules: compiled.rules,
     capabilities: Object.values(compiled.caps),

@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vites
 vi.mock('@/lib/controller', () => ({ getControllerClient: vi.fn() }));
 
 import { getControllerClient } from '@/lib/controller';
+import { ControllerApiError } from '@/lib/controller/client';
 import { setupTestDb } from '../helpers/db';
 import { createTestUserAndSession } from '../helpers/auth';
 import { getDb } from '@/lib/db/client';
@@ -132,6 +133,16 @@ describe('rules routes', () => {
     const body = await res.json();
     expect(body.error.code).toBe('RULES_COMPILE_ERROR');
     expect(body.error.message).toMatch(/line \d+/);
+    expect(mockClient.updateNetwork).not.toHaveBeenCalled();
+  });
+
+  it('PUT 404s for an unknown nwid instead of resurrecting a rules-only network', async () => {
+    mockClient.getNetwork.mockRejectedValue(new ControllerApiError(404, 'gone'));
+    const res = await rulesPut(req('PUT', { source: 'accept;' }), {
+      params: { nwid: '0000000000000000' },
+    });
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe('NOT_FOUND');
     expect(mockClient.updateNetwork).not.toHaveBeenCalled();
   });
 

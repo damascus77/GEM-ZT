@@ -273,6 +273,12 @@ export async function updateNetwork(
   patch: UpdateNetworkInput,
 ): Promise<WriteResult<NetworkDetail>> {
   const client = await getControllerClient();
+  // GET-first: the ZT controller upserts on POST, so a PATCH to a typo'd or
+  // already-deleted nwid would silently mint a phantom network (e.g. a public
+  // one for `{private:false}`). Confirming existence first lets the 404 from
+  // getNetwork propagate as a clean NOT_FOUND instead. (Same guard as
+  // updateMember.) Reused as the response for a metadata-only patch.
+  const existing = await client.getNetwork(nwid);
   const controllerPatch: Record<string, unknown> = {};
   for (const key of CONTROLLER_KEYS) {
     if (patch[key] !== undefined) controllerPatch[key] = patch[key];
@@ -280,7 +286,7 @@ export async function updateNetwork(
   const updated =
     Object.keys(controllerPatch).length > 0
       ? await client.updateNetwork(nwid, controllerPatch as Partial<ControllerNetwork>)
-      : await client.getNetwork(nwid);
+      : existing;
   let metaWarning: string | null = null;
   if (patch.name !== undefined || patch.description !== undefined || patch.tags !== undefined) {
     try {

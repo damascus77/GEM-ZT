@@ -159,6 +159,19 @@ describe('networks routes', () => {
     expect(detail.after).toEqual({ mtu: 1400 });
   });
 
+  it('PATCH /networks/{nwid} 404s for an unknown nwid instead of creating a phantom network', async () => {
+    // The controller upserts on POST, so without a GET-first guard a PATCH to a
+    // typo'd/deleted nwid would silently mint a new (here: public) network.
+    mockClient.getNetwork.mockRejectedValue(new ControllerApiError(404, 'gone'));
+    const res = await detailPatch(
+      req('http://x/api/v1/networks/0000000000000000', 'PATCH', { private: false }),
+      { params: { nwid: '0000000000000000' } },
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe('NOT_FOUND');
+    expect(mockClient.updateNetwork).not.toHaveBeenCalled();
+  });
+
   it('PATCH rejects unknown fields (strict schema)', async () => {
     const res = await detailPatch(
       req(`http://x/api/v1/networks/${NWID}`, 'PATCH', { nope: true }),
