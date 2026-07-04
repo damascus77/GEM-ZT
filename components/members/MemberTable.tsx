@@ -33,6 +33,8 @@ export interface MemberViewClient {
   tags: [number, number][];
 }
 
+export type MembersData = { members: MemberViewClient[] };
+
 export interface RulesMaps {
   capabilities: Record<string, number>;
   tags: Record<string, number>;
@@ -127,6 +129,7 @@ export function MemberRow({
   rulesMaps?: RulesMaps;
   presence?: PresenceEntry;
 }) {
+  const queryClient = useQueryClient();
   const serverIps = member.ipAssignments.join(', ');
   const [ips, setIps] = useState(serverIps);
   // Re-seed from the server (e.g. the controller auto-assigns an IP after
@@ -150,8 +153,41 @@ export function MemberRow({
       }
       return res.json();
     },
+    // Optimistically merge the change into the cached member so a rapid second
+    // edit (e.g. toggling capability B right after A) derives from the updated
+    // state rather than stale props and doesn't clobber the first change.
+    onMutate: (body: Record<string, unknown>) => {
+      const prev = queryClient.getQueryData<MembersData>(['members', nwid]);
+      queryClient.setQueryData<MembersData>(['members', nwid], (old) =>
+        old
+          ? {
+              ...old,
+              members: old.members.map((m) =>
+                m.memberId === member.memberId
+                  ? { ...m, ...(body as Partial<MemberViewClient>) }
+                  : m,
+              ),
+            }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _body, context) => {
+      if (context?.prev) queryClient.setQueryData(['members', nwid], context.prev);
+    },
     onSuccess: onChanged,
   });
+
+  // The freshest member state (optimistic cache write above lands before the
+  // next click), so successive capability/tag edits don't compute from a stale
+  // render's props.
+  function currentMember(): MemberViewClient {
+    return (
+      queryClient
+        .getQueryData<MembersData>(['members', nwid])
+        ?.members.find((m) => m.memberId === member.memberId) ?? member
+    );
+  }
 
   const remove = useMutation({
     mutationFn: async () => {
@@ -180,14 +216,13 @@ export function MemberRow({
   const hasTags = Object.keys(tagsMap).length > 0;
 
   function toggleCapability(id: number, checked: boolean) {
-    const next = checked
-      ? [...member.capabilities, id]
-      : member.capabilities.filter((c) => c !== id);
+    const caps = currentMember().capabilities;
+    const next = checked ? [...caps, id] : caps.filter((c) => c !== id);
     patch.mutate({ capabilities: next });
   }
 
   function setTag(id: number, value: string) {
-    const withoutId = member.tags.filter(([tagId]) => tagId !== id);
+    const withoutId = currentMember().tags.filter(([tagId]) => tagId !== id);
     const trimmed = value.trim();
     const next: [number, number][] =
       trimmed === '' ? withoutId : [...withoutId, [id, Number(trimmed)]];
@@ -358,7 +393,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
   const queryClient = useQueryClient();
   const controller = useControllerStatus();
   const degraded = controller.data?.degraded ?? false;
-  const { data, isLoading } = useQuery<{ members: MemberViewClient[] }>({
+  const { data, isLoading, isError } = useQuery<MembersData>({
     queryKey: ['members', nwid],
     queryFn: async () => {
       const res = await fetch(`/api/v1/networks/${nwid}/members`);
@@ -554,6 +589,11 @@ export function MemberTable({ nwid }: { nwid: string }) {
       )}
 
       {isLoading && <p className="text-ink-mute">Loading…</p>}
+      {isError && !data && (
+        <p role="alert" className="text-sm text-ink">
+          Could not load members. Retrying…
+        </p>
+      )}
       {data && data.members.length === 0 && (
         <p className="text-ink-mute">
           No members yet. Join this network from a device, then authorize it here.

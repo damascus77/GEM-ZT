@@ -18,7 +18,7 @@ export function RulesEditor({ nwid }: { nwid: string }) {
   const queryClient = useQueryClient();
   const controller = useControllerStatus();
   const degraded = controller.data?.degraded ?? false;
-  const { data } = useQuery<RulesResponse>({
+  const { data, isError } = useQuery<RulesResponse>({
     queryKey: ['rules', nwid],
     queryFn: async () => {
       const res = await fetch(`/api/v1/networks/${nwid}/rules`);
@@ -87,7 +87,13 @@ export function RulesEditor({ nwid }: { nwid: string }) {
     return (
       <Card>
         <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Flow rules</h2>
-        <p className="text-ink-mute">Loading…</p>
+        {isError ? (
+          <p role="alert" className="text-sm text-ink">
+            Could not load flow rules. Retrying…
+          </p>
+        ) : (
+          <p className="text-ink-mute">Loading…</p>
+        )}
       </Card>
     );
   }

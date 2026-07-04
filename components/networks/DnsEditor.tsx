@@ -17,7 +17,7 @@ export function DnsEditor({ nwid }: { nwid: string }) {
   const queryClient = useQueryClient();
   const controller = useControllerStatus();
   const degraded = controller.data?.degraded ?? false;
-  const { data } = useNetworkDetail<DetailResponse>(nwid);
+  const { data, isError } = useNetworkDetail<DetailResponse>(nwid);
 
   const [domain, setDomain] = useState('');
   const [servers, setServers] = useState('');
@@ -64,7 +64,13 @@ export function DnsEditor({ nwid }: { nwid: string }) {
     return (
       <Card>
         <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">DNS</h2>
-        <p className="text-ink-mute">Loading…</p>
+        {isError ? (
+          <p role="alert" className="text-sm text-ink">
+            Could not load DNS settings. Retrying…
+          </p>
+        ) : (
+          <p className="text-ink-mute">Loading…</p>
+        )}
       </Card>
     );
   }

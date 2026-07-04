@@ -18,7 +18,7 @@ interface ApiKeyRow {
 
 export default function ApiKeysPage() {
   const queryClient = useQueryClient();
-  const { data } = useQuery<{ apiKeys: ApiKeyRow[] }>({
+  const { data, isLoading, isError } = useQuery<{ apiKeys: ApiKeyRow[] }>({
     queryKey: ['apikeys'],
     queryFn: async () => {
       const res = await fetch('/api/v1/apikeys');
@@ -57,10 +57,19 @@ export default function ApiKeysPage() {
   const revoke = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/v1/apikeys/${id}`, { method: 'DELETE' });
-      if (!res.ok && res.status !== 204) throw new Error('Revoke failed');
+      if (!res.ok && res.status !== 204) {
+        const parsed = await res.json().catch(() => null);
+        throw new Error(parsed?.error?.message ?? 'Revoke failed');
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['apikeys'] }),
   });
+
+  function confirmRevoke(key: ApiKeyRow) {
+    if (window.confirm(`Revoke key "${key.name}"? Any client using it will stop working.`)) {
+      revoke.mutate(key.id);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -115,6 +124,17 @@ export default function ApiKeysPage() {
 
       <Card className="overflow-x-auto">
         <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Existing keys</h2>
+        {isLoading && <p className="text-ink-mute">Loading…</p>}
+        {isError && !data && (
+          <p role="alert" className="text-sm text-ink">
+            Could not load API keys. Refresh to retry.
+          </p>
+        )}
+        {revoke.isError && (
+          <p role="alert" className="text-sm text-ink mb-2">
+            {(revoke.error as Error).message}
+          </p>
+        )}
         {data && data.apiKeys.length === 0 && <p className="text-ink-mute">No API keys yet.</p>}
         {data && data.apiKeys.length > 0 && (
           <table className="w-full text-left">
@@ -147,7 +167,7 @@ export default function ApiKeysPage() {
                       variant="outline"
                       className="px-3 py-2 text-sm"
                       disabled={revoke.isPending}
-                      onClick={() => revoke.mutate(k.id)}
+                      onClick={() => confirmRevoke(k)}
                     >
                       Revoke
                     </Button>

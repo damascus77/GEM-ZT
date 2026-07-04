@@ -116,7 +116,7 @@ function PendingRow({
 
 export function PendingMembers() {
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery<{ pending: PendingMemberView[] }>({
+  const { data, isLoading, isError } = useQuery<{ pending: PendingMemberView[] }>({
     queryKey: ['pending'],
     queryFn: async () => {
       const res = await fetch('/api/v1/pending');
@@ -133,6 +133,11 @@ export function PendingMembers() {
     <Card className="overflow-x-auto">
       <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Pending Members</h2>
       {isLoading && <p className="text-ink-mute">Loading…</p>}
+      {isError && !data && (
+        <p role="alert" className="text-sm text-ink">
+          Could not load pending members. Retrying…
+        </p>
+      )}
       {data && pending.length === 0 && (
         <p className="text-ink-mute">No devices awaiting authorization.</p>
       )}

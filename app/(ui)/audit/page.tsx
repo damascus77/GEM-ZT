@@ -60,7 +60,7 @@ function AuditDetail({ detail }: { detail: unknown }) {
 }
 
 export default function AuditPage() {
-  const { data, isLoading } = useQuery<{ entries: AuditEntryRow[] }>({
+  const { data, isLoading, isError } = useQuery<{ entries: AuditEntryRow[] }>({
     queryKey: ['audit'],
     queryFn: async () => {
       const res = await fetch('/api/v1/audit?limit=200');
@@ -75,6 +75,11 @@ export default function AuditPage() {
       <h1 className="text-[28px] wght-540 tracking-[-0.63px]">Audit Log</h1>
       <Card className="overflow-x-auto">
         {isLoading && <p className="text-ink-mute">Loading…</p>}
+        {isError && !data && (
+          <p role="alert" className="text-sm text-ink">
+            Could not load the audit log. Retrying…
+          </p>
+        )}
         {data && data.entries.length === 0 && (
           <p className="text-ink-mute">No audit entries yet.</p>
         )}

@@ -35,7 +35,7 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
   const queryClient = useQueryClient();
   const controller = useControllerStatus();
   const degraded = controller.data?.degraded ?? false;
-  const { data } = useNetworkDetail<DetailResponse>(nwid);
+  const { data, isError } = useNetworkDetail<DetailResponse>(nwid);
 
   const [routes, setRoutes] = useState<RouteRow[]>([]);
   const [pools, setPools] = useState<PoolRow[]>([]);
@@ -111,7 +111,13 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
     return (
       <Card>
         <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Routes & IP pools</h2>
-        <p className="text-ink-mute">Loading…</p>
+        {isError ? (
+          <p role="alert" className="text-sm text-ink">
+            Could not load routes. Retrying…
+          </p>
+        ) : (
+          <p className="text-ink-mute">Loading…</p>
+        )}
       </Card>
     );
   }

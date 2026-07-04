@@ -27,7 +27,7 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
   const queryClient = useQueryClient();
   const controller = useControllerStatus();
   const degraded = controller.data?.degraded ?? false;
-  const { data } = useNetworkDetail<NetworkDetailResponse>(nwid);
+  const { data, isError } = useNetworkDetail<NetworkDetailResponse>(nwid);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -86,7 +86,13 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
     return (
       <Card>
         <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Settings</h2>
-        <p className="text-ink-mute">Loading…</p>
+        {isError ? (
+          <p role="alert" className="text-sm text-ink">
+            Could not load network settings. Retrying…
+          </p>
+        ) : (
+          <p className="text-ink-mute">Loading…</p>
+        )}
       </Card>
     );
   }

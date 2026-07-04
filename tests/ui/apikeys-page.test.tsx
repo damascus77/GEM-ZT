@@ -7,6 +7,7 @@ import ApiKeysPage from '@/app/(ui)/apikeys/page';
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 const keys = [
@@ -60,8 +61,9 @@ describe('ApiKeysPage', () => {
     expect(JSON.parse(post[1]!.body as string)).toEqual({ name: 'new-key' });
   });
 
-  it('revokes a key via DELETE', async () => {
+  it('revokes a key via DELETE after confirmation', async () => {
     const fetchMock = stubFetch();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderWithQuery(<ApiKeysPage />);
     await screen.findByText('ci');
     await userEvent.click(screen.getByRole('button', { name: /revoke/i }));
@@ -70,5 +72,16 @@ describe('ApiKeysPage', () => {
       expect(del).toBeDefined();
       expect(del![0]).toBe('/api/v1/apikeys/k1');
     });
+  });
+
+  it('does not revoke when the confirmation is dismissed', async () => {
+    const fetchMock = stubFetch();
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderWithQuery(<ApiKeysPage />);
+    await screen.findByText('ci');
+    await userEvent.click(screen.getByRole('button', { name: /revoke/i }));
+    // Give any (erroneous) request a chance to fire, then assert none did.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE')).toBeUndefined();
   });
 });
