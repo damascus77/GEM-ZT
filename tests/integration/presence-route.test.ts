@@ -44,7 +44,7 @@ function req(url: string) {
 describe('presence route', () => {
   it('requires auth', async () => {
     const res = await presenceGet(new Request(`http://x/api/v1/networks/${NWID}/presence`), {
-      params: { nwid: NWID },
+      params: Promise.resolve({ nwid: NWID }),
     });
     expect(res.status).toBe(401);
   });
@@ -54,7 +54,7 @@ describe('presence route', () => {
       data: { nwid: NWID, memberId: 'deadbeef01', online: true },
     });
     const res = await presenceGet(req(`http://x/api/v1/networks/${NWID}/presence`), {
-      params: { nwid: NWID },
+      params: Promise.resolve({ nwid: NWID }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();
