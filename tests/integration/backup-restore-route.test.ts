@@ -134,6 +134,31 @@ describe('POST /api/v1/backup/restore', () => {
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
   });
 
+  it('rejects out-of-bounds config (mtu below minimum) with 400', async () => {
+    const bad = {
+      version: 1,
+      networks: [{ ...validBackup.networks[0], config: { ...portableConfig, mtu: 100 } }],
+    };
+    const res = await restorePost(req(bad));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
+    expect(mockClient.updateNetwork).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-IP DNS server with 400', async () => {
+    const bad = {
+      version: 1,
+      networks: [
+        {
+          ...validBackup.networks[0],
+          config: { ...portableConfig, dns: { domain: 'lan', servers: ['not-an-ip'] } },
+        },
+      ],
+    };
+    const res = await restorePost(req(bad));
+    expect(res.status).toBe(400);
+  });
+
   it('bubbles up non-404 controller errors as 502', async () => {
     mockClient.getNetwork.mockRejectedValueOnce(new ControllerApiError(500, 'boom'));
     const res = await restorePost(req(validBackup));

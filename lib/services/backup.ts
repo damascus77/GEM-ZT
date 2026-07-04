@@ -39,70 +39,79 @@ export interface BackupData {
   }>;
 }
 
+// Mirror the bounds the normal edit paths enforce (updateNetworkSchema /
+// updateMemberSchema). Without them a crafted backup could push values the
+// app's own UI would reject (mtu:-1, non-IP DNS servers, unbounded arrays) to
+// the controller and every member's local config.
 const portableConfigSchema = z
   .object({
     private: z.boolean(),
     enableBroadcast: z.boolean(),
-    mtu: z.number().int(),
-    multicastLimit: z.number().int(),
-    routes: z.array(
-      z
-        .object({
-          target: z.string().refine(isValidCidr, { message: 'must be a valid CIDR' }),
-          via: z.string().ip().nullable().optional(),
-        })
-        .strict(),
-    ),
+    mtu: z.number().int().min(1280).max(10000),
+    multicastLimit: z.number().int().min(0),
+    routes: z
+      .array(
+        z
+          .object({
+            target: z.string().refine(isValidCidr, { message: 'must be a valid CIDR' }),
+            via: z.string().ip().nullable().optional(),
+          })
+          .strict(),
+      )
+      .max(128),
     ipAssignmentPools: z
-      .array(z.object({ ipRangeStart: z.string().ip(), ipRangeEnd: z.string().ip() }).strict()),
+      .array(z.object({ ipRangeStart: z.string().ip(), ipRangeEnd: z.string().ip() }).strict())
+      .max(64),
     v4AssignMode: z.object({ zt: z.boolean() }).strict(),
     v6AssignMode: z
       .object({ zt: z.boolean(), '6plane': z.boolean(), rfc4193: z.boolean() })
       .strict(),
-    dns: z.object({ domain: z.string(), servers: z.array(z.string()) }).strict(),
-    rules: z.array(z.unknown()),
-    capabilities: z.array(z.unknown()),
-    tags: z.array(z.unknown()),
+    dns: z
+      .object({ domain: z.string().max(253), servers: z.array(z.string().ip()).max(8) })
+      .strict(),
+    rules: z.array(z.unknown()).max(4096),
+    capabilities: z.array(z.unknown()).max(4096),
+    tags: z.array(z.unknown()).max(4096),
   })
   .strict();
 
 const backupMemberSchema = z
   .object({
-    memberId: z.string().min(1),
+    memberId: z.string().min(1).max(64),
     config: z
       .object({
         authorized: z.boolean(),
         activeBridge: z.boolean(),
         noAutoAssignIps: z.boolean(),
-        ipAssignments: z.array(z.string()),
-        capabilities: z.array(z.number()),
-        tags: z.array(z.tuple([z.number(), z.number()])),
+        ipAssignments: z.array(z.string().ip()).max(32),
+        capabilities: z.array(z.number().int().min(0)).max(128),
+        tags: z.array(z.tuple([z.number().int().min(0), z.number().int().min(0)])).max(128),
       })
       .strict(),
-    meta: z.object({ name: z.string(), notes: z.string() }).strict(),
+    meta: z.object({ name: z.string().max(100), notes: z.string().max(1000) }).strict(),
   })
   .strict();
 
 const backupNetworkSchema = z
   .object({
-    nwid: z.string().min(1),
+    nwid: z.string().min(1).max(64),
     config: portableConfigSchema,
     meta: z
       .object({
-        name: z.string(),
-        description: z.string(),
-        tags: z.array(z.string()),
-        rulesSource: z.string(),
+        name: z.string().max(100),
+        description: z.string().max(500),
+        tags: z.array(z.string().max(32)).max(20),
+        rulesSource: z.string().max(65536),
       })
       .strict(),
-    members: z.array(backupMemberSchema),
+    members: z.array(backupMemberSchema).max(100000),
   })
   .strict();
 
 export const backupSchema = z
   .object({
     version: z.literal(1),
-    networks: z.array(backupNetworkSchema),
+    networks: z.array(backupNetworkSchema).max(10000),
   })
   .strict();
 
