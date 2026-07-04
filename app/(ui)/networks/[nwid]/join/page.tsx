@@ -1,12 +1,17 @@
 import Link from 'next/link';
 import { JoinInstructions } from '@/components/networks/JoinInstructions';
 
-export default function JoinNetworkPage({ params }: { params: { nwid: string } }) {
+export default async function JoinNetworkPage({
+  params,
+}: {
+  params: Promise<{ nwid: string }>;
+}) {
+  const { nwid } = await params;
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-[28px] wght-540 tracking-[-0.63px]">Join network</h1>
-        <p className="text-sm text-ink-mute font-mono mt-1">{params.nwid}</p>
+        <p className="text-sm text-ink-mute font-mono mt-1">{nwid}</p>
       </div>
 
       <p className="text-sm text-ink-mute">
@@ -22,11 +27,11 @@ export default function JoinNetworkPage({ params }: { params: { nwid: string } }
         </a>
       </p>
 
-      <JoinInstructions nwid={params.nwid} />
+      <JoinInstructions nwid={nwid} />
 
       <p className="text-sm text-ink-mute">
         After joining, an admin must authorize the device on the{' '}
-        <Link href={`/networks/${params.nwid}`} className="text-primary underline">
+        <Link href={`/networks/${nwid}`} className="text-primary underline">
           network page
         </Link>{' '}
         before it can communicate.

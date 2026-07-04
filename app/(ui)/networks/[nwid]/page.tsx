@@ -5,19 +5,24 @@ import { DnsEditor } from '@/components/networks/DnsEditor';
 import { RulesEditor } from '@/components/networks/RulesEditor';
 import { NetworkActions } from '@/components/networks/NetworkActions';
 
-export default function NetworkDetailPage({ params }: { params: { nwid: string } }) {
+export default async function NetworkDetailPage({
+  params,
+}: {
+  params: Promise<{ nwid: string }>;
+}) {
+  const { nwid } = await params;
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-[28px] wght-540 tracking-[-0.63px]">Network</h1>
-        <p className="text-sm text-ink-mute font-mono">{params.nwid}</p>
+        <p className="text-sm text-ink-mute font-mono">{nwid}</p>
       </div>
-      <NetworkSettings nwid={params.nwid} />
-      <MemberTable nwid={params.nwid} />
-      <RoutesEditor nwid={params.nwid} />
-      <DnsEditor nwid={params.nwid} />
-      <RulesEditor nwid={params.nwid} />
-      <NetworkActions nwid={params.nwid} />
+      <NetworkSettings nwid={nwid} />
+      <MemberTable nwid={nwid} />
+      <RoutesEditor nwid={nwid} />
+      <DnsEditor nwid={nwid} />
+      <RulesEditor nwid={nwid} />
+      <NetworkActions nwid={nwid} />
     </div>
   );
 }
