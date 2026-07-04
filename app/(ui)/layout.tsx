@@ -10,6 +10,7 @@ const nav = [
   { href: '/apikeys', label: 'API Keys' },
   { href: '/audit', label: 'Audit Log' },
   { href: '/docs', label: 'API Docs' },
+  { href: '/account', label: 'Account' },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
