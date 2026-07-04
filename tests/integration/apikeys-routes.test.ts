@@ -64,11 +64,11 @@ describe('apikeys routes', () => {
     const created = await keysPost(req('http://x/api/v1/apikeys', 'POST', { name: 'temp' }));
     const { apiKey } = await created.json();
     const ok = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE'), {
-      params: { id: apiKey.id },
+      params: Promise.resolve({ id: apiKey.id }),
     });
     expect(ok.status).toBe(204);
     const gone = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE'), {
-      params: { id: apiKey.id },
+      params: Promise.resolve({ id: apiKey.id }),
     });
     expect(gone.status).toBe(404);
     const audit = await getDb().auditLog.findFirst({ where: { action: 'apikey.delete' } });
