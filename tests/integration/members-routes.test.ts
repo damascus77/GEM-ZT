@@ -74,14 +74,14 @@ function req(url: string, method: string, body?: unknown) {
 describe('members routes', () => {
   it('requires auth', async () => {
     const res = await membersGet(new Request(`http://x/api/v1/networks/${NWID}/members`), {
-      params: { nwid: NWID },
+      params: Promise.resolve({ nwid: NWID }),
     });
     expect(res.status).toBe(401);
   });
 
   it('GET lists members with presence fields', async () => {
     const res = await membersGet(req(`http://x/api/v1/networks/${NWID}/members`, 'GET'), {
-      params: { nwid: NWID },
+      params: Promise.resolve({ nwid: NWID }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -93,7 +93,7 @@ describe('members routes', () => {
     mockClient.getMember.mockRejectedValueOnce(new ControllerApiError(404, 'gone'));
     const res = await memberGet(
       req(`http://x/api/v1/networks/${NWID}/members/ffffffffff`, 'GET'),
-      { params: { nwid: NWID, memberId: 'ffffffffff' } },
+      { params: Promise.resolve({ nwid: NWID, memberId: 'ffffffffff' }) },
     );
     expect(res.status).toBe(404);
   });
@@ -105,7 +105,7 @@ describe('members routes', () => {
         ipAssignments: ['10.147.17.10'],
         name: 'laptop',
       }),
-      { params: { nwid: NWID, memberId: MID } },
+      { params: Promise.resolve({ nwid: NWID, memberId: MID }) },
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -123,7 +123,7 @@ describe('members routes', () => {
       req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'PATCH', {
         authorized: true,
       }),
-      { params: { nwid: NWID, memberId: MID } },
+      { params: Promise.resolve({ nwid: NWID, memberId: MID }) },
     );
     expect(res.status).toBe(200);
     const audit = await getDb().auditLog.findFirst({
@@ -140,7 +140,7 @@ describe('members routes', () => {
       req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'PATCH', {
         ipAssignments: ['not-an-ip'],
       }),
-      { params: { nwid: NWID, memberId: MID } },
+      { params: Promise.resolve({ nwid: NWID, memberId: MID }) },
     );
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
@@ -149,7 +149,7 @@ describe('members routes', () => {
   it('DELETE removes the member and audits', async () => {
     const res = await memberDelete(
       req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'DELETE'),
-      { params: { nwid: NWID, memberId: MID } },
+      { params: Promise.resolve({ nwid: NWID, memberId: MID }) },
     );
     expect(res.status).toBe(204);
     const audit = await getDb().auditLog.findFirst({ where: { action: 'member.delete' } });

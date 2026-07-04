@@ -5,7 +5,7 @@ import { listMembers } from '@/lib/services/members';
 import { sampleNetworkPresence } from '@/lib/services/presence';
 import { notifyNewUnauthorizedMembers } from '@/lib/services/webhooks';
 
-type Ctx = { params: { nwid: string } };
+type Ctx = { params: Promise<{ nwid: string }> };
 
 // Throttle presence sampling per-network so a busy members list (polled every
 // 10s per open tab) doesn't write a presence row on every request. This is a
@@ -46,10 +46,11 @@ export async function GET(req: Request, { params }: Ctx) {
   const auth = await requireAuth(req);
   if (auth instanceof Response) return auth;
   try {
-    const members = await listMembers(params.nwid);
+    const { nwid } = await params;
+    const members = await listMembers(nwid);
     const now = Date.now();
-    await maybeSamplePresence(params.nwid, now);
-    await maybeCheckNewMemberWebhook(params.nwid, now);
+    await maybeSamplePresence(nwid, now);
+    await maybeCheckNewMemberWebhook(nwid, now);
     return NextResponse.json({ members });
   } catch (e) {
     return handleRouteError(e);
