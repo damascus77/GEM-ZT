@@ -28,6 +28,10 @@ their `*(Fixed: ...)*` notes) for reference.
   `.eslintrc.json` (next/core-web-vitals), all tsc nits cleaned, `.gitlab-ci.yml` runs typecheck+lint+test.)*
 - ✅ **[DONE] [P1]** ~~Actually run the CI-gated e2e + `docker compose build` in CI.~~ *(Done: `.gitlab-ci.yml`
   has an `e2e` job (DinD, `allow_failure`) and a `docker-build` job (`docker build`, `allow_failure`).)*
+- ✅ **[DONE] [P1] Next.js 14 → 15 upgrade, clearing all `next`-related CVEs.** *(Fixed
+  2026-07-03: bumped to the latest 15.5.x; the only breaking change hit was async
+  `params`/page-props across 10 route/page files, all converted to
+  `Promise<{...}>` + `await`. See `docs/superpowers/specs/2026-07-03-nextjs-15-upgrade-design.md`.)*
 
 ### Cleanup
 - ✅ **[DONE] [P2]** ~~Remove dead `isValidCidr` import~~ in `components/networks/RoutesEditor.tsx` and
