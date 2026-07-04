@@ -1,21 +1,41 @@
-import { isIP } from 'node:net';
-
 const IPV4_RE =
   /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\/(3[0-2]|[12]?\d)$/;
 const IPV6_PREFIX_RE = /^(12[0-8]|1[01]\d|\d{1,2})$/; // 0..128
 
+/**
+ * Structural IPv6 validation. A pure implementation (no node:net) because this
+ * module is also imported by client components (RoutesEditor → cidrToPool), and
+ * bundling a `node:` builtin for the browser breaks the Next.js build. Rejects
+ * >8 groups, multiple '::', non-hex/over-long groups, and stray colons —
+ * exactly the structurally-invalid inputs the old check let through.
+ */
+function isIpv6(addr: string): boolean {
+  const parseGroups = (str: string): string[] | null => {
+    if (str === '') return [];
+    const groups = str.split(':');
+    return groups.every((g) => /^[0-9a-fA-F]{1,4}$/.test(g)) ? groups : null;
+  };
+  const parts = addr.split('::');
+  if (parts.length > 2) return false; // more than one '::'
+  if (parts.length === 2) {
+    const left = parseGroups(parts[0]);
+    const right = parseGroups(parts[1]);
+    // '::' stands for >=1 all-zero group, so the explicit groups must total < 8.
+    return left !== null && right !== null && left.length + right.length <= 7;
+  }
+  const groups = parseGroups(addr);
+  return groups !== null && groups.length === 8;
+}
+
 export function isValidCidr(cidr: string): boolean {
   if (IPV4_RE.test(cidr)) return true;
-  // IPv6: the old hand-rolled group check accepted structurally invalid
-  // addresses (>8 groups, multiple '::', all-empty). Delegate to node's inet
-  // validator, which rejects those. Split on the LAST '/' so the address (which
-  // contains ':') isn't mangled.
+  // Split on the LAST '/' so the address (which contains ':') isn't mangled.
   const slash = cidr.lastIndexOf('/');
   if (slash === -1) return false;
   const addr = cidr.slice(0, slash);
   const prefix = cidr.slice(slash + 1);
   if (!IPV6_PREFIX_RE.test(prefix)) return false;
-  return isIP(addr) === 6;
+  return isIpv6(addr);
 }
 
 function ipv4ToInt(ip: string): number {
