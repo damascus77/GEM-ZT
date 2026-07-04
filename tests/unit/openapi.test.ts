@@ -9,6 +9,7 @@ const expected: Array<[string, string]> = [
   ['/auth/logout', 'post'],
   ['/auth/totp/enroll', 'post'],
   ['/auth/totp/enable', 'post'],
+  ['/auth/totp/disable', 'post'],
   ['/auth/password', 'patch'],
   ['/me', 'get'],
   ['/apikeys', 'get'],

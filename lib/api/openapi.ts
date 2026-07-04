@@ -92,6 +92,17 @@ export const openApiSpec = {
         responses: { '200': { description: '{ enabled: true }' }, '400': errorResponse },
       },
     },
+    '/auth/totp/disable': {
+      post: {
+        tags: ['auth'],
+        summary: 'Disable TOTP with the current password; clears the stored secret',
+        responses: {
+          '200': { description: '{ enabled: false }' },
+          '400': errorResponse,
+          '409': errorResponse,
+        },
+      },
+    },
     '/auth/password': {
       patch: {
         tags: ['auth'],
