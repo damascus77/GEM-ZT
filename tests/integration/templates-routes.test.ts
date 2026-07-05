@@ -121,6 +121,7 @@ describe('templates routes', () => {
   });
 
   it('POST /templates creates a template scoped to the caller’s org and audits', async () => {
+    await getDb().networkMeta.create({ data: { nwid: SRC_NWID, orgId } });
     const res = await createPost(
       req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'from-network' }),
     );
@@ -132,6 +133,17 @@ describe('templates routes', () => {
     const audit = await getDb().auditLog.findFirst({ where: { action: 'template.create' } });
     expect(audit?.targetId).toBe(body.template.id);
     expect(audit?.orgId).toBe(orgId);
+  });
+
+  it('POST /templates 404s when the source network belongs to a different org (cross-org disclosure gate)', async () => {
+    await getDb().networkMeta.create({ data: { nwid: SRC_NWID, orgId: 'other-org' } });
+    const res = await createPost(
+      req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'exfiltrated' }),
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe('NOT_FOUND');
+    const row = await getDb().networkTemplate.findFirst({ where: { name: 'exfiltrated' } });
+    expect(row).toBeNull();
   });
 
   it('POST /templates 403s a viewer session (below template:write)', async () => {
@@ -147,6 +159,7 @@ describe('templates routes', () => {
   });
 
   it('POST /templates returns 409 TEMPLATE_NAME_TAKEN for a duplicate name in the same org', async () => {
+    await getDb().networkMeta.create({ data: { nwid: SRC_NWID, orgId } });
     await createPost(req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'dup' }));
     const res = await createPost(
       req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'dup' }),

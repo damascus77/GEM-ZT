@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireOrgRole } from '@/lib/api/authz';
 import { apiError, handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
+import { assertNetworkInOrg } from '@/lib/services/networks';
 import { listTemplatesForOrg, saveTemplateFromNetwork } from '@/lib/services/templates';
 
 const createSchema = z
@@ -27,6 +28,9 @@ export async function POST(req: Request) {
   if (auth instanceof Response) return auth;
   try {
     const body = createSchema.parse(await req.json());
+    if (!(await assertNetworkInOrg(body.nwid, auth.orgId!))) {
+      return apiError('NOT_FOUND', `Network ${body.nwid} not found.`, 404);
+    }
     const template = await saveTemplateFromNetwork(body.nwid, body.name, auth.orgId!);
     if (!template) return apiError('NOT_FOUND', `Network ${body.nwid} not found.`, 404);
     await logAudit({
