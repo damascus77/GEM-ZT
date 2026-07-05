@@ -1,9 +1,9 @@
-import { requireAuth } from '@/lib/api/auth';
+import { requireSuperAdmin } from '@/lib/api/authz';
 import { handleRouteError } from '@/lib/api/errors';
 import { collectMetrics, formatMetrics } from '@/lib/services/metrics';
 
 export async function GET(req: Request) {
-  const auth = await requireAuth(req);
+  const auth = await requireSuperAdmin(req);
   if (auth instanceof Response) return auth;
   try {
     const body = formatMetrics(await collectMetrics());

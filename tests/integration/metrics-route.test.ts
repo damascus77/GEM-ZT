@@ -16,10 +16,12 @@ const mockClient = {
   listPeers: vi.fn(),
 };
 let cookie: string;
+let nonAdminCookie: string;
 
 beforeAll(async () => {
   setupTestDb();
-  ({ cookie } = await createTestUserAndSession());
+  ({ cookie } = await createTestUserAndSession({ superadmin: true }));
+  ({ cookie: nonAdminCookie } = await createTestUserAndSession());
 });
 
 beforeEach(() => {
@@ -56,6 +58,13 @@ describe('GET /api/v1/metrics', () => {
   it('requires auth', async () => {
     const res = await metricsGet(new Request('http://x/api/v1/metrics'));
     expect(res.status).toBe(401);
+  });
+
+  it('rejects a non-super-admin with 403', async () => {
+    const res = await metricsGet(
+      new Request('http://x/api/v1/metrics', { headers: { cookie: nonAdminCookie } }),
+    );
+    expect(res.status).toBe(403);
   });
 
   it('serves Prometheus text with inventory counts', async () => {
