@@ -49,10 +49,12 @@ const mockClient = {
 };
 
 let cookie: string;
+let nonAdminCookie: string;
 
 beforeAll(async () => {
   setupTestDb();
-  ({ cookie } = await createTestUserAndSession());
+  ({ cookie } = await createTestUserAndSession({ superadmin: true }));
+  ({ cookie: nonAdminCookie } = await createTestUserAndSession());
 });
 
 beforeEach(async () => {
@@ -85,10 +87,10 @@ afterAll(async () => {
   await getDb().$disconnect();
 });
 
-function req(body?: unknown) {
+function req(body?: unknown, cookieHeader: string = cookie) {
   return new Request('http://x/api/v1/backup/restore', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', cookie },
+    headers: { 'Content-Type': 'application/json', cookie: cookieHeader },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 }
@@ -103,6 +105,11 @@ describe('POST /api/v1/backup/restore', () => {
       }),
     );
     expect(res.status).toBe(401);
+  });
+
+  it('rejects a non-super-admin with 403', async () => {
+    const res = await restorePost(req(validBackup, nonAdminCookie));
+    expect(res.status).toBe(403);
   });
 
   it('restores a valid backup and returns a summary', async () => {

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/api/auth';
+import { requireSuperAdmin } from '@/lib/api/authz';
 import { handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
 import { backupSchema, restoreBackup } from '@/lib/services/backup';
 
 export async function POST(req: Request) {
-  const auth = await requireAuth(req);
+  const auth = await requireSuperAdmin(req);
   if (auth instanceof Response) return auth;
   try {
     const body = backupSchema.parse(await req.json());
