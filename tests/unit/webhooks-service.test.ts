@@ -11,6 +11,7 @@ import {
   dispatchWebhook,
   getNewMemberWebhookUrl,
   setNewMemberWebhookUrl,
+  setWebhookConfig,
   notifyNewUnauthorizedMembers,
 } from '@/lib/services/webhooks';
 
@@ -27,7 +28,30 @@ afterAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks();
   await getDb().setting.deleteMany();
+  await getDb().networkMeta.deleteMany();
+  await getDb().membership.deleteMany();
+  await getDb().organization.deleteMany();
+  await getDb().user.deleteMany();
 });
+
+/** Create a NetworkMeta row for NWID belonging to the given org (or unassigned if omitted). */
+async function seedNetwork(orgId?: string): Promise<void> {
+  await getDb().networkMeta.upsert({
+    where: { nwid: NWID },
+    create: { nwid: NWID, name: 'n', orgId: orgId ?? null },
+    update: { orgId: orgId ?? null },
+  });
+}
+
+async function seedOrg(slug: string): Promise<string> {
+  const user = await getDb().user.create({
+    data: { username: `${slug}-owner`, passwordHash: 'h' },
+  });
+  const org = await getDb().organization.create({
+    data: { name: slug, slug, createdById: user.id },
+  });
+  return org.id;
+}
 
 describe('diffNewUnauthorized', () => {
   it('returns unauthorized memberIds not already in knownIds', () => {
@@ -135,7 +159,8 @@ describe('webhook URL settings', () => {
 });
 
 describe('notifyNewUnauthorizedMembers', () => {
-  it('no-ops (no fetch) when no webhook URL is configured', async () => {
+  it('no-ops (no fetch) when the network has no org', async () => {
+    await seedNetwork(undefined);
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
@@ -146,8 +171,34 @@ describe('notifyNewUnauthorizedMembers', () => {
     vi.unstubAllGlobals();
   });
 
-  it('fires for new unauthorized members and persists the known set', async () => {
-    await setNewMemberWebhookUrl('https://example.com/hook');
+  it('no-ops (no fetch) when the network has no NetworkMeta row at all', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { memberId: 'm1', authorized: false, name: '' },
+    ]);
+    await notifyNewUnauthorizedMembers(NWID);
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('no-ops (no fetch) when the network belongs to an org with no webhook configured', async () => {
+    const orgId = await seedOrg('org-no-webhook');
+    await seedNetwork(orgId);
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { memberId: 'm1', authorized: false, name: '' },
+    ]);
+    await notifyNewUnauthorizedMembers(NWID);
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('fires for new unauthorized members using the network org webhook config, and persists the known set', async () => {
+    const orgId = await seedOrg('org-a');
+    await seedNetwork(orgId);
+    await setWebhookConfig(orgId, { newMemberUrl: 'https://example.com/hook' });
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
     vi.stubGlobal('fetch', fetchMock);
     (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
@@ -158,7 +209,8 @@ describe('notifyNewUnauthorizedMembers', () => {
     await notifyNewUnauthorizedMembers(NWID);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [, init] = fetchMock.mock.calls[0];
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://example.com/hook');
     const body = JSON.parse(init.body);
     expect(body).toEqual({
       event: 'member.unauthorized',
@@ -174,8 +226,28 @@ describe('notifyNewUnauthorizedMembers', () => {
     vi.unstubAllGlobals();
   });
 
+  it('does not dispatch to another org\'s webhook config', async () => {
+    const orgA = await seedOrg('org-a');
+    const orgB = await seedOrg('org-b');
+    await seedNetwork(orgA);
+    // Only org B has a webhook configured; the network belongs to org A.
+    await setWebhookConfig(orgB, { newMemberUrl: 'https://example.com/hook-b' });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { memberId: 'm1', authorized: false, name: 'Laptop' },
+    ]);
+
+    await notifyNewUnauthorizedMembers(NWID);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
+
   it('does not re-fire for already-known members on a second call', async () => {
-    await setNewMemberWebhookUrl('https://example.com/hook');
+    const orgId = await seedOrg('org-a');
+    await seedNetwork(orgId);
+    await setWebhookConfig(orgId, { newMemberUrl: 'https://example.com/hook' });
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
     vi.stubGlobal('fetch', fetchMock);
     (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
@@ -192,7 +264,9 @@ describe('notifyNewUnauthorizedMembers', () => {
   });
 
   it('is robust to corrupt known-set JSON (treats as empty)', async () => {
-    await setNewMemberWebhookUrl('https://example.com/hook');
+    const orgId = await seedOrg('org-a');
+    await seedNetwork(orgId);
+    await setWebhookConfig(orgId, { newMemberUrl: 'https://example.com/hook' });
     await getDb().setting.create({
       data: { key: `webhook.known.${NWID}`, value: 'not-json{' },
     });
@@ -209,7 +283,9 @@ describe('notifyNewUnauthorizedMembers', () => {
   });
 
   it('never throws even when listMembers fails', async () => {
-    await setNewMemberWebhookUrl('https://example.com/hook');
+    const orgId = await seedOrg('org-a');
+    await seedNetwork(orgId);
+    await setWebhookConfig(orgId, { newMemberUrl: 'https://example.com/hook' });
     (listMembers as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('controller sad'));
     await expect(notifyNewUnauthorizedMembers(NWID)).resolves.toBeUndefined();
   });

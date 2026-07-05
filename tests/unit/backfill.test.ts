@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
 import { ensureDefaultOrgAndBackfill, DEFAULT_ORG_SLUG } from '@/lib/db/backfill';
+import { getWebhookConfig, setWebhookConfig } from '@/lib/services/webhooks';
+
+const LEGACY_WEBHOOK_KEY = 'webhook.new_member_url';
 
 beforeEach(() => {
   setupTestDb();
@@ -46,5 +49,25 @@ describe('backfill', () => {
     expect(second!.orgId).toBe(orgId);
     expect(await getDb().organization.count()).toBe(1);
     expect(await getDb().membership.count()).toBe(1);
+  });
+
+  it('migrates a legacy global webhook Setting into the default org config, idempotently', async () => {
+    await getDb().user.create({
+      data: { username: 'legacy-webhook-admin', passwordHash: 'h', role: 'admin' },
+    });
+    await getDb().setting.create({
+      data: { key: LEGACY_WEBHOOK_KEY, value: 'https://legacy.example.com/hook' },
+    });
+
+    const first = await ensureDefaultOrgAndBackfill();
+    const orgId = first!.orgId;
+
+    expect(await getWebhookConfig(orgId)).toEqual({ newMemberUrl: 'https://legacy.example.com/hook' });
+    // Legacy key may be left in place (harmless) but must not be required to disappear.
+
+    // Running again must not clobber a newer, deliberately-changed org config.
+    await setWebhookConfig(orgId, { newMemberUrl: 'https://new.example.com/hook' });
+    await ensureDefaultOrgAndBackfill();
+    expect(await getWebhookConfig(orgId)).toEqual({ newMemberUrl: 'https://new.example.com/hook' });
   });
 });

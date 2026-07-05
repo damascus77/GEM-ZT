@@ -126,7 +126,9 @@ function parseKnownIds(raw: string | undefined): string[] {
  */
 export async function notifyNewUnauthorizedMembers(nwid: string): Promise<void> {
   try {
-    const url = await getNewMemberWebhookUrl();
+    const meta = await getDb().networkMeta.findUnique({ where: { nwid } });
+    if (!meta?.orgId) return;
+    const { newMemberUrl: url } = await getWebhookConfig(meta.orgId);
     if (!url) return;
 
     const members = await listMembers(nwid);
