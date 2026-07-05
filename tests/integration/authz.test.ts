@@ -38,6 +38,24 @@ describe('requireOrgRole', () => {
     }
   });
 
+  it('403s a member of org A calling requireOrgRole with a different orgId they do not belong to', async () => {
+    const u = await createUser(`x_${Date.now()}`, 'password12345');
+    const orgA = await createOrg({ name: 'X-A', createdById: u.id }); // u is owner of A
+    await getDb().membership.update({
+      where: { userId_orgId: { userId: u.id, orgId: orgA.id } },
+      data: { role: 'editor' },
+    });
+    const other = await createUser(`x2_${Date.now()}`, 'password12345');
+    const orgB = await createOrg({ name: 'X-B', createdById: other.id }); // u is not a member of B
+
+    const s = await createSession(u.id);
+    await getDb().session.update({ where: { id: s.id }, data: { activeOrgId: orgA.id } });
+    const cookie = `${SESSION_COOKIE}=${s.id}`;
+
+    const res = await requireOrgRole(cookieReq(cookie), 'network:read', { orgId: orgB.id });
+    expect(res instanceof Response && res.status).toBe(403);
+  });
+
   it('super-admin passes any org action and requireSuperAdmin', async () => {
     const su = await createUser(`su_${Date.now()}`, 'password12345');
     await getDb().user.update({ where: { id: su.id }, data: { role: 'superadmin' } });

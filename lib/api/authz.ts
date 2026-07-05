@@ -49,6 +49,9 @@ export async function requireOrgRole(
     return ctx(auth.user, true, orgId, 'owner');
   }
   if (!orgId || !role) return apiError('FORBIDDEN', 'No access to any organization.', 403);
+  // Defense-in-depth no-op: resolveActiveOrg already sets orgId from opts.orgId and
+  // re-validates membership itself, so a non-member org is already denied above via
+  // the `!orgId || !role` branch; this check can never actually be reached as false.
   if (opts?.orgId && opts.orgId !== orgId) {
     return apiError('FORBIDDEN', 'Not a member of this organization.', 403);
   }
