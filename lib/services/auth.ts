@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import argon2 from 'argon2';
 import type { Session, User } from '@prisma/client';
 import { getDb } from '@/lib/db/client';
+import type { InstanceRole } from '@/lib/authz/roles';
 
 export const SESSION_COOKIE = 'gemzt_session';
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -61,9 +62,13 @@ export function userCount(): Promise<number> {
   return getDb().user.count();
 }
 
-export async function createUser(username: string, password: string): Promise<User> {
+export async function createUser(
+  username: string,
+  password: string,
+  role: InstanceRole = 'user',
+): Promise<User> {
   const passwordHash = await hashPassword(password);
-  return getDb().user.create({ data: { username, passwordHash } });
+  return getDb().user.create({ data: { username, passwordHash, role } });
 }
 
 export function createSession(userId: string): Promise<Session> {

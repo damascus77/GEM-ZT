@@ -10,6 +10,7 @@ import {
   sessionCookieOptions,
   userCount,
 } from '@/lib/services/auth';
+import { createOrg } from '@/lib/services/orgs';
 
 // Per-IP limiter on setup attempts. Setup re-opens if app_data is ever lost, so an
 // exposed instance still needs a throttle even with no token gate.
@@ -37,7 +38,8 @@ export async function POST(req: Request) {
     if ((await userCount()) > 0) {
       return apiError('SETUP_ALREADY_COMPLETE', 'Setup has already been completed.', 409);
     }
-    const user = await createUser(body.username, body.password);
+    const user = await createUser(body.username, body.password, 'superadmin');
+    await createOrg({ name: 'Default', createdById: user.id }); // slug => "default"; creator = owner
     const session = await createSession(user.id);
     const res = NextResponse.json(
       { user: { id: user.id, username: user.username, role: user.role } },

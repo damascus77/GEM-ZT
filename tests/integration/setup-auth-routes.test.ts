@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { setupTestDb } from '../helpers/db';
-import { getDb } from '@/lib/db/client';
+import { getDb, resetDbForTests } from '@/lib/db/client';
 import { GET as setupStatusGet } from '@/app/api/v1/setup/status/route';
 import { POST as setupPost } from '@/app/api/v1/setup/route';
 import { POST as loginPost } from '@/app/api/v1/auth/login/route';
@@ -34,6 +34,37 @@ describe('setup + auth routes', () => {
     const res = await setupPost(jsonReq('http://x/api/v1/setup', 'POST', { username: 'a' }));
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('setup creates a super-admin who owns a fresh default org', async () => {
+    // This test needs a pristine (zero-user) DB, independent of the shared DB
+    // the rest of this file's tests build up. Point at a fresh SQLite file for
+    // the duration of this test, then restore the shared DB the other tests
+    // expect (still pre-setup, i.e. zero users) so suite order is unaffected.
+    const sharedDbUrl = process.env.DATABASE_URL;
+    setupTestDb();
+    resetDbForTests();
+    try {
+      const res = await setupPost(
+        new Request('http://x/api/v1/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'root', password: 'password12345' }),
+        }),
+      );
+      expect(res.status).toBe(201);
+      const user = await getDb().user.findUnique({ where: { username: 'root' } });
+      expect(user?.role).toBe('superadmin');
+      const org = await getDb().organization.findUnique({ where: { slug: 'default' } });
+      expect(org).not.toBeNull();
+      expect((await getDb().membership.findUnique({
+        where: { userId_orgId: { userId: user!.id, orgId: org!.id } },
+      }))?.role).toBe('owner');
+    } finally {
+      await getDb().$disconnect();
+      process.env.DATABASE_URL = sharedDbUrl;
+      resetDbForTests();
+    }
   });
 
   it('creates the initial admin, sets a session cookie, then reports needsSetup=false', async () => {
