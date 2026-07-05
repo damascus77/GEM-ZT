@@ -4,10 +4,41 @@ import { listMembers } from './members';
 
 const NEW_MEMBER_WEBHOOK_URL_KEY = 'webhook.new_member_url';
 
+export interface WebhookConfig {
+  newMemberUrl: string | null;
+}
+
+function orgWebhookKey(orgId: string): string {
+  return `webhook:${orgId}`;
+}
+
 // Cap on a single webhook delivery. Without it a webhook host that accepts the
 // connection but never responds would hang the members-list request (which
 // awaits dispatch) for up to undici's ~300s default headers timeout.
 const WEBHOOK_TIMEOUT_MS = 5000;
+
+/** Org-scoped webhook config, stored under the `webhook:{orgId}` Setting key. */
+export async function getWebhookConfig(orgId: string): Promise<WebhookConfig> {
+  const row = await getDb().setting.findUnique({ where: { key: orgWebhookKey(orgId) } });
+  if (!row?.value) return { newMemberUrl: null };
+  try {
+    const parsed = JSON.parse(row.value) as Partial<WebhookConfig>;
+    return { newMemberUrl: parsed.newMemberUrl ?? null };
+  } catch {
+    return { newMemberUrl: null };
+  }
+}
+
+/** Set (or clear) the org-scoped webhook config. */
+export async function setWebhookConfig(orgId: string, cfg: WebhookConfig): Promise<void> {
+  const key = orgWebhookKey(orgId);
+  const value = JSON.stringify(cfg);
+  await getDb().setting.upsert({
+    where: { key },
+    create: { key, value },
+    update: { value },
+  });
+}
 
 function knownSetKey(nwid: string): string {
   return `webhook.known.${nwid}`;

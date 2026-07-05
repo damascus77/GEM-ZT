@@ -17,6 +17,7 @@ export async function logAudit(input: {
   targetType: string;
   targetId: string;
   detail?: unknown;
+  orgId?: string | null;
 }): Promise<void> {
   try {
     await getDb().auditLog.create({
@@ -26,6 +27,7 @@ export async function logAudit(input: {
         targetType: input.targetType,
         targetId: input.targetId,
         detail: JSON.stringify(input.detail ?? {}),
+        orgId: input.orgId ?? undefined,
       },
     });
   } catch (e) {
@@ -39,6 +41,27 @@ export async function listAuditLog(limit = 100): Promise<AuditEntry[]> {
     take,
     // `createdAt` is millisecond-resolution, so same-ms rows would order
     // nondeterministically; the `id` tiebreak keeps newest-first stable.
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    include: { user: { select: { username: true } } },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    userId: r.userId,
+    username: r.user.username,
+    action: r.action,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    detail: JSON.parse(r.detail),
+    createdAt: r.createdAt,
+  }));
+}
+
+/** Org-scoped audit log read, for org-admin dashboards. */
+export async function listAuditLogForOrg(orgId: string, limit = 100): Promise<AuditEntry[]> {
+  const take = Math.min(Math.max(limit, 1), 500);
+  const rows = await getDb().auditLog.findMany({
+    where: { orgId },
+    take,
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     include: { user: { select: { username: true } } },
   });
