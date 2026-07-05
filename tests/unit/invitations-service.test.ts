@@ -7,7 +7,7 @@ import { createOrg, getMembership } from '@/lib/services/orgs';
 import {
   generateInvitationToken,
   createInvitation,
-  getInvitationByToken,
+  getInvitationRowByToken,
   listInvitations,
   revokeInvitation,
   acceptInvitation,
@@ -67,33 +67,38 @@ describe('createInvitation', () => {
   });
 });
 
-describe('getInvitationByToken', () => {
-  it('returns org name and role for a valid token', async () => {
-    const { token } = await createInvitation({
+describe('getInvitationRowByToken', () => {
+  it('returns the raw row (with org name) for a valid token', async () => {
+    const { token, invitation } = await createInvitation({
       orgId,
       role: 'admin',
       createdById: creatorId,
       ttlMs: 60_000,
     });
-    const preview = await getInvitationByToken(token);
-    expect(preview).toEqual({ orgId, orgName, role: 'admin' });
+    const row = await getInvitationRowByToken(token);
+    expect(row?.id).toBe(invitation.id);
+    expect(row?.orgId).toBe(orgId);
+    expect(row?.org.name).toBe(orgName);
+    expect(row?.role).toBe('admin');
   });
 
   it('returns null for an unknown token', async () => {
-    expect(await getInvitationByToken('inv_' + '0'.repeat(48))).toBeNull();
+    expect(await getInvitationRowByToken('inv_' + '0'.repeat(48))).toBeNull();
   });
 
-  it('returns null for an expired token', async () => {
+  it('still returns the row for an expired token (caller decides expiry policy)', async () => {
     const { token } = await createInvitation({
       orgId,
       role: 'viewer',
       createdById: creatorId,
       ttlMs: -1000,
     });
-    expect(await getInvitationByToken(token)).toBeNull();
+    const row = await getInvitationRowByToken(token);
+    expect(row).not.toBeNull();
+    expect(row!.expiresAt.getTime()).toBeLessThanOrEqual(Date.now());
   });
 
-  it('returns null for an already-accepted token', async () => {
+  it('still returns the row for an already-accepted token, with acceptedAt set', async () => {
     const { token } = await createInvitation({
       orgId,
       role: 'viewer',
@@ -102,7 +107,8 @@ describe('getInvitationByToken', () => {
     });
     const username = `acceptor_${Date.now()}`;
     await acceptInvitation({ token, username, password: 'password12345' });
-    expect(await getInvitationByToken(token)).toBeNull();
+    const row = await getInvitationRowByToken(token);
+    expect(row?.acceptedAt).not.toBeNull();
   });
 });
 

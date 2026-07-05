@@ -1,15 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
-import type { Invitation, Session, User } from '@prisma/client';
+import { Prisma, type Invitation, type Session, type User } from '@prisma/client';
 import { getDb } from '@/lib/db/client';
 import type { OrgRole } from '@/lib/authz/roles';
 import { createSession, createUser } from '@/lib/services/auth';
 import { addMembership } from '@/lib/services/orgs';
-
-export interface InvitationPreview {
-  orgId: string;
-  orgName: string;
-  role: OrgRole;
-}
 
 export interface InvitationSummary {
   id: string;
@@ -47,18 +41,6 @@ export async function createInvitation(input: {
     },
   });
   return { invitation, token };
-}
-
-/**
- * Preview a token for the public "join" landing page. Returns null for any
- * invalid state (unknown / expired / already accepted) without distinguishing
- * which — callers that need to distinguish (for a 410 vs 404) re-check via
- * `getInvitationRowByToken`.
- */
-export async function getInvitationByToken(token: string): Promise<InvitationPreview | null> {
-  const row = await getInvitationRowByToken(token);
-  if (!row || isExpired(row) || row.acceptedAt) return null;
-  return { orgId: row.orgId, orgName: row.org.name, role: row.role as OrgRole };
 }
 
 /**
@@ -115,7 +97,19 @@ export async function acceptInvitation(input: {
   });
   if (claim.count === 0) return { error: 'USED' };
 
-  const user = await createUser(input.username, input.password, 'user');
+  // Re-check-then-create is still racy under concurrent accepts of distinct
+  // tokens with the same requested username; catch the DB's unique violation
+  // so a race maps to the same USERNAME_TAKEN result as the pre-check instead
+  // of surfacing a raw 500.
+  let user: User;
+  try {
+    user = await createUser(input.username, input.password, 'user');
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      return { error: 'USERNAME_TAKEN' };
+    }
+    throw e;
+  }
   await addMembership(row.orgId, user.id, row.role as OrgRole);
   const session = await createSession(user.id);
   return { user, session };

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireOrgRole } from '@/lib/api/authz';
-import { handleRouteError } from '@/lib/api/errors';
+import { apiError, handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
 import { createInvitation, listInvitations } from '@/lib/services/invitations';
 import { ORG_ROLES, type OrgRole } from '@/lib/authz/roles';
@@ -38,6 +38,12 @@ export async function POST(req: Request, { params }: Ctx) {
   if (auth instanceof Response) return auth;
   try {
     const body = createInvitationSchema.parse(await req.json());
+
+    // Only an owner (or super-admin) may grant the owner role.
+    if (body.role === 'owner' && !auth.isSuperAdmin && auth.role !== 'owner') {
+      return apiError('FORBIDDEN', 'Only an owner may grant the owner role.', 403);
+    }
+
     const ttlMs = (body.ttlHours ?? DEFAULT_TTL_HOURS) * 60 * 60 * 1000;
     const { invitation, token } = await createInvitation({
       orgId,
