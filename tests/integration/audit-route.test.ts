@@ -7,14 +7,17 @@ import { GET as auditGet } from '@/app/api/v1/audit/route';
 
 let cookie: string;
 let userId: string;
+let orgId: string;
 
 beforeAll(async () => {
   setupTestDb();
   const created = await createTestUserAndSession();
   cookie = created.cookie;
   userId = created.user.id;
+  orgId = created.orgId;
   await logAudit({
     userId,
+    orgId,
     action: 'network.create',
     targetType: 'network',
     targetId: 'abcdef0123456789',
@@ -22,6 +25,7 @@ beforeAll(async () => {
   });
   await logAudit({
     userId,
+    orgId,
     action: 'member.update',
     targetType: 'member',
     targetId: 'abcdef0123456789/deadbeef01',
@@ -70,5 +74,28 @@ describe('GET /api/v1/audit', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.entries.length).toBeGreaterThan(0);
+  });
+
+  it('a viewer (lowest org role) can read audit log (org:read requires only viewer)', async () => {
+    const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
+    const res = await auditGet(new Request('http://x/api/v1/audit', { headers: { cookie: viewerCookie } }));
+    expect(res.status).toBe(200);
+  });
+
+  it('only returns entries for the caller’s org', async () => {
+    const { cookie: otherCookie } = await createTestUserAndSession();
+    await logAudit({
+      userId,
+      action: 'network.create',
+      targetType: 'network',
+      targetId: 'other-org-only',
+      detail: {},
+      orgId: 'some-other-org-id',
+    });
+    const res = await auditGet(new Request('http://x/api/v1/audit', { headers: { cookie: otherCookie } }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.entries.every((e: any) => e.targetId !== 'other-org-only')).toBe(true);
+    expect(body.entries).toHaveLength(0);
   });
 });
