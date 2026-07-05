@@ -12,10 +12,12 @@ import { GET as statusGet } from '@/app/api/v1/controller/status/route';
 
 const mockClient = { getStatus: vi.fn() };
 let cookie: string;
+let nonAdminCookie: string;
 
 beforeAll(async () => {
   setupTestDb();
-  ({ cookie } = await createTestUserAndSession());
+  ({ cookie } = await createTestUserAndSession({ superadmin: true }));
+  ({ cookie: nonAdminCookie } = await createTestUserAndSession());
 });
 
 beforeEach(() => {
@@ -31,6 +33,13 @@ describe('GET /api/v1/controller/status', () => {
   it('requires auth', async () => {
     const res = await statusGet(new Request('http://x/api/v1/controller/status'));
     expect(res.status).toBe(401);
+  });
+
+  it('rejects a non-super-admin with 403', async () => {
+    const res = await statusGet(
+      new Request('http://x/api/v1/controller/status', { headers: { cookie: nonAdminCookie } }),
+    );
+    expect(res.status).toBe(403);
   });
 
   it('returns node id, version and online state', async () => {
