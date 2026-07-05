@@ -41,7 +41,46 @@ const expected: Array<[string, string]> = [
   ['/settings/webhook', 'get'],
   ['/settings/webhook', 'put'],
   ['/openapi.json', 'get'],
+  ['/orgs', 'get'],
+  ['/orgs', 'post'],
+  ['/orgs/{orgId}', 'get'],
+  ['/orgs/{orgId}', 'patch'],
+  ['/orgs/{orgId}', 'delete'],
+  ['/orgs/{orgId}/active', 'post'],
+  ['/orgs/{orgId}/members', 'get'],
+  ['/orgs/{orgId}/members', 'post'],
+  ['/orgs/{orgId}/members/{userId}', 'patch'],
+  ['/orgs/{orgId}/members/{userId}', 'delete'],
+  ['/orgs/{orgId}/invitations', 'get'],
+  ['/orgs/{orgId}/invitations', 'post'],
+  ['/orgs/{orgId}/invitations/{id}', 'delete'],
+  ['/invitations/{token}', 'get'],
+  ['/invitations/{token}/accept', 'post'],
 ];
+
+// Operations that require a resolved auth session/apikey but no per-request
+// role check (requireAuth/resolveAuth only) — FORBIDDEN can never be
+// returned, so only 401 is documented.
+const authOnlyOps = new Set<string>([
+  '/me get',
+  '/auth/password patch',
+  '/auth/totp/enroll post',
+  '/auth/totp/enable post',
+  '/auth/totp/disable post',
+  '/orgs get',
+]);
+
+// Operations with no authentication at all (setup bootstrap, login/logout,
+// public invitation preview/accept, the spec document itself).
+const publicOps = new Set<string>([
+  '/setup/status get',
+  '/setup post',
+  '/auth/login post',
+  '/auth/logout post',
+  '/invitations/{token} get',
+  '/invitations/{token}/accept post',
+  '/openapi.json get',
+]);
 
 describe('openApiSpec', () => {
   it('is OpenAPI 3.0.3 served under /api/v1', () => {
@@ -63,6 +102,52 @@ describe('openApiSpec', () => {
     const err = openApiSpec.components.schemas.Error;
     expect(err.properties.error.properties.code.type).toBe('string');
     expect(err.properties.error.properties.message.type).toBe('string');
+  });
+
+  it('documents 401 and 403 on every non-public, role-checked path', () => {
+    const paths = openApiSpec.paths as Record<string, Record<string, { responses?: Record<string, unknown> }>>;
+    for (const [path, method] of expected) {
+      if (publicOps.has(`${path} ${method}`) || authOnlyOps.has(`${path} ${method}`)) continue;
+      const op = paths[path][method];
+      const responses = op.responses ?? {};
+      expect(responses['401'], `missing 401 on ${method.toUpperCase()} ${path}`).toBeDefined();
+      expect(responses['403'], `missing 403 on ${method.toUpperCase()} ${path}`).toBeDefined();
+    }
+  });
+
+  it('documents 401 (but not a fabricated 403) on auth-only, non-role-checked paths', () => {
+    const paths = openApiSpec.paths as Record<string, Record<string, { responses?: Record<string, unknown> }>>;
+    for (const [path, method] of expected) {
+      if (!authOnlyOps.has(`${path} ${method}`)) continue;
+      const responses = paths[path][method].responses ?? {};
+      expect(responses['401'], `missing 401 on ${method.toUpperCase()} ${path}`).toBeDefined();
+    }
+  });
+
+  it('spot-checks the new org/member/invitation paths', () => {
+    const spotChecks: Array<[string, string]> = [
+      ['/orgs', 'get'],
+      ['/orgs', 'post'],
+      ['/orgs/{orgId}/members', 'get'],
+      ['/orgs/{orgId}/members', 'post'],
+      ['/orgs/{orgId}/invitations', 'post'],
+      ['/invitations/{token}', 'get'],
+      ['/invitations/{token}/accept', 'post'],
+    ];
+    for (const [path, method] of spotChecks) {
+      const entry = (openApiSpec.paths as Record<string, Record<string, unknown>>)[path];
+      expect(entry, `missing path ${path}`).toBeDefined();
+      expect(entry[method], `missing ${method.toUpperCase()} ${path}`).toBeDefined();
+    }
+  });
+
+  it('documents the OrgRole enum on the API-key create schema', () => {
+    const createKey = openApiSpec.paths['/apikeys'].post as {
+      requestBody?: { content: { 'application/json': { schema: { properties: Record<string, { enum?: readonly string[] }> } } } };
+    };
+    const roleProp = createKey.requestBody?.content['application/json'].schema.properties.role;
+    expect(roleProp, 'apikey create schema missing role property').toBeDefined();
+    expect(roleProp?.enum).toEqual(['owner', 'admin', 'editor', 'viewer']);
   });
 
   it('is served by GET /api/v1/openapi.json without auth', async () => {

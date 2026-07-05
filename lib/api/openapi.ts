@@ -5,6 +5,11 @@ const errorResponse = {
 
 const ok = (description: string) => ({ '200': { description }, '502': errorResponse });
 
+// Every endpoint that resolves an org role (requireOrgRole/requireSuperAdmin)
+// can fail auth (no/invalid credentials) or authorization (authenticated but
+// lacking the role/membership needed) — 401 and 403 respectively.
+const authz = { '401': errorResponse, '403': errorResponse };
+
 export const openApiSpec = {
   openapi: '3.0.3',
   info: {
@@ -82,14 +87,18 @@ export const openApiSpec = {
         summary:
           'Generate a new TOTP secret for the current user (overwrites any prior ' +
           'unconfirmed secret); totpEnabled stays false until confirmed via /auth/totp/enable',
-        responses: { '200': { description: '{ secret, otpauthUri }' } },
+        responses: { '200': { description: '{ secret, otpauthUri }' }, '401': errorResponse },
       },
     },
     '/auth/totp/enable': {
       post: {
         tags: ['auth'],
         summary: 'Confirm TOTP enrollment with a current code; sets totpEnabled=true',
-        responses: { '200': { description: '{ enabled: true }' }, '400': errorResponse },
+        responses: {
+          '200': { description: '{ enabled: true }' },
+          '400': errorResponse,
+          '401': errorResponse,
+        },
       },
     },
     '/auth/totp/disable': {
@@ -99,6 +108,7 @@ export const openApiSpec = {
         responses: {
           '200': { description: '{ enabled: false }' },
           '400': errorResponse,
+          '401': errorResponse,
           '409': errorResponse,
         },
       },
@@ -124,40 +134,64 @@ export const openApiSpec = {
     '/apikeys': {
       get: {
         tags: ['apikeys'],
-        summary: 'List API keys (prefix only; never the full key)',
-        responses: { '200': { description: '{ apiKeys[] }' } },
+        summary: 'List API keys for the caller\'s active org (prefix only; never the full key)',
+        responses: { '200': { description: '{ apiKeys[] }' }, ...authz },
       },
       post: {
         tags: ['apikeys'],
-        summary: 'Create an API key; the full ztk_ key is returned exactly once',
-        responses: { '201': { description: '{ apiKey, fullKey }' }, '400': errorResponse },
+        summary:
+          'Create an org-scoped API key; the full ztk_ key is returned exactly once. The key ' +
+          'inherits the given role (capped at the creator\'s own role) and is bound to the ' +
+          'caller\'s active org',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name', 'role'],
+                properties: {
+                  name: { type: 'string', minLength: 1, maxLength: 64 },
+                  role: { type: 'string', enum: ['owner', 'admin', 'editor', 'viewer'] },
+                  expiresAt: { type: 'string', format: 'date-time' },
+                },
+              },
+            },
+          },
+        },
+        responses: { '201': { description: '{ apiKey, fullKey }' }, '400': errorResponse, ...authz },
       },
     },
     '/apikeys/{id}': {
       delete: {
         tags: ['apikeys'],
-        summary: 'Revoke an API key',
+        summary: 'Revoke an API key (must belong to the caller in their active org)',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '204': { description: 'Revoked' }, '404': errorResponse },
+        responses: { '204': { description: 'Revoked' }, '404': errorResponse, ...authz },
       },
     },
     '/controller/status': {
       get: {
         tags: ['controller'],
-        summary: 'Controller node id, version, online state (502 when degraded)',
-        responses: ok('{ address, online, version }'),
+        summary: 'Controller node id, version, online state (502 when degraded); super-admin only',
+        responses: { ...ok('{ address, online, version }'), ...authz },
       },
     },
     '/networks': {
       get: {
         tags: ['networks'],
         summary: 'List networks (controller state joined with metadata)',
-        responses: ok('{ networks[] }'),
+        responses: { ...ok('{ networks[] }'), ...authz },
       },
       post: {
         tags: ['networks'],
         summary: 'Create a network on the controller, then store metadata',
-        responses: { '201': { description: '{ network, metaWarning }' }, '400': errorResponse, '502': errorResponse },
+        responses: {
+          '201': { description: '{ network, metaWarning }' },
+          '400': errorResponse,
+          '502': errorResponse,
+          ...authz,
+        },
       },
     },
     '/networks/{nwid}': {
@@ -165,7 +199,7 @@ export const openApiSpec = {
         tags: ['networks'],
         summary: 'Network detail (live controller config + metadata)',
         parameters: [{ name: 'nwid', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { ...ok('{ network }'), '404': errorResponse },
+        responses: { ...ok('{ network }'), '404': errorResponse, ...authz },
       },
       patch: {
         tags: ['networks'],
@@ -174,13 +208,13 @@ export const openApiSpec = {
           'multicast limit, routes, ipAssignmentPools, v4AssignMode, v6AssignMode, dns ' +
           '(controller, written first)',
         parameters: [{ name: 'nwid', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { ...ok('{ network, metaWarning }'), '400': errorResponse },
+        responses: { ...ok('{ network, metaWarning }'), '400': errorResponse, ...authz },
       },
       delete: {
         tags: ['networks'],
         summary: 'Delete a network from the controller (metadata cleaned up best-effort)',
         parameters: [{ name: 'nwid', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '204': { description: 'Deleted' }, '502': errorResponse },
+        responses: { '204': { description: 'Deleted' }, '502': errorResponse, ...authz },
       },
     },
     '/networks/{nwid}/members': {
@@ -188,7 +222,7 @@ export const openApiSpec = {
         tags: ['members'],
         summary: 'List members with live presence (joined from /peer; unknown when absent)',
         parameters: [{ name: 'nwid', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: ok('{ members[] }'),
+        responses: { ...ok('{ members[] }'), ...authz },
       },
     },
     '/networks/{nwid}/members/{memberId}': {
@@ -199,7 +233,7 @@ export const openApiSpec = {
           { name: 'nwid', in: 'path', required: true, schema: { type: 'string' } },
           { name: 'memberId', in: 'path', required: true, schema: { type: 'string' } },
         ],
-        responses: { ...ok('{ member }'), '404': errorResponse },
+        responses: { ...ok('{ member }'), '404': errorResponse, ...authz },
       },
       patch: {
         tags: ['members'],
@@ -210,7 +244,7 @@ export const openApiSpec = {
           { name: 'nwid', in: 'path', required: true, schema: { type: 'string' } },
           { name: 'memberId', in: 'path', required: true, schema: { type: 'string' } },
         ],
-        responses: { ...ok('{ member, metaWarning }'), '400': errorResponse },
+        responses: { ...ok('{ member, metaWarning }'), '400': errorResponse, ...authz },
       },
       delete: {
         tags: ['members'],
@@ -219,7 +253,7 @@ export const openApiSpec = {
           { name: 'nwid', in: 'path', required: true, schema: { type: 'string' } },
           { name: 'memberId', in: 'path', required: true, schema: { type: 'string' } },
         ],
-        responses: { '204': { description: 'Removed' }, '502': errorResponse },
+        responses: { '204': { description: 'Removed' }, '502': errorResponse, ...authz },
       },
     },
     '/networks/{nwid}/presence': {
@@ -230,7 +264,7 @@ export const openApiSpec = {
           'online/offline samples (oldest first), sampled opportunistically while the members ' +
           'list is viewed',
         parameters: [{ name: 'nwid', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: ok('{ presence }'),
+        responses: { ...ok('{ presence }'), ...authz },
       },
     },
     '/networks/{nwid}/rules': {
@@ -238,7 +272,7 @@ export const openApiSpec = {
         tags: ['rules'],
         summary: 'Rules source (stored by GEM-ZT) + compiled rules (live from the controller)',
         parameters: [{ name: 'nwid', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: ok('{ source, rules }'),
+        responses: { ...ok('{ source, rules }'), ...authz },
       },
       put: {
         tags: ['rules'],
@@ -248,17 +282,18 @@ export const openApiSpec = {
           ...ok('{ source, rules, metaWarning }'),
           '400': errorResponse,
           '422': errorResponse,
+          ...authz,
         },
       },
     },
     '/audit': {
       get: {
         tags: ['audit'],
-        summary: 'Audit log entries, newest first (?limit=, max 500)',
+        summary: 'Audit log entries for the caller\'s active org, newest first (?limit=, max 500)',
         parameters: [
           { name: 'limit', in: 'query', required: false, schema: { type: 'integer', maximum: 500 } },
         ],
-        responses: { '200': { description: '{ entries[] }' } },
+        responses: { '200': { description: '{ entries[] }' }, ...authz },
       },
     },
     '/networks/{nwid}/clone': {
@@ -266,19 +301,29 @@ export const openApiSpec = {
         tags: ['networks'],
         summary: 'Create a new network from an existing one (config + rules source)',
         parameters: [{ name: 'nwid', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '201': { description: '{ network, metaWarning }' }, '404': errorResponse, '502': errorResponse },
+        responses: {
+          '201': { description: '{ network, metaWarning }' },
+          '404': errorResponse,
+          '502': errorResponse,
+          ...authz,
+        },
       },
     },
     '/templates': {
       get: {
         tags: ['templates'],
         summary: 'List saved network templates',
-        responses: { '200': { description: '{ templates[] }' } },
+        responses: { '200': { description: '{ templates[] }' }, ...authz },
       },
       post: {
         tags: ['templates'],
         summary: 'Save a network as a named template ({ nwid, name })',
-        responses: { '201': { description: '{ template }' }, '400': errorResponse, '404': errorResponse },
+        responses: {
+          '201': { description: '{ template }' },
+          '400': errorResponse,
+          '404': errorResponse,
+          ...authz,
+        },
       },
     },
     '/templates/{id}': {
@@ -286,7 +331,7 @@ export const openApiSpec = {
         tags: ['templates'],
         summary: 'Delete a template',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '204': { description: 'Deleted' }, '404': errorResponse },
+        responses: { '204': { description: 'Deleted' }, '404': errorResponse, ...authz },
       },
     },
     '/templates/{id}/apply': {
@@ -294,29 +339,37 @@ export const openApiSpec = {
         tags: ['templates'],
         summary: 'Create a new network from a template',
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { '201': { description: '{ network, metaWarning }' }, '404': errorResponse, '502': errorResponse },
+        responses: {
+          '201': { description: '{ network, metaWarning }' },
+          '404': errorResponse,
+          '502': errorResponse,
+          ...authz,
+        },
       },
     },
     '/metrics': {
       get: {
         tags: ['meta'],
-        summary: 'Prometheus text-exposition metrics: controller liveness + inventory counts',
-        responses: { '200': { description: 'text/plain metrics' }, '502': errorResponse },
+        summary:
+          'Prometheus text-exposition metrics: controller liveness + inventory counts; ' +
+          'super-admin only',
+        responses: { '200': { description: 'text/plain metrics' }, '502': errorResponse, ...authz },
       },
     },
     '/pending': {
       get: {
         tags: ['members'],
         summary: 'Devices awaiting authorization across all networks',
-        responses: ok('{ pending[] }'),
+        responses: { ...ok('{ pending[] }'), ...authz },
       },
     },
     '/backup': {
       get: {
         tags: ['backup'],
         summary:
-          'Export a JSON backup of all networks (config + rules), members, and GEM-ZT metadata',
-        responses: { ...ok('BackupData JSON, served as a file attachment') },
+          'Export a JSON backup of all networks (config + rules), members, and GEM-ZT ' +
+          'metadata; super-admin only',
+        responses: { ...ok('BackupData JSON, served as a file attachment'), ...authz },
       },
     },
     '/backup/restore': {
@@ -324,8 +377,9 @@ export const openApiSpec = {
         tags: ['backup'],
         summary:
           'Replay a backup against the live controller: updates networks that still exist, ' +
-          're-creates ones that do not (new nwid), restores joined members, skips the rest',
-        responses: { '200': { description: 'RestoreSummary JSON' }, '400': errorResponse },
+          're-creates ones that do not (new nwid), restores joined members, skips the rest; ' +
+          'super-admin only',
+        responses: { '200': { description: 'RestoreSummary JSON' }, '400': errorResponse, ...authz },
       },
     },
     '/settings/webhook': {
@@ -334,7 +388,7 @@ export const openApiSpec = {
         summary:
           'Get the caller\'s org-scoped webhook config (outbound URL for ' +
           'new-unauthorized-member alerts); requires webhook:manage (admin+)',
-        responses: { '200': { description: '{ newMemberUrl: string | null }' } },
+        responses: { '200': { description: '{ newMemberUrl: string | null }' }, ...authz },
       },
       put: {
         tags: ['settings'],
@@ -345,6 +399,173 @@ export const openApiSpec = {
         responses: {
           '200': { description: '{ newMemberUrl: string | null }' },
           '400': errorResponse,
+          ...authz,
+        },
+      },
+    },
+    '/orgs': {
+      get: {
+        tags: ['orgs'],
+        summary:
+          'List organizations the caller belongs to (super-admins see every org, with ' +
+          'role: null where they hold no membership)',
+        responses: { '200': { description: '{ orgs[] }' }, '401': errorResponse },
+      },
+      post: {
+        tags: ['orgs'],
+        summary: 'Create a new organization; super-admin only',
+        responses: { '201': { description: '{ org }' }, '400': errorResponse, ...authz },
+      },
+    },
+    '/orgs/{orgId}': {
+      get: {
+        tags: ['orgs'],
+        summary: 'Organization detail, including the caller\'s role in it',
+        parameters: [{ name: 'orgId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: '{ org }' }, '404': errorResponse, ...authz },
+      },
+      patch: {
+        tags: ['orgs'],
+        summary: 'Rename an organization; requires org:manage',
+        parameters: [{ name: 'orgId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: '{ org }' }, '400': errorResponse, ...authz },
+      },
+      delete: {
+        tags: ['orgs'],
+        summary: 'Delete an organization; requires org:delete',
+        parameters: [{ name: 'orgId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '204': { description: 'Deleted' }, ...authz },
+      },
+    },
+    '/orgs/{orgId}/active': {
+      post: {
+        tags: ['orgs'],
+        summary:
+          'Switch the caller\'s active org for the current session (session auth only; ' +
+          'API keys are bound to one org and cannot switch)',
+        parameters: [{ name: 'orgId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '204': { description: 'Active org switched' },
+          '400': errorResponse,
+          '404': errorResponse,
+          ...authz,
+        },
+      },
+    },
+    '/orgs/{orgId}/members': {
+      get: {
+        tags: ['orgs'],
+        summary:
+          'List members of an org; owners/admins/super-admins also see super-admin users ' +
+          'with implicit (non-membership) access, requires org:read',
+        parameters: [{ name: 'orgId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: '{ members[] }' }, ...authz },
+      },
+      post: {
+        tags: ['orgs'],
+        summary:
+          'Create a new user and add them to the org with the given role; requires ' +
+          'org:manage-members (only an owner or super-admin may grant the owner role)',
+        responses: {
+          '201': { description: '{ member }' },
+          '400': errorResponse,
+          '409': errorResponse,
+          ...authz,
+        },
+      },
+    },
+    '/orgs/{orgId}/members/{userId}': {
+      patch: {
+        tags: ['orgs'],
+        summary:
+          'Change a member\'s role; requires org:manage-members (only an owner or ' +
+          'super-admin may grant or change the owner role; 409 if it would leave the org ' +
+          'without an owner)',
+        parameters: [
+          { name: 'orgId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'userId', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: {
+          '200': { description: '{ member }' },
+          '400': errorResponse,
+          '409': errorResponse,
+          ...authz,
+        },
+      },
+      delete: {
+        tags: ['orgs'],
+        summary:
+          'Remove a member from the org; requires org:manage-members (409 if it would ' +
+          'leave the org without an owner)',
+        parameters: [
+          { name: 'orgId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'userId', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: { '204': { description: 'Removed' }, '409': errorResponse, ...authz },
+      },
+    },
+    '/orgs/{orgId}/invitations': {
+      get: {
+        tags: ['invitations'],
+        summary: 'List pending/past invitations for an org; requires org:manage-members',
+        parameters: [{ name: 'orgId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: '{ invitations[] }' }, ...authz },
+      },
+      post: {
+        tags: ['invitations'],
+        summary:
+          'Create an invitation for a role, optionally scoped to an email, with a TTL ' +
+          '(default 7 days, max 30); requires org:manage-members (only an owner or ' +
+          'super-admin may grant the owner role); the raw token is returned exactly once',
+        responses: {
+          '201': { description: '{ invitation, token }' },
+          '400': errorResponse,
+          ...authz,
+        },
+      },
+    },
+    '/orgs/{orgId}/invitations/{id}': {
+      delete: {
+        tags: ['invitations'],
+        summary: 'Revoke a pending invitation; requires org:manage-members',
+        parameters: [
+          { name: 'orgId', in: 'path', required: true, schema: { type: 'string' } },
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+        ],
+        responses: { '204': { description: 'Revoked' }, '404': errorResponse, ...authz },
+      },
+    },
+    '/invitations/{token}': {
+      get: {
+        tags: ['invitations'],
+        summary:
+          'Preview an invitation before accepting it (org name + role); public, ' +
+          'IP-rate-limited to deter token probing',
+        security: [],
+        parameters: [{ name: 'token', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: '{ org: { name }, role }' },
+          '404': errorResponse,
+          '409': errorResponse,
+          '410': errorResponse,
+          '429': errorResponse,
+        },
+      },
+    },
+    '/invitations/{token}/accept': {
+      post: {
+        tags: ['invitations'],
+        summary:
+          'Accept an invitation by creating a new user account and joining the org with ' +
+          'the invited role; sets the session cookie; public, IP-rate-limited',
+        security: [],
+        parameters: [{ name: 'token', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '201': { description: '{ user }' },
+          '404': errorResponse,
+          '409': errorResponse,
+          '410': errorResponse,
+          '429': errorResponse,
         },
       },
     },
