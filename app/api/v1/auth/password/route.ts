@@ -18,7 +18,7 @@ export async function PATCH(req: Request) {
   try {
     const body = passwordSchema.parse(await req.json());
     const user = await getDb().user.findUniqueOrThrow({ where: { id: auth.user.id } });
-    if (!(await verifyPassword(user.passwordHash, body.currentPassword))) {
+    if (!user.passwordHash || !(await verifyPassword(user.passwordHash, body.currentPassword))) {
       return apiError('CURRENT_PASSWORD_INVALID', 'Current password is incorrect.', 400);
     }
     await setPassword(user.id, body.newPassword);

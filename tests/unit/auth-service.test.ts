@@ -28,6 +28,14 @@ afterAll(async () => {
   await getDb().$disconnect();
 });
 
+// Test users in this file are always created with a password, so their
+// passwordHash is never null; this narrows the nullable Prisma field for
+// verifyPassword() and fails loudly if that invariant is ever violated.
+function requireHash(hash: string | null): string {
+  if (!hash) throw new Error('expected test user to have a passwordHash');
+  return hash;
+}
+
 describe('auth service', () => {
   it('exports session constants', () => {
     expect(SESSION_COOKIE).toBe('gemzt_session');
@@ -132,8 +140,8 @@ describe('auth service', () => {
     const user = await createUser('password-change-user', 'password12345');
     await setPassword(user.id, 'new-password-999');
     const updated = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
-    expect(await verifyPassword(updated.passwordHash, 'new-password-999')).toBe(true);
-    expect(await verifyPassword(updated.passwordHash, 'password12345')).toBe(false);
+    expect(await verifyPassword(requireHash(updated.passwordHash), 'new-password-999')).toBe(true);
+    expect(await verifyPassword(requireHash(updated.passwordHash), 'password12345')).toBe(false);
   });
 
   it('invalidateOtherSessions deletes every session for the user except the excluded one', async () => {

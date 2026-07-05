@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     if (!user.totpEnabled) {
       return apiError('TOTP_NOT_ENABLED', 'Two-factor authentication is not enabled.', 409);
     }
-    if (!(await verifyPassword(user.passwordHash, body.currentPassword))) {
+    if (!user.passwordHash || !(await verifyPassword(user.passwordHash, body.currentPassword))) {
       return apiError('CURRENT_PASSWORD_INVALID', 'Current password is incorrect.', 400);
     }
     await getDb().user.update({

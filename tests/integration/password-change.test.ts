@@ -21,6 +21,14 @@ function req(cookie: string, body: unknown) {
   });
 }
 
+// Test users in this file are always created with a password, so their
+// passwordHash is never null; this narrows the nullable Prisma field for
+// verifyPassword() and fails loudly if that invariant is ever violated.
+function requireHash(hash: string | null): string {
+  if (!hash) throw new Error('expected test user to have a passwordHash');
+  return hash;
+}
+
 describe('PATCH /api/v1/auth/password', () => {
   it('requires auth', async () => {
     const res = await passwordPatch(
@@ -39,7 +47,7 @@ describe('PATCH /api/v1/auth/password', () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('CURRENT_PASSWORD_INVALID');
     const unchanged = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
-    expect(await verifyPassword(unchanged.passwordHash, 'password12345')).toBe(true);
+    expect(await verifyPassword(requireHash(unchanged.passwordHash), 'password12345')).toBe(true);
   });
 
   it('rejects a new password shorter than 10 characters with 400 VALIDATION_ERROR', async () => {
@@ -57,7 +65,7 @@ describe('PATCH /api/v1/auth/password', () => {
     expect(res.status).toBe(204);
 
     const updated = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
-    expect(await verifyPassword(updated.passwordHash, 'new-password-999')).toBe(true);
+    expect(await verifyPassword(requireHash(updated.passwordHash), 'new-password-999')).toBe(true);
 
     const currentSessionId = cookie.split('=')[1];
     expect(await getSession(currentSessionId)).not.toBeNull();

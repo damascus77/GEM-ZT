@@ -88,6 +88,12 @@ export async function authenticateUser(username: string, password: string): Prom
     await verifyPassword(DUMMY_PASSWORD_HASH, password);
     return null;
   }
+  if (!user.passwordHash) {
+    // Passwordless (external-identity) user: pay the same argon2 cost so timing
+    // doesn't reveal that this account has no password to check against.
+    await verifyPassword(DUMMY_PASSWORD_HASH, password);
+    return null;
+  }
   if (!(await verifyPassword(user.passwordHash, password))) return null;
   return user;
 }
