@@ -16,10 +16,12 @@ const mockClient = {
   getMember: vi.fn(),
 };
 let cookie: string;
+let nonAdminCookie: string;
 
 beforeAll(async () => {
   setupTestDb();
-  ({ cookie } = await createTestUserAndSession());
+  ({ cookie } = await createTestUserAndSession({ superadmin: true }));
+  ({ cookie: nonAdminCookie } = await createTestUserAndSession());
 });
 
 beforeEach(() => {
@@ -72,6 +74,13 @@ describe('GET /api/v1/backup', () => {
   it('requires auth', async () => {
     const res = await backupGet(new Request('http://x/api/v1/backup'));
     expect(res.status).toBe(401);
+  });
+
+  it('rejects a non-super-admin with 403', async () => {
+    const res = await backupGet(
+      new Request('http://x/api/v1/backup', { headers: { cookie: nonAdminCookie } }),
+    );
+    expect(res.status).toBe(403);
   });
 
   it('returns the backup JSON with a download filename header', async () => {
