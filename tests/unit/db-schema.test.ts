@@ -11,11 +11,11 @@ afterAll(async () => {
 });
 
 describe('prisma schema', () => {
-  it('creates a user with unique username and admin default role', async () => {
+  it('creates a user with unique username and user default role', async () => {
     const user = await getDb().user.create({
       data: { username: 'noah', passwordHash: 'x' },
     });
-    expect(user.role).toBe('admin');
+    expect(user.role).toBe('user');
     await expect(
       getDb().user.create({ data: { username: 'noah', passwordHash: 'y' } }),
     ).rejects.toThrow();
@@ -68,5 +68,46 @@ describe('prisma schema', () => {
     await getDb().setting.create({ data: { key: 'controllerUrl', value: 'http://x:9993' } });
     const s = await getDb().setting.findUnique({ where: { key: 'controllerUrl' } });
     expect(s?.value).toBe('http://x:9993');
+  });
+
+  it('models organizations, memberships, invitations, identities', async () => {
+    const db = getDb();
+    const user = await db.user.create({
+      data: { username: `u_${Date.now()}`, passwordHash: null, role: 'superadmin' },
+    });
+    const org = await db.organization.create({
+      data: { name: 'Acme', slug: `acme-${Date.now()}`, createdById: user.id },
+    });
+    const m = await db.membership.create({
+      data: { userId: user.id, orgId: org.id, role: 'owner' },
+    });
+    expect(m.role).toBe('owner');
+
+    const inv = await db.invitation.create({
+      data: {
+        orgId: org.id,
+        role: 'editor',
+        hashedToken: `h_${Date.now()}`,
+        createdById: user.id,
+        expiresAt: new Date(Date.now() + 3600_000),
+      },
+    });
+    expect(inv.acceptedAt).toBeNull();
+
+    const id = await db.identity.create({
+      data: { userId: user.id, provider: 'oidc', subject: 'sub-123' },
+    });
+    expect(id.provider).toBe('oidc');
+
+    // org-scoping columns exist and are nullable
+    const net = await db.networkMeta.create({ data: { nwid: 'n1', orgId: org.id } });
+    expect(net.orgId).toBe(org.id);
+  });
+
+  it('allows a passwordless user (OIDC seam)', async () => {
+    const u = await getDb().user.create({
+      data: { username: `oidc_${Date.now()}`, passwordHash: null, role: 'user' },
+    });
+    expect(u.passwordHash).toBeNull();
   });
 });

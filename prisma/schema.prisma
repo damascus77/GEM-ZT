@@ -11,44 +11,87 @@ datasource db {
 }
 
 model User {
-  id           String     @id @default(cuid())
-  username     String     @unique
-  passwordHash String
-  role         String     @default("admin")
+  id           String       @id @default(cuid())
+  username     String       @unique
+  passwordHash String?
+  role         String       @default("user")   // instance role: "superadmin" | "user"
   totpSecret   String?
-  totpEnabled  Boolean    @default(false)
-  createdAt    DateTime   @default(now())
+  totpEnabled  Boolean      @default(false)
+  createdAt    DateTime     @default(now())
   apiKeys      ApiKey[]
   sessions     Session[]
   auditLogs    AuditLog[]
+  memberships  Membership[]
+  identities   Identity[]
 }
 
-model ApiKey {
-  id         String    @id @default(cuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name       String
-  prefix     String
-  hashedKey  String    @unique
-  lastUsedAt DateTime?
-  createdAt  DateTime  @default(now())
-  expiresAt  DateTime?
+model Organization {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  createdById String
+  createdAt   DateTime     @default(now())
+  memberships Membership[]
+  invitations Invitation[]
 }
 
-model Session {
+model Membership {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  role      String   // "owner" | "admin" | "editor" | "viewer"
+  createdAt DateTime @default(now())
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  role        String
+  hashedToken String    @unique
+  email       String?
+  createdById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([orgId])
+}
+
+model Identity {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider String
+  subject  String
+
+  @@unique([provider, subject])
+  @@index([userId])
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeOrgId String?
+  expiresAt   DateTime
 }
 
 model NetworkMeta {
   nwid        String   @id
+  orgId       String?
   name        String   @default("")
   description String   @default("")
   tags        String   @default("[]")
   rulesSource String   @default("")
   createdAt   DateTime @default(now())
+
+  @@index([orgId])
 }
 
 model MemberMeta {
@@ -60,15 +103,34 @@ model MemberMeta {
   @@id([nwid, memberId])
 }
 
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orgId      String?
+  role       String?   // org role this key acts as; null = instance key (super-admin)
+  name       String
+  prefix     String
+  hashedKey  String    @unique
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime?
+
+  @@index([orgId])
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orgId      String?
   action     String
   targetType String
   targetId   String
   detail     String   @default("{}")
   createdAt  DateTime @default(now())
+
+  @@index([orgId])
 }
 
 model Setting {
@@ -78,9 +140,12 @@ model Setting {
 
 model NetworkTemplate {
   id        String   @id @default(cuid())
-  name      String   @unique
+  orgId     String?
+  name      String
   config    String
   createdAt DateTime @default(now())
+
+  @@index([orgId])
 }
 
 model MemberPresence {
