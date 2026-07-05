@@ -19,11 +19,11 @@ afterAll(async () => {
   await getDb().$disconnect();
 });
 
-function req(method: string, body?: unknown, withAuth = true) {
+function req(method: string, body?: unknown, withAuth = true, useCookie = cookie) {
   return new Request('http://x/api/v1/settings/webhook', {
     method,
     headers: {
-      ...(withAuth ? { cookie } : {}),
+      ...(withAuth ? { cookie: useCookie } : {}),
       ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -37,27 +37,27 @@ describe('settings webhook route', () => {
   });
 
   it('requires auth for PUT', async () => {
-    const res = await webhookPut(req('PUT', { url: 'https://example.com/hook' }, false));
+    const res = await webhookPut(req('PUT', { newMemberUrl: 'https://example.com/hook' }, false));
     expect(res.status).toBe(401);
   });
 
-  it('GET returns null url by default', async () => {
+  it('GET returns null newMemberUrl by default', async () => {
     const res = await webhookGet(req('GET'));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ url: null });
+    expect(await res.json()).toEqual({ newMemberUrl: null });
   });
 
   it('PUT with a valid url persists it and GET returns it', async () => {
-    const putRes = await webhookPut(req('PUT', { url: 'https://example.com/hook' }));
+    const putRes = await webhookPut(req('PUT', { newMemberUrl: 'https://example.com/hook' }));
     expect(putRes.status).toBe(200);
-    expect(await putRes.json()).toEqual({ url: 'https://example.com/hook' });
+    expect(await putRes.json()).toEqual({ newMemberUrl: 'https://example.com/hook' });
 
     const getRes = await webhookGet(req('GET'));
-    expect(await getRes.json()).toEqual({ url: 'https://example.com/hook' });
+    expect(await getRes.json()).toEqual({ newMemberUrl: 'https://example.com/hook' });
   });
 
   it('PUT with an invalid url returns 400', async () => {
-    const res = await webhookPut(req('PUT', { url: 'not-a-url' }));
+    const res = await webhookPut(req('PUT', { newMemberUrl: 'not-a-url' }));
     expect(res.status).toBe(400);
   });
 
@@ -67,20 +67,40 @@ describe('settings webhook route', () => {
       'http://localhost:9993/controller/network',
       'http://192.168.1.1/hook',
     ]) {
-      const res = await webhookPut(req('PUT', { url }));
+      const res = await webhookPut(req('PUT', { newMemberUrl: url }));
       expect(res.status, url).toBe(400);
     }
     const getRes = await webhookGet(req('GET'));
-    expect(await getRes.json()).toEqual({ url: null });
+    expect(await getRes.json()).toEqual({ newMemberUrl: null });
   });
 
   it('PUT with null clears the url', async () => {
-    await webhookPut(req('PUT', { url: 'https://example.com/hook' }));
-    const res = await webhookPut(req('PUT', { url: null }));
+    await webhookPut(req('PUT', { newMemberUrl: 'https://example.com/hook' }));
+    const res = await webhookPut(req('PUT', { newMemberUrl: null }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ url: null });
+    expect(await res.json()).toEqual({ newMemberUrl: null });
 
     const getRes = await webhookGet(req('GET'));
-    expect(await getRes.json()).toEqual({ url: null });
+    expect(await getRes.json()).toEqual({ newMemberUrl: null });
+  });
+
+  it('scopes config to the caller’s org (a different org sees its own, independent config)', async () => {
+    await webhookPut(req('PUT', { newMemberUrl: 'https://example.com/org-a' }));
+    const { cookie: otherCookie } = await createTestUserAndSession();
+    const otherGet = await webhookGet(req('GET', undefined, true, otherCookie));
+    expect(await otherGet.json()).toEqual({ newMemberUrl: null });
+
+    const mineGet = await webhookGet(req('GET'));
+    expect(await mineGet.json()).toEqual({ newMemberUrl: 'https://example.com/org-a' });
+  });
+
+  it('403s a non-admin (editor) session on GET and PUT (webhook:manage requires admin)', async () => {
+    const { cookie: editorCookie } = await createTestUserAndSession({ role: 'editor' });
+    const getRes = await webhookGet(req('GET', undefined, true, editorCookie));
+    expect(getRes.status).toBe(403);
+    const putRes = await webhookPut(
+      req('PUT', { newMemberUrl: 'https://example.com/hook' }, true, editorCookie),
+    );
+    expect(putRes.status).toBe(403);
   });
 });

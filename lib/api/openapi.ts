@@ -331,15 +331,21 @@ export const openApiSpec = {
     '/settings/webhook': {
       get: {
         tags: ['settings'],
-        summary: 'Get the configured outbound webhook URL for new-unauthorized-member alerts',
-        responses: { '200': { description: '{ url: string | null }' } },
+        summary:
+          'Get the caller\'s org-scoped webhook config (outbound URL for ' +
+          'new-unauthorized-member alerts); requires webhook:manage (admin+)',
+        responses: { '200': { description: '{ newMemberUrl: string | null }' } },
       },
       put: {
         tags: ['settings'],
         summary:
-          'Set (or clear, with null) the outbound webhook URL for new-unauthorized-member ' +
-          'alerts; must be a valid http/https URL',
-        responses: { '200': { description: '{ url: string | null }' }, '400': errorResponse },
+          'Set (or clear, with null) the org-scoped outbound webhook URL for ' +
+          'new-unauthorized-member alerts; must be a valid http/https URL; requires ' +
+          'webhook:manage (admin+)',
+        responses: {
+          '200': { description: '{ newMemberUrl: string | null }' },
+          '400': errorResponse,
+        },
       },
     },
     '/openapi.json': {
