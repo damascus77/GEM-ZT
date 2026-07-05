@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
@@ -257,5 +257,56 @@ describe('acceptInvitation', () => {
       password: 'password12345',
     });
     expect(result).toEqual({ error: 'USERNAME_TAKEN' });
+  });
+
+  it('does not burn the invite when user-create fails with USERNAME_TAKEN mid-race (atomic claim)', async () => {
+    // Simulate a genuine race: the username is free at pre-check time (so
+    // acceptInvitation proceeds past the early USERNAME_TAKEN guard and claims
+    // the invite), but by the time the user row is actually created, another
+    // request has already taken that username — so the DB-level unique
+    // constraint (P2002) is what fails, *after* the invite claim would have
+    // already been committed under the old (non-atomic) implementation.
+    const username = `taken_${Date.now()}`;
+    const { token } = await createInvitation({
+      orgId,
+      role: 'viewer',
+      createdById: creatorId,
+      ttlMs: 60_000,
+    });
+
+    const originalFindUnique = getDb().user.findUnique.bind(getDb().user);
+    let stub = true;
+    getDb().user.findUnique = ((args: unknown) => {
+      if (stub) {
+        stub = false;
+        return Promise.resolve(null);
+      }
+      return originalFindUnique(args as Parameters<typeof originalFindUnique>[0]);
+    }) as typeof originalFindUnique;
+    // Create the conflicting user for real, so the subsequent user.create
+    // inside acceptInvitation hits a genuine unique-constraint violation.
+    await createUser(username, 'password12345');
+
+    let failed: Awaited<ReturnType<typeof acceptInvitation>>;
+    try {
+      failed = await acceptInvitation({ token, username, password: 'password12345' });
+    } finally {
+      getDb().user.findUnique = originalFindUnique;
+    }
+    expect(failed).toEqual({ error: 'USERNAME_TAKEN' });
+
+    // The invite must still be usable: a retry with a fresh username succeeds.
+    const freshUsername = `fresh_${Date.now()}`;
+    const retry = await acceptInvitation({
+      token,
+      username: freshUsername,
+      password: 'password12345',
+    });
+    expect('error' in retry).toBe(false);
+    if ('error' in retry) throw new Error('unexpected error result');
+    expect(retry.user.username).toBe(freshUsername);
+
+    const membership = await getMembership(retry.user.id, orgId);
+    expect(membership?.role).toBe('viewer');
   });
 });

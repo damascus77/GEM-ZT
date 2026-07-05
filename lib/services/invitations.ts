@@ -2,8 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Prisma, type Invitation, type Session, type User } from '@prisma/client';
 import { getDb } from '@/lib/db/client';
 import type { OrgRole } from '@/lib/authz/roles';
-import { createSession, createUser } from '@/lib/services/auth';
-import { addMembership } from '@/lib/services/orgs';
+import { createSession, hashPassword } from '@/lib/services/auth';
 
 export interface InvitationSummary {
   id: string;
@@ -76,6 +75,12 @@ export async function revokeInvitation(id: string, orgId: string): Promise<boole
   return result.count === 1;
 }
 
+// Sentinel thrown inside the transaction when the conditional claim finds the
+// invite already accepted (count === 0). Caught right below the
+// `$transaction` call so the rollback maps to the existing USED result
+// instead of surfacing as an unhandled rejection.
+class InvitationAlreadyUsedError extends Error {}
+
 export async function acceptInvitation(input: {
   token: string;
   username: string;
@@ -89,28 +94,50 @@ export async function acceptInvitation(input: {
   const existing = await getDb().user.findUnique({ where: { username: input.username } });
   if (existing) return { error: 'USERNAME_TAKEN' };
 
-  // Gate the accept on acceptedAt still being null in the same update, so two
-  // concurrent accepts of the same token can't both succeed (single-use).
-  const claim = await getDb().invitation.updateMany({
-    where: { id: row.id, acceptedAt: null },
-    data: { acceptedAt: new Date() },
-  });
-  if (claim.count === 0) return { error: 'USED' };
-
-  // Re-check-then-create is still racy under concurrent accepts of distinct
-  // tokens with the same requested username; catch the DB's unique violation
-  // so a race maps to the same USERNAME_TAKEN result as the pre-check instead
-  // of surfacing a raw 500.
+  // Claim the invite, create the user, and add the membership atomically: if
+  // user-create fails (e.g. a concurrent P2002 on username), the whole
+  // transaction — including the acceptedAt claim below — rolls back, so a
+  // failed accept never burns the single-use invite.
   let user: User;
   try {
-    user = await createUser(input.username, input.password, 'user');
+    user = await getDb().$transaction(async (tx) => {
+      // Gate the accept on acceptedAt still being null in the same update, so
+      // two concurrent accepts of the same token can't both succeed
+      // (single-use).
+      const claim = await tx.invitation.updateMany({
+        where: { id: row.id, acceptedAt: null },
+        data: { acceptedAt: new Date() },
+      });
+      if (claim.count === 0) throw new InvitationAlreadyUsedError();
+
+      // Re-check-then-create is still racy under concurrent accepts of
+      // distinct tokens with the same requested username; on a unique
+      // violation, let it throw here so the transaction (including the claim
+      // above) rolls back. The caller below catches it and maps it to the
+      // same USERNAME_TAKEN result as the pre-check instead of surfacing a
+      // raw 500.
+      const created = await tx.user.create({
+        data: {
+          username: input.username,
+          passwordHash: await hashPassword(input.password),
+          role: 'user',
+        },
+      });
+      await tx.membership.create({
+        data: { orgId: row.orgId, userId: created.id, role: row.role as OrgRole },
+      });
+      return created;
+    });
   } catch (e) {
+    if (e instanceof InvitationAlreadyUsedError) return { error: 'USED' };
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       return { error: 'USERNAME_TAKEN' };
     }
     throw e;
   }
-  await addMembership(row.orgId, user.id, row.role as OrgRole);
+
+  // Session creation happens after the transaction commits: it isn't part of
+  // the atomic claim, and only needs to run once the user + membership exist.
   const session = await createSession(user.id);
   return { user, session };
 }
