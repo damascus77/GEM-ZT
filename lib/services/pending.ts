@@ -1,4 +1,4 @@
-import { listNetworks } from './networks';
+import { listNetworks, listNetworksForOrg, type NetworkSummary } from './networks';
 import { listMembers } from './members';
 
 export interface PendingMember {
@@ -10,10 +10,7 @@ export interface PendingMember {
   lastAuthorizedTime: number;
 }
 
-/** Devices awaiting authorization across every network, newest-network-first is not
- * guaranteed — callers that care about ordering should sort the result themselves. */
-export async function listPendingMembers(): Promise<PendingMember[]> {
-  const networks = await listNetworks();
+async function collectPending(networks: NetworkSummary[]): Promise<PendingMember[]> {
   const perNetwork = await Promise.all(
     networks.map(async (network) => {
       const members = await listMembers(network.nwid);
@@ -32,4 +29,15 @@ export async function listPendingMembers(): Promise<PendingMember[]> {
     }),
   );
   return perNetwork.flat();
+}
+
+/** Devices awaiting authorization across every network, newest-network-first is not
+ * guaranteed — callers that care about ordering should sort the result themselves. */
+export async function listPendingMembers(): Promise<PendingMember[]> {
+  return collectPending(await listNetworks());
+}
+
+/** Devices awaiting authorization, scoped to networks belonging to `orgId`. */
+export async function listPendingMembersForOrg(orgId: string): Promise<PendingMember[]> {
+  return collectPending(await listNetworksForOrg(orgId));
 }

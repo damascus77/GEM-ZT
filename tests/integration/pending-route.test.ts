@@ -17,10 +17,11 @@ const mockClient = {
   listPeers: vi.fn(),
 };
 let cookie: string;
+let orgId: string;
 
 beforeAll(async () => {
   setupTestDb();
-  ({ cookie } = await createTestUserAndSession());
+  ({ cookie, orgId } = await createTestUserAndSession());
 });
 
 beforeEach(() => {
@@ -76,7 +77,12 @@ describe('GET /api/v1/pending', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns pending members across networks', async () => {
+  it('returns pending members across the caller’s org networks', async () => {
+    await getDb().networkMeta.upsert({
+      where: { nwid: NWID },
+      create: { nwid: NWID, name: 'lan', description: '', orgId },
+      update: { orgId },
+    });
     const res = await pendingGet(new Request('http://x/api/v1/pending', { headers: { cookie } }));
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -86,5 +92,55 @@ describe('GET /api/v1/pending', () => {
       networkName: 'lan',
       memberId: 'deadbeef01',
     });
+  });
+
+  it('excludes pending members from networks outside the caller’s org', async () => {
+    const OTHER_NWID = 'fedcba9876543210';
+    await getDb().networkMeta.upsert({
+      where: { nwid: NWID },
+      create: { nwid: NWID, name: 'lan', description: '', orgId },
+      update: { orgId },
+    });
+    await getDb().networkMeta.upsert({
+      where: { nwid: OTHER_NWID },
+      create: { nwid: OTHER_NWID, name: 'other', description: '', orgId: 'some-other-org-id' },
+      update: { orgId: 'some-other-org-id' },
+    });
+    mockClient.listNetworkIds.mockResolvedValue([NWID, OTHER_NWID]);
+    mockClient.getNetwork.mockImplementation(async (nwid: string) => ({
+      id: nwid,
+      nwid,
+      name: nwid === NWID ? 'lan' : 'other',
+      private: true,
+      enableBroadcast: true,
+      mtu: 2800,
+      multicastLimit: 32,
+      routes: [],
+      ipAssignmentPools: [],
+      v4AssignMode: { zt: true },
+      v6AssignMode: { zt: false, '6plane': false, rfc4193: false },
+      dns: { domain: '', servers: [] },
+      rules: [],
+      capabilities: [],
+      tags: [],
+      creationTime: 1,
+      revision: 1,
+    }));
+    const res = await pendingGet(new Request('http://x/api/v1/pending', { headers: { cookie } }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.pending.every((p: any) => p.nwid === NWID)).toBe(true);
+    await getDb().networkMeta.delete({ where: { nwid: OTHER_NWID } });
+  });
+
+  it('a viewer (lowest org role) can list pending members (member:read requires only viewer)', async () => {
+    await getDb().networkMeta.upsert({
+      where: { nwid: NWID },
+      create: { nwid: NWID, name: 'lan', description: '', orgId },
+      update: { orgId },
+    });
+    const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
+    const res = await pendingGet(new Request('http://x/api/v1/pending', { headers: { cookie: viewerCookie } }));
+    expect(res.status).toBe(200);
   });
 });
