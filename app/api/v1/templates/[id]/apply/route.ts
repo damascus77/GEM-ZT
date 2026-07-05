@@ -1,20 +1,24 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/api/auth';
+import { requireOrgRole } from '@/lib/api/authz';
 import { apiError, handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
-import { createNetworkFromTemplate } from '@/lib/services/templates';
+import { createNetworkFromTemplate, getTemplateForOrg } from '@/lib/services/templates';
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: Request, { params }: Ctx) {
-  const auth = await requireAuth(req);
+  const auth = await requireOrgRole(req, 'network:write');
   if (auth instanceof Response) return auth;
   try {
     const { id } = await params;
-    const result = await createNetworkFromTemplate(id);
+    if (!(await getTemplateForOrg(id, auth.orgId!))) {
+      return apiError('NOT_FOUND', `Template ${id} not found.`, 404);
+    }
+    const result = await createNetworkFromTemplate(id, auth.orgId!);
     if (!result) return apiError('NOT_FOUND', `Template ${id} not found.`, 404);
     await logAudit({
       userId: auth.user.id,
+      orgId: auth.orgId,
       action: 'template.apply',
       targetType: 'network',
       targetId: result.data.nwid,

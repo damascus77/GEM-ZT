@@ -102,10 +102,13 @@ export async function createTemplate(
 /**
  * Snapshot a network's portable config + GEM-ZT metadata as a named, reusable
  * template. Returns null if the source network doesn't exist on the controller.
+ * Name uniqueness is enforced per scope (org, or the null/global scope), same
+ * as `createTemplate`.
  */
 export async function saveTemplateFromNetwork(
   nwid: string,
   name: string,
+  orgId?: string,
 ): Promise<TemplateSummary | null> {
   const client = await getControllerClient();
   let config;
@@ -115,6 +118,9 @@ export async function saveTemplateFromNetwork(
     if (e instanceof ControllerApiError && e.status === 404) return null;
     throw e;
   }
+  const scope = orgId ?? null;
+  const existing = await getDb().networkTemplate.findFirst({ where: { orgId: scope, name } });
+  if (existing) throw new TemplateNameTakenError(name);
   const meta = await getDb().networkMeta.findUnique({ where: { nwid } }).catch(() => null);
   const stored: StoredTemplate = {
     config: toPortableConfig(config),
@@ -123,7 +129,7 @@ export async function saveTemplateFromNetwork(
     rulesSource: meta?.rulesSource ?? '',
   };
   return getDb().networkTemplate.create({
-    data: { name, config: JSON.stringify(stored) },
+    data: { name, config: JSON.stringify(stored), orgId },
     select: { id: true, name: true, createdAt: true },
   });
 }
@@ -131,6 +137,7 @@ export async function saveTemplateFromNetwork(
 /** Create a new network from a stored template. Returns null if the template is gone. */
 export async function createNetworkFromTemplate(
   id: string,
+  orgId?: string,
 ): Promise<WriteResult<NetworkDetail> | null> {
   const template = await getDb().networkTemplate.findUnique({ where: { id } });
   if (!template) return null;
@@ -141,6 +148,7 @@ export async function createNetworkFromTemplate(
     description: stored.description,
     tags: stored.tags,
     rulesSource: stored.rulesSource,
+    orgId,
   });
 }
 

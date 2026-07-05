@@ -7,6 +7,7 @@ import {
 import { invalidateControllerClient } from '@/lib/controller';
 import { AuthTokenError } from '@/lib/controller/token';
 import { RulesCompileError } from '@/lib/rules/compiler';
+import { TemplateNameTakenError } from '@/lib/services/templates';
 
 export function apiError(
   code: string,
@@ -38,6 +39,9 @@ export function handleRouteError(e: unknown): Response {
   }
   if (e instanceof RulesCompileError) {
     return apiError('RULES_COMPILE_ERROR', e.message, 422);
+  }
+  if (e instanceof TemplateNameTakenError) {
+    return apiError('TEMPLATE_NAME_TAKEN', e.message, 409);
   }
   if (e instanceof ControllerApiError && e.status === 404) {
     return apiError('NOT_FOUND', 'Resource not found on the controller.', 404);

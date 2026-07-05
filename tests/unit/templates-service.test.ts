@@ -12,6 +12,7 @@ import {
   listTemplates,
   createNetworkFromTemplate,
   deleteTemplate,
+  TemplateNameTakenError,
 } from '@/lib/services/templates';
 
 const SRC = 'abcdef0123456789';
@@ -106,5 +107,24 @@ describe('templates service', () => {
     expect(await deleteTemplate(saved!.id)).toBe(true);
     expect(await listTemplates()).toHaveLength(0);
     expect(await deleteTemplate('missing')).toBe(false);
+  });
+
+  it('saveTemplateFromNetwork scopes the saved template to orgId and enforces per-org uniqueness', async () => {
+    const saved = await saveTemplateFromNetwork(SRC, 'org-scoped', 'org-1');
+    const row = await getDb().networkTemplate.findUnique({ where: { id: saved!.id } });
+    expect(row?.orgId).toBe('org-1');
+    // Same name, different org: allowed.
+    await expect(saveTemplateFromNetwork(SRC, 'org-scoped', 'org-2')).resolves.not.toBeNull();
+    // Same name, same org: rejected.
+    await expect(saveTemplateFromNetwork(SRC, 'org-scoped', 'org-1')).rejects.toBeInstanceOf(
+      TemplateNameTakenError,
+    );
+  });
+
+  it('createNetworkFromTemplate threads orgId into the created network’s meta', async () => {
+    const saved = await saveTemplateFromNetwork(SRC, 'thread-org', 'org-1');
+    const result = await createNetworkFromTemplate(saved!.id, 'org-1');
+    const meta = await getDb().networkMeta.findUnique({ where: { nwid: result!.data.nwid } });
+    expect(meta?.orgId).toBe('org-1');
   });
 });
