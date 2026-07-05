@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
-import type { User } from '@prisma/client';
+import type { ApiKey, User } from '@prisma/client';
 import { getDb } from '@/lib/db/client';
+import type { OrgRole } from '@/lib/authz/roles';
 
 export interface ApiKeySummary {
   id: string;
@@ -33,28 +34,38 @@ export async function createApiKey(
   userId: string,
   name: string,
   expiresAt?: Date,
+  scope?: { orgId: string | null; role: OrgRole | null },
 ): Promise<{ apiKey: ApiKeySummary; fullKey: string }> {
   const { fullKey, prefix, hashedKey } = generateApiKey();
   const apiKey = await getDb().apiKey.create({
-    data: { userId, name, prefix, hashedKey, expiresAt: expiresAt ?? null },
+    data: {
+      userId,
+      name,
+      prefix,
+      hashedKey,
+      expiresAt: expiresAt ?? null,
+      orgId: scope?.orgId ?? null,
+      role: scope?.role ?? null,
+    },
     select: summarySelect,
   });
   return { apiKey, fullKey };
 }
 
-export async function verifyApiKey(fullKey: string): Promise<User | null> {
+export async function verifyApiKeyWithRecord(
+  fullKey: string,
+): Promise<{ user: User; apiKey: ApiKey } | null> {
   const hashedKey = createHash('sha256').update(fullKey).digest('hex');
-  const row = await getDb().apiKey.findUnique({
-    where: { hashedKey },
-    include: { user: true },
-  });
+  const row = await getDb().apiKey.findUnique({ where: { hashedKey }, include: { user: true } });
   if (!row) return null;
   if (row.expiresAt && row.expiresAt.getTime() <= Date.now()) return null;
-  await getDb().apiKey.update({
-    where: { id: row.id },
-    data: { lastUsedAt: new Date() },
-  });
-  return row.user;
+  await getDb().apiKey.update({ where: { id: row.id }, data: { lastUsedAt: new Date() } });
+  const { user, ...apiKey } = row;
+  return { user, apiKey };
+}
+
+export async function verifyApiKey(fullKey: string): Promise<User | null> {
+  return (await verifyApiKeyWithRecord(fullKey))?.user ?? null;
 }
 
 export function listApiKeys(userId: string): Promise<ApiKeySummary[]> {
