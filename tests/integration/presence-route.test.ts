@@ -19,10 +19,11 @@ const mockClient = {
 };
 
 let cookie: string;
+let orgId: string;
 
 beforeAll(async () => {
   setupTestDb();
-  ({ cookie } = await createTestUserAndSession());
+  ({ cookie, orgId } = await createTestUserAndSession());
 });
 
 beforeEach(async () => {
@@ -31,6 +32,13 @@ beforeEach(async () => {
   mockClient.listMemberIds.mockResolvedValue({});
   mockClient.listPeers.mockResolvedValue([]);
   await getDb().memberPresence.deleteMany();
+  // Seed NWID's meta as belonging to the caller's active org so org-scoped
+  // gating (assertNetworkInOrg) finds it.
+  await getDb().networkMeta.upsert({
+    where: { nwid: NWID },
+    create: { nwid: NWID, name: 'lan', description: '', orgId },
+    update: { orgId },
+  });
 });
 
 afterAll(async () => {
@@ -60,5 +68,18 @@ describe('presence route', () => {
     const body = await res.json();
     expect(body.presence.deadbeef01.samples).toEqual([true]);
     expect(typeof body.presence.deadbeef01.lastSeen).toBe('string');
+  });
+
+  it('404s for a network outside the caller’s org', async () => {
+    const OTHER_NWID = 'aaaa000011112222';
+    await getDb().networkMeta.create({
+      data: { nwid: OTHER_NWID, name: 'other', description: '', orgId: 'some-other-org-id' },
+    });
+    const res = await presenceGet(req(`http://x/api/v1/networks/${OTHER_NWID}/presence`), {
+      params: Promise.resolve({ nwid: OTHER_NWID }),
+    });
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe('NOT_FOUND');
+    await getDb().networkMeta.delete({ where: { nwid: OTHER_NWID } });
   });
 });
