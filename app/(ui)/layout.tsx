@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { DegradedBanner } from '@/components/DegradedBanner';
+import { OrgSwitcher } from '@/components/OrgSwitcher';
 import { SignOutButton } from '@/components/SignOutButton';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
@@ -30,6 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="mt-auto px-6 py-5 flex flex-col gap-3 items-start">
+          <OrgSwitcher className="w-full" />
           <ThemeToggle className="text-sm text-on-dark-faint hover:text-on-primary" />
           <SignOutButton />
         </div>
