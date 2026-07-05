@@ -1,8 +1,19 @@
 node_modules/
 .next/
 .env
+.env*
+!.env.example
 *.db
 *.db-journal
 next-env.d.ts
 *.log
 tsconfig.tsbuildinfo
+coverage/
+
+# Claude Code local files
+.claude/settings.local.json
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# Superpowers session artifacts
+.superpowers/
