@@ -64,8 +64,8 @@ String-typed enums (consistent with the existing `role` field and SQLite).
   role at creation; super-admin instance keys may have `orgId = null`).
 - **`AuditLog`** — add `orgId String?` (null for instance-level actions).
 - **`NetworkTemplate`** — add `orgId` (templates become org-scoped).
-- **Webhook config** — the current global `Setting` becomes per-org (model/keying detail
-  settled in the plan).
+- **Webhook config** — the current global `Setting` becomes per-org via **org-prefixed
+  `Setting` keys** (e.g. `webhook:{orgId}:…`); no new table.
 
 **Ownership derivation:** `MemberMeta` stays keyed by `(nwid, memberId)`; its org is derived
 through the parent `NetworkMeta.orgId` — one source of truth per network's org.
@@ -134,6 +134,10 @@ Prisma migration adds the new tables/columns, makes `passwordHash` nullable, add
 `owner` membership in a freshly created default org — a new install matches a migrated one.
 Remains a no-op once any user exists.
 
+**Super-admin visibility in orgs:** super-admins are not listed as org members by default.
+When a super-admin acts in an org, that presence is surfaced only to the org's **owners/admins
+and other super-admins** — editors and viewers never see phantom super-admin members.
+
 **Orphan guard:** a network whose `NetworkMeta.orgId` matches no org is visible only to
 super-admins in an "unassigned" view, never silently to a tenant. Deleting an org requires
 first reassigning/deleting its networks (owner action) — no accidental cascade-delete of
@@ -145,7 +149,8 @@ All under `/api/v1`. Reuses the existing error envelope; adds `403 FORBIDDEN`. A
 zod-validated; `GET /openapi.json` regenerates.
 
 **New — org management**
-- `GET /orgs` · `POST /orgs` (creator → `owner`) · `GET/PATCH/DELETE /orgs/{orgId}`
+- `GET /orgs` · `POST /orgs` (**super-admin only**; creator → `owner`) ·
+  `GET/PATCH/DELETE /orgs/{orgId}`
 - `POST /orgs/{orgId}/active` — set the session's `activeOrgId` (org-switcher)
 
 **New — members & roles (org-scoped)**
@@ -221,10 +226,11 @@ unblocked by this design).
 After Phase 2 the system is correctly authorized; Phases 3–4 add the multi-org and
 onboarding surface.
 
-## 11. Open items to confirm during planning
+## 11. Resolved planning questions
 
-- Webhook config storage: dedicated per-org model vs. org-prefixed `Setting` keys.
-- Whether super-admins also implicitly appear in every org's member list, or only via the
-  explicit `*`-scope admin view.
-- Slug generation/collision policy for `Organization.slug`.
-- Whether `POST /orgs` is super-admin-only or any authenticated user may create an org.
+- **Org creation** — super-admin only.
+- **Webhook config storage** — org-prefixed `Setting` keys (`webhook:{orgId}:…`); no new table.
+- **Super-admin visibility in orgs** — limited to the org's owners/admins and other
+  super-admins; not shown to editors/viewers.
+- **Org slug** — derive from the name via slugify (lowercase, non-alphanumerics → hyphens,
+  trimmed); on collision append a short suffix (`-2`, `-3`, …) until unique. Stored unique.
