@@ -47,13 +47,14 @@ const mockClient = {
 };
 
 let cookie: string;
+let orgId: string;
 
 beforeAll(async () => {
   setupTestDb();
-  ({ cookie } = await createTestUserAndSession());
+  ({ cookie, orgId } = await createTestUserAndSession());
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
   (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
   mockClient.getStatus.mockResolvedValue({ address: 'abcdef0123', online: true, version: '1.14.2' });
@@ -63,6 +64,13 @@ beforeEach(() => {
   mockClient.updateNetwork.mockResolvedValue(fakeNet);
   mockClient.deleteNetwork.mockResolvedValue(undefined);
   mockClient.listMemberIds.mockResolvedValue({});
+  // Seed NWID's meta as belonging to the caller's active org so org-scoped
+  // reads/writes (listNetworksForOrg / getNetworkForOrg) find it.
+  await getDb().networkMeta.upsert({
+    where: { nwid: NWID },
+    create: { nwid: NWID, name: 'lan', description: '', orgId },
+    update: { orgId },
+  });
 });
 
 afterAll(async () => {
@@ -194,5 +202,45 @@ describe('networks routes', () => {
     const res = await listGet(req('http://x/api/v1/networks', 'GET'));
     expect(res.status).toBe(502);
     expect((await res.json()).error.code).toBe('CONTROLLER_UNREACHABLE');
+  });
+
+  it('403s an editor-less (viewer) session on POST', async () => {
+    const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
+    const res = await createPost(
+      new Request('http://x/api/v1/networks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', cookie: viewerCookie },
+        body: '{}',
+      }),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('GET /networks lists only the active org’s networks', async () => {
+    // A second org's network (different NWID, different orgId meta) must not
+    // appear for this caller.
+    const OTHER_NWID = 'fedcba9876543210';
+    await getDb().networkMeta.create({
+      data: { nwid: OTHER_NWID, name: 'other', description: '', orgId: 'some-other-org-id' },
+    });
+    mockClient.listNetworkIds.mockResolvedValue([NWID, OTHER_NWID]);
+    const res = await listGet(req('http://x/api/v1/networks', 'GET'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.networks.every((n: any) => n.nwid === NWID)).toBe(true);
+    await getDb().networkMeta.delete({ where: { nwid: OTHER_NWID } });
+  });
+
+  it('GET /networks/{nwid} 404s for a network outside the caller’s org', async () => {
+    const OTHER_NWID = 'aaaa000011112222';
+    await getDb().networkMeta.create({
+      data: { nwid: OTHER_NWID, name: 'other', description: '', orgId: 'some-other-org-id' },
+    });
+    const res = await detailGet(req(`http://x/api/v1/networks/${OTHER_NWID}`, 'GET'), {
+      params: Promise.resolve({ nwid: OTHER_NWID }),
+    });
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe('NOT_FOUND');
+    await getDb().networkMeta.delete({ where: { nwid: OTHER_NWID } });
   });
 });
