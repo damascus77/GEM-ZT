@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/api/auth';
-import { handleRouteError } from '@/lib/api/errors';
+import { requireOrgRole } from '@/lib/api/authz';
+import { apiError, handleRouteError } from '@/lib/api/errors';
+import { assertNetworkInOrg } from '@/lib/services/networks';
 import { listMembers } from '@/lib/services/members';
 import { sampleNetworkPresence } from '@/lib/services/presence';
 import { notifyNewUnauthorizedMembers } from '@/lib/services/webhooks';
@@ -43,10 +44,13 @@ async function maybeCheckNewMemberWebhook(nwid: string, now: number): Promise<vo
 }
 
 export async function GET(req: Request, { params }: Ctx) {
-  const auth = await requireAuth(req);
+  const auth = await requireOrgRole(req, 'member:read');
   if (auth instanceof Response) return auth;
   try {
     const { nwid } = await params;
+    if (!(await assertNetworkInOrg(nwid, auth.orgId!))) {
+      return apiError('NOT_FOUND', `Network ${nwid} not found.`, 404);
+    }
     const members = await listMembers(nwid);
     const now = Date.now();
     await maybeSamplePresence(nwid, now);

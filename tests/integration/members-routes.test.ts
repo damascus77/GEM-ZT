@@ -43,13 +43,14 @@ const mockClient = {
 };
 
 let cookie: string;
+let orgId: string;
 
 beforeAll(async () => {
   setupTestDb();
-  ({ cookie } = await createTestUserAndSession());
+  ({ cookie, orgId } = await createTestUserAndSession());
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
   (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
   mockClient.listMemberIds.mockResolvedValue({ [MID]: 1 });
@@ -57,6 +58,13 @@ beforeEach(() => {
   mockClient.updateMember.mockResolvedValue({ ...fakeMember, authorized: true });
   mockClient.deleteMember.mockResolvedValue(undefined);
   mockClient.listPeers.mockResolvedValue([]);
+  // Seed NWID's meta as belonging to the caller's active org so org-scoped
+  // gating (assertNetworkInOrg) finds it.
+  await getDb().networkMeta.upsert({
+    where: { nwid: NWID },
+    create: { nwid: NWID, name: 'lan', description: '', orgId },
+    update: { orgId },
+  });
 });
 
 afterAll(async () => {
@@ -154,5 +162,45 @@ describe('members routes', () => {
     expect(res.status).toBe(204);
     const audit = await getDb().auditLog.findFirst({ where: { action: 'member.delete' } });
     expect(audit?.targetId).toBe(`${NWID}/${MID}`);
+  });
+
+  it('403s a viewer session on PATCH (member:write required)', async () => {
+    const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
+    const res = await memberPatch(
+      new Request(`http://x/api/v1/networks/${NWID}/members/${MID}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', cookie: viewerCookie },
+        body: JSON.stringify({ authorized: true }),
+      }),
+      { params: Promise.resolve({ nwid: NWID, memberId: MID }) },
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('GET /members 404s for a network outside the caller’s org', async () => {
+    const OTHER_NWID = 'aaaa000011112222';
+    await getDb().networkMeta.create({
+      data: { nwid: OTHER_NWID, name: 'other', description: '', orgId: 'some-other-org-id' },
+    });
+    const res = await membersGet(req(`http://x/api/v1/networks/${OTHER_NWID}/members`, 'GET'), {
+      params: Promise.resolve({ nwid: OTHER_NWID }),
+    });
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe('NOT_FOUND');
+    await getDb().networkMeta.delete({ where: { nwid: OTHER_NWID } });
+  });
+
+  it('GET single member 404s for a network outside the caller’s org', async () => {
+    const OTHER_NWID = 'bbbb000011112222';
+    await getDb().networkMeta.create({
+      data: { nwid: OTHER_NWID, name: 'other', description: '', orgId: 'some-other-org-id' },
+    });
+    const res = await memberGet(
+      req(`http://x/api/v1/networks/${OTHER_NWID}/members/${MID}`, 'GET'),
+      { params: Promise.resolve({ nwid: OTHER_NWID, memberId: MID }) },
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe('NOT_FOUND');
+    await getDb().networkMeta.delete({ where: { nwid: OTHER_NWID } });
   });
 });
