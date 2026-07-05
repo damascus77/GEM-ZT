@@ -17,10 +17,11 @@ const mockClient = {
 };
 
 let cookie: string;
+let orgId: string;
 
 beforeAll(async () => {
   setupTestDb();
-  ({ cookie } = await createTestUserAndSession());
+  ({ cookie, orgId } = await createTestUserAndSession());
 });
 
 beforeEach(async () => {
@@ -37,6 +38,11 @@ beforeEach(async () => {
     rules: config.rules,
   }));
   await getDb().networkMeta.deleteMany();
+  // Seed NWID's meta as belonging to the caller's active org so org-scoped
+  // gating (assertNetworkInOrg) finds it.
+  await getDb().networkMeta.create({
+    data: { nwid: NWID, name: 'lan', description: '', orgId },
+  });
 });
 
 afterAll(async () => {
@@ -150,5 +156,32 @@ describe('rules routes', () => {
     const res = await rulesPut(req('PUT', { nope: true }), { params: Promise.resolve({ nwid: NWID }) });
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('403s a viewer session on PUT (rules:write required)', async () => {
+    const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
+    const res = await rulesPut(
+      new Request(`http://x/api/v1/networks/${NWID}/rules`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', cookie: viewerCookie },
+        body: JSON.stringify({ source: 'accept;' }),
+      }),
+      { params: Promise.resolve({ nwid: NWID }) },
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('GET /rules 404s for a network outside the caller’s org', async () => {
+    const OTHER_NWID = 'aaaa000011112222';
+    await getDb().networkMeta.create({
+      data: { nwid: OTHER_NWID, name: 'other', description: '', orgId: 'some-other-org-id' },
+    });
+    const res = await rulesGet(
+      new Request(`http://x/api/v1/networks/${OTHER_NWID}/rules`, { headers: { cookie } }),
+      { params: Promise.resolve({ nwid: OTHER_NWID }) },
+    );
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe('NOT_FOUND');
+    await getDb().networkMeta.delete({ where: { nwid: OTHER_NWID } });
   });
 });
