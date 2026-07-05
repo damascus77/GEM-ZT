@@ -13,6 +13,7 @@ import {
   PATCH as detailPatch,
   DELETE as detailDelete,
 } from '@/app/api/v1/networks/[nwid]/route';
+import { POST as clonePost } from '@/app/api/v1/networks/[nwid]/clone/route';
 
 const NWID = 'abcdef0123456789';
 
@@ -242,5 +243,53 @@ describe('networks routes', () => {
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe('NOT_FOUND');
     await getDb().networkMeta.delete({ where: { nwid: OTHER_NWID } });
+  });
+
+  describe('POST /networks/{nwid}/clone', () => {
+    const CLONE_NWID = 'cccc000011112222';
+
+    beforeEach(() => {
+      mockClient.createNetwork.mockResolvedValue({ ...fakeNet, id: CLONE_NWID, name: 'lan (copy)' });
+    });
+
+    it('clones into the caller’s org and audits', async () => {
+      const res = await clonePost(req(`http://x/api/v1/networks/${NWID}/clone`, 'POST'), {
+        params: Promise.resolve({ nwid: NWID }),
+      });
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.network.nwid).toBe(CLONE_NWID);
+      const meta = await getDb().networkMeta.findUnique({ where: { nwid: CLONE_NWID } });
+      expect(meta?.orgId).toBe(orgId);
+      const audit = await getDb().auditLog.findFirst({ where: { action: 'network.clone' } });
+      expect(audit?.targetId).toBe(CLONE_NWID);
+      expect(audit?.orgId).toBe(orgId);
+      await getDb().networkMeta.deleteMany({ where: { nwid: CLONE_NWID } });
+    });
+
+    it('403s an editor-less (viewer) session', async () => {
+      const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
+      const res = await clonePost(
+        new Request(`http://x/api/v1/networks/${NWID}/clone`, {
+          method: 'POST',
+          headers: { cookie: viewerCookie },
+        }),
+        { params: Promise.resolve({ nwid: NWID }) },
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it('404s for a source network outside the caller’s org', async () => {
+      const OTHER_NWID = 'dddd000011112222';
+      await getDb().networkMeta.create({
+        data: { nwid: OTHER_NWID, name: 'other', description: '', orgId: 'some-other-org-id' },
+      });
+      const res = await clonePost(req(`http://x/api/v1/networks/${OTHER_NWID}/clone`, 'POST'), {
+        params: Promise.resolve({ nwid: OTHER_NWID }),
+      });
+      expect(res.status).toBe(404);
+      expect((await res.json()).error.code).toBe('NOT_FOUND');
+      await getDb().networkMeta.delete({ where: { nwid: OTHER_NWID } });
+    });
   });
 });
