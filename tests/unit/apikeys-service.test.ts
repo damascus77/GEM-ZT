@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
 import { createUser } from '@/lib/services/auth';
+import { createOrg } from '@/lib/services/orgs';
 import {
   generateApiKey,
   createApiKey,
@@ -12,11 +13,17 @@ import {
 } from '@/lib/services/apiKeys';
 
 let userId: string;
+let orgId: string;
+let otherOrgId: string;
 
 beforeAll(async () => {
   setupTestDb();
   const user = await createUser('admin', 'password12345');
   userId = user.id;
+  const org = await createOrg({ name: 'Org A', createdById: userId });
+  orgId = org.id;
+  const otherOrg = await createOrg({ name: 'Org B', createdById: userId });
+  otherOrgId = otherOrg.id;
 });
 
 afterAll(async () => {
@@ -55,12 +62,42 @@ describe('api key service', () => {
     expect(await verifyApiKey(fullKey)).toBeNull();
   });
 
-  it('lists and deletes keys scoped to the user', async () => {
-    const keys = await listApiKeys(userId);
-    expect(keys.length).toBeGreaterThanOrEqual(3);
-    const target = keys[0];
-    expect(await deleteApiKey(target.id, 'someone-else')).toBe(false);
-    expect(await deleteApiKey(target.id, userId)).toBe(true);
-    expect((await listApiKeys(userId)).map((k) => k.id)).not.toContain(target.id);
+  it('lists and deletes keys scoped to the user and org', async () => {
+    const { apiKey } = await createApiKey(userId, 'scoped-key', undefined, {
+      orgId,
+      role: 'admin',
+    });
+    const keys = await listApiKeys(userId, orgId);
+    expect(keys.length).toBeGreaterThanOrEqual(1);
+    expect(keys.map((k) => k.id)).toContain(apiKey.id);
+    expect(await deleteApiKey(apiKey.id, 'someone-else', orgId)).toBe(false);
+    expect(await deleteApiKey(apiKey.id, userId, orgId)).toBe(true);
+    expect((await listApiKeys(userId, orgId)).map((k) => k.id)).not.toContain(apiKey.id);
+  });
+
+  it('scopes list to the active org — keys from another org are excluded', async () => {
+    const { apiKey: keyA } = await createApiKey(userId, 'org-a-key', undefined, {
+      orgId,
+      role: 'viewer',
+    });
+    const { apiKey: keyB } = await createApiKey(userId, 'org-b-key', undefined, {
+      orgId: otherOrgId,
+      role: 'viewer',
+    });
+    const orgAKeys = (await listApiKeys(userId, orgId)).map((k) => k.id);
+    expect(orgAKeys).toContain(keyA.id);
+    expect(orgAKeys).not.toContain(keyB.id);
+    const orgBKeys = (await listApiKeys(userId, otherOrgId)).map((k) => k.id);
+    expect(orgBKeys).toContain(keyB.id);
+    expect(orgBKeys).not.toContain(keyA.id);
+  });
+
+  it('scopes delete to the org — cannot delete a key belonging to another org', async () => {
+    const { apiKey } = await createApiKey(userId, 'org-a-only', undefined, {
+      orgId,
+      role: 'viewer',
+    });
+    expect(await deleteApiKey(apiKey.id, userId, otherOrgId)).toBe(false);
+    expect(await deleteApiKey(apiKey.id, userId, orgId)).toBe(true);
   });
 });

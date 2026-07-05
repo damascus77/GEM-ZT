@@ -68,15 +68,15 @@ export async function verifyApiKey(fullKey: string): Promise<User | null> {
   return (await verifyApiKeyWithRecord(fullKey))?.user ?? null;
 }
 
-export function listApiKeys(userId: string): Promise<ApiKeySummary[]> {
+export function listApiKeys(userId: string, orgId: string): Promise<ApiKeySummary[]> {
   return getDb().apiKey.findMany({
-    where: { userId },
+    where: { userId, orgId },
     select: summarySelect,
     orderBy: { createdAt: 'desc' },
   });
 }
 
-export async function deleteApiKey(id: string, userId: string): Promise<boolean> {
-  const result = await getDb().apiKey.deleteMany({ where: { id, userId } });
+export async function deleteApiKey(id: string, userId: string, orgId: string): Promise<boolean> {
+  const result = await getDb().apiKey.deleteMany({ where: { id, userId, orgId } });
   return result.count === 1;
 }
