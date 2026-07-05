@@ -9,6 +9,13 @@ export class LastOwnerError extends Error {
   }
 }
 
+export class OrgNotEmptyError extends Error {
+  constructor() {
+    super('This organization still has networks assigned to it. Reassign or delete them first.');
+    this.name = 'OrgNotEmptyError';
+  }
+}
+
 export function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -40,6 +47,19 @@ export async function createOrg(input: {
     data: { orgId: org.id, userId: input.createdById, role: 'owner' },
   });
   return org;
+}
+
+export function renameOrg(orgId: string, name: string): Promise<Organization> {
+  return getDb().organization.update({ where: { id: orgId }, data: { name } });
+}
+
+export async function deleteOrg(orgId: string): Promise<void> {
+  const networkCount = await getDb().networkMeta.count({ where: { orgId } });
+  if (networkCount > 0) {
+    throw new OrgNotEmptyError();
+  }
+  // Memberships/invitations cascade via the schema's onDelete: Cascade FK.
+  await getDb().organization.delete({ where: { id: orgId } });
 }
 
 export function getMembership(userId: string, orgId: string): Promise<Membership | null> {

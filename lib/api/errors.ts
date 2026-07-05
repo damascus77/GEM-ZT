@@ -8,6 +8,7 @@ import { invalidateControllerClient } from '@/lib/controller';
 import { AuthTokenError } from '@/lib/controller/token';
 import { RulesCompileError } from '@/lib/rules/compiler';
 import { TemplateNameTakenError } from '@/lib/services/templates';
+import { OrgNotEmptyError } from '@/lib/services/orgs';
 
 export function apiError(
   code: string,
@@ -42,6 +43,9 @@ export function handleRouteError(e: unknown): Response {
   }
   if (e instanceof TemplateNameTakenError) {
     return apiError('TEMPLATE_NAME_TAKEN', e.message, 409);
+  }
+  if (e instanceof OrgNotEmptyError) {
+    return apiError('ORG_NOT_EMPTY', e.message, 409);
   }
   if (e instanceof ControllerApiError && e.status === 404) {
     return apiError('NOT_FOUND', 'Resource not found on the controller.', 404);
