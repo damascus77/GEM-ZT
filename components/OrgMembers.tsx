@@ -251,8 +251,6 @@ export function OrgMembers({ orgId }: { orgId: string }) {
           )}
         </Card>
       )}
-
-      {/* Invitations panel (Task 17) will render here once built. */}
     </div>
   );
 }
