@@ -1,0 +1,17 @@
+node_modules/
+.next/
+dist/
+build/
+coverage/
+*.log
+.env
+.env.local
+.env.*.local
+lib/rules/vendor/
+*.min.js
+*.min.css
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.DS_Store
+*.tsbuildinfo

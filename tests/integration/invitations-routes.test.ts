@@ -83,6 +83,17 @@ describe('POST /orgs/{orgId}/invitations', () => {
     expect(body.error.code).toBe('FORBIDDEN');
   });
 
+  it('403s an admin (non-owner) inviting a peer admin (role cap)', async () => {
+    const { cookie, orgId } = await createTestUserAndSession({ role: 'admin' });
+    const res = await invitationsPost(
+      req(`http://x/orgs/${orgId}/invitations`, 'POST', cookie, { role: 'admin' }),
+      { params: Promise.resolve({ orgId }) }
+    );
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error.code).toBe('FORBIDDEN');
+  });
+
   it('201s an owner inviting with role: owner', async () => {
     const { cookie, orgId } = await createTestUserAndSession({ role: 'owner' });
     const res = await invitationsPost(

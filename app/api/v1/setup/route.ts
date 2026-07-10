@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiError, handleRouteError } from '@/lib/api/errors';
@@ -33,6 +34,20 @@ export async function POST(req: Request) {
       return apiError('RATE_LIMITED', 'Too many setup attempts. Try again later.', 429, {
         'Retry-After': String(Math.ceil(gate.retryAfterMs / 1000)),
       });
+    }
+    // If GEMZT_SETUP_TOKEN is set, require it in the X-Setup-Token header.
+    // This provides a persistent out-of-band gate that survives process restarts,
+    // complementing the in-process rate limiter.
+    const setupToken = process.env.GEMZT_SETUP_TOKEN;
+    if (setupToken) {
+      const provided = req.headers.get('x-setup-token') ?? '';
+      // Hash both sides — SHA-256 digests are always 32 bytes, so timingSafeEqual
+      // never throws ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH regardless of token encoding.
+      const hash = (s: string) => createHash('sha256').update(s).digest();
+      const match = timingSafeEqual(hash(provided), hash(setupToken));
+      if (!match) {
+        return apiError('FORBIDDEN', 'Invalid or missing setup token.', 403);
+      }
     }
     const body = setupSchema.parse(await req.json());
     if ((await userCount()) > 0) {

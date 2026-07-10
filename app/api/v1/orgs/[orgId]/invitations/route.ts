@@ -4,7 +4,7 @@ import { requireOrgRole } from '@/lib/api/authz';
 import { apiError, handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
 import { createInvitation, listInvitations } from '@/lib/services/invitations';
-import { ORG_ROLES, type OrgRole } from '@/lib/authz/roles';
+import { ORG_ROLES, ROLE_RANK, type OrgRole } from '@/lib/authz/roles';
 
 type Ctx = { params: Promise<{ orgId: string }> };
 
@@ -39,9 +39,14 @@ export async function POST(req: Request, { params }: Ctx) {
   try {
     const body = createInvitationSchema.parse(await req.json());
 
-    // Only an owner (or super-admin) may grant the owner role.
-    if (body.role === 'owner' && !auth.isSuperAdmin && auth.role !== 'owner') {
-      return apiError('FORBIDDEN', 'Only an owner may grant the owner role.', 403);
+    // Callers may only invite roles strictly below their own rank; owners (and
+    // super-admins) may invite any role. Mirrors the POST/PATCH /members caps so
+    // an admin can't escalate by inviting a higher role than they could assign
+    // directly.
+    if (!auth.isSuperAdmin && auth.role !== 'owner') {
+      if (!auth.role || ROLE_RANK[body.role] >= ROLE_RANK[auth.role]) {
+        return apiError('FORBIDDEN', 'You may not grant a role at or above your own.', 403);
+      }
     }
 
     const ttlMs = (body.ttlHours ?? DEFAULT_TTL_HOURS) * 60 * 60 * 1000;

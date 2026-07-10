@@ -4,7 +4,7 @@ import { requireOrgRole } from '@/lib/api/authz';
 import { apiError, handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
 import { getMembership, removeMember, setMemberRole, LastOwnerError } from '@/lib/services/orgs';
-import { ORG_ROLES, type OrgRole } from '@/lib/authz/roles';
+import { ORG_ROLES, ROLE_RANK, type OrgRole } from '@/lib/authz/roles';
 
 type Ctx = { params: Promise<{ orgId: string; userId: string }> };
 
@@ -25,10 +25,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
       if (body.role === 'owner') {
         return apiError('FORBIDDEN', 'Only an owner may grant the owner role.', 403);
       }
+      // ...nor grant a role at or above their own (mirrors POST handler cap).
+      if (!auth.role || ROLE_RANK[body.role] >= ROLE_RANK[auth.role]) {
+        return apiError('FORBIDDEN', 'You may not grant a role at or above your own.', 403);
+      }
       // ...nor change the role of an existing owner.
       const current = await getMembership(userId, orgId);
       if (current?.role === 'owner') {
-        return apiError('FORBIDDEN', 'Only an owner may change another owner’s role.', 403);
+        return apiError('FORBIDDEN', "Only an owner may change another owner's role.", 403);
       }
     }
 
@@ -55,6 +59,13 @@ export async function DELETE(req: Request, { params }: Ctx) {
   const auth = await requireOrgRole(req, 'org:manage-members', { orgId });
   if (auth instanceof Response) return auth;
   try {
+    // Admins may not remove an owner -- same guard as PATCH's role-change block.
+    if (!auth.isSuperAdmin && auth.role !== 'owner') {
+      const target = await getMembership(userId, orgId);
+      if (target?.role === 'owner') {
+        return apiError('FORBIDDEN', 'Only an owner may remove another owner.', 403);
+      }
+    }
     await removeMember(orgId, userId);
     await logAudit({
       userId: auth.user.id,

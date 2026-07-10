@@ -152,6 +152,19 @@ describe('POST /orgs/{orgId}/members (direct-create)', () => {
     expect(res.status).toBe(403);
   });
 
+  it('403s an admin trying to create a peer admin (role cap)', async () => {
+    const { cookie, orgId } = await createTestUserAndSession({ role: 'admin' });
+    const res = await membersPost(
+      req(`http://x/orgs/${orgId}/members`, 'POST', cookie, {
+        username: `peeradmin_${Date.now()}`,
+        password: 'password12345',
+        role: 'admin',
+      }),
+      { params: Promise.resolve({ orgId }) }
+    );
+    expect(res.status).toBe(403);
+  });
+
   it('allows an owner to create another owner', async () => {
     const { cookie, orgId } = await createTestUserAndSession(); // owner
     const res = await membersPost(
@@ -246,6 +259,19 @@ describe('PATCH /orgs/{orgId}/members/{userId}', () => {
       { params: Promise.resolve({ orgId, userId: target.id }) }
     );
     expect(res.status).toBe(403);
+  });
+
+  it('403s an admin promoting a viewer to a peer admin (role cap)', async () => {
+    const { cookie, orgId } = await createTestUserAndSession({ role: 'admin' });
+    const target = await createUser(`peerpromote_${Date.now()}`, 'password12345');
+    await addMembership(orgId, target.id, 'viewer');
+    const res = await memberPatch(
+      req(`http://x/orgs/${orgId}/members/${target.id}`, 'PATCH', cookie, { role: 'admin' }),
+      { params: Promise.resolve({ orgId, userId: target.id }) }
+    );
+    expect(res.status).toBe(403);
+    const membership = await getMembership(target.id, orgId);
+    expect(membership?.role).toBe('viewer');
   });
 
   it('403s an admin changing an existing owner role', async () => {

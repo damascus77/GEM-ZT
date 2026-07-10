@@ -18,6 +18,7 @@ const acceptSchema = z
   .object({
     username: z.string().min(3).max(32),
     password: z.string().min(10).max(128),
+    email: z.string().email().optional(),
   })
   .strict();
 
@@ -36,9 +37,10 @@ export async function POST(req: Request, { params }: Ctx) {
       token,
       username: body.username,
       password: body.password,
+      email: body.email,
     });
     if ('error' in result) {
-      acceptLimiter.recordFailure(ipKey);
+      if (result.error !== 'SESSION_ERROR') acceptLimiter.recordFailure(ipKey);
       switch (result.error) {
         case 'INVALID':
           return apiError('NOT_FOUND', 'Invitation not found.', 404);
@@ -48,6 +50,16 @@ export async function POST(req: Request, { params }: Ctx) {
           return apiError('INVITATION_USED', 'This invitation has already been used.', 409);
         case 'USERNAME_TAKEN':
           return apiError('USERNAME_TAKEN', 'That username is already in use.', 409);
+        case 'EMAIL_MISMATCH':
+          return apiError(
+            'FORBIDDEN',
+            'This invitation was issued to a different email address.',
+            403
+          );
+        case 'SESSION_ERROR':
+          // Account and membership were created; session setup failed. Client
+          // should redirect to /login to establish a session.
+          return apiError('SESSION_ERROR', 'Account created. Please log in to continue.', 503);
       }
     }
     acceptLimiter.reset(ipKey);

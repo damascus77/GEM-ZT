@@ -61,8 +61,11 @@ export async function POST(req: Request) {
     }
     if (user.totpEnabled) {
       if (!body.totp) {
-        // Not a failed credential attempt — the client just needs to prompt for
-        // a 2FA code next, so don't count it against the rate limiter.
+        // Charge the IP limiter only: prevents spraying many TOTP accounts to
+        // oracle correct passwords across usernames. Do NOT charge the per-
+        // username limiter — that would lock out a two-step UI (password first,
+        // TOTP second) after only a few legitimate step-1 submissions.
+        ipLimiter.recordFailure(ipKey);
         return apiError('TOTP_REQUIRED', 'A two-factor authentication code is required.', 401);
       }
       if (!verifyTotp(user.totpSecret!, body.totp)) {
@@ -72,6 +75,9 @@ export async function POST(req: Request) {
       }
     }
     loginLimiter.reset(rlKey);
+    // Reset the IP limiter on success so legitimate TOTP users (whose step-1
+    // password submission charges the IP limiter) don't exhaust the shared
+    // IP slot for everyone behind the same NAT.
     ipLimiter.reset(ipKey);
     // Opportunistic, self-throttled cleanup of expired sessions / old audit rows.
     await runRetention();

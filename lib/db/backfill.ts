@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db/client';
-import { createOrg, addMembership, getMembership } from '@/lib/services/orgs';
+import { createOrg } from '@/lib/services/orgs';
 import { getWebhookConfig, setWebhookConfig } from '@/lib/services/webhooks';
 
 export const DEFAULT_ORG_SLUG = 'default';
@@ -38,11 +38,15 @@ export async function ensureDefaultOrgAndBackfill(): Promise<{ orgId: string } |
   await db.user.updateMany({ where: { role: 'admin' }, data: { role: 'superadmin' } });
 
   // Every user gets an owner membership in the default org if they have none.
+  // Use upsert to handle concurrent boots: two workers racing through this
+  // loop would both pass a getMembership null-check and hit a P2002 on create.
   const users = await db.user.findMany({ select: { id: true } });
   for (const u of users) {
-    if (!(await getMembership(u.id, orgId))) {
-      await addMembership(orgId, u.id, 'owner');
-    }
+    await db.membership.upsert({
+      where: { userId_orgId: { userId: u.id, orgId } },
+      create: { orgId, userId: u.id, role: 'owner' },
+      update: {},
+    });
   }
 
   // Attribute ownerless rows to the default org.

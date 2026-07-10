@@ -49,9 +49,10 @@ export async function requireOrgRole(
     return ctx(auth.user, true, orgId, 'owner');
   }
   if (!orgId || !role) return apiError('FORBIDDEN', 'No access to any organization.', 403);
-  // Defense-in-depth no-op: resolveActiveOrg already sets orgId from opts.orgId and
-  // re-validates membership itself, so a non-member org is already denied above via
-  // the `!orgId || !role` branch; this check can never actually be reached as false.
+  // For session auth, resolveActiveOrg already re-validates membership, so this
+  // branch is unreachable. For API-key auth, resolveActiveOrg returns the key's
+  // bound orgId and ignores requestedOrgId entirely — making this the only guard
+  // that prevents a key scoped to org-A from accessing org-B routes. Do not remove.
   if (opts?.orgId && opts.orgId !== orgId) {
     return apiError('FORBIDDEN', 'Not a member of this organization.', 403);
   }

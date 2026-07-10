@@ -69,14 +69,19 @@ export async function verifyApiKey(fullKey: string): Promise<User | null> {
 }
 
 export function listApiKeys(userId: string, orgId: string): Promise<ApiKeySummary[]> {
+  // Also include pre-migration keys (orgId: null) so users can manage legacy
+  // credentials that the backfill hasn't attributed to an org yet.
   return getDb().apiKey.findMany({
-    where: { userId, orgId },
+    where: { userId, OR: [{ orgId }, { orgId: null }] },
     select: summarySelect,
     orderBy: { createdAt: 'desc' },
   });
 }
 
 export async function deleteApiKey(id: string, userId: string, orgId: string): Promise<boolean> {
-  const result = await getDb().apiKey.deleteMany({ where: { id, userId, orgId } });
+  // Include orgId: null so pre-migration keys (not yet backfilled) can be revoked.
+  const result = await getDb().apiKey.deleteMany({
+    where: { id, userId, OR: [{ orgId }, { orgId: null }] },
+  });
   return result.count === 1;
 }

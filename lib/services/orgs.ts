@@ -58,8 +58,13 @@ export async function deleteOrg(orgId: string): Promise<void> {
   if (networkCount > 0) {
     throw new OrgNotEmptyError();
   }
-  // Memberships/invitations cascade via the schema's onDelete: Cascade FK.
-  await getDb().organization.delete({ where: { id: orgId } });
+  // Revoke org-scoped API keys and delete the org atomically. ApiKey.orgId has
+  // no FK cascade, so keys would survive and authenticate against a deleted org
+  // without this cleanup. Memberships/invitations cascade via schema onDelete.
+  await getDb().$transaction([
+    getDb().apiKey.deleteMany({ where: { orgId } }),
+    getDb().organization.delete({ where: { id: orgId } }),
+  ]);
 }
 
 export function getMembership(userId: string, orgId: string): Promise<Membership | null> {
@@ -106,5 +111,10 @@ export async function removeMember(orgId: string, userId: string): Promise<void>
   if (current?.role === 'owner' && (await ownerCount(orgId)) <= 1) {
     throw new LastOwnerError();
   }
-  await getDb().membership.deleteMany({ where: { orgId, userId } });
+  // Delete the membership and all org-scoped API keys atomically so a removed
+  // member can never retain API access via a surviving credential.
+  await getDb().$transaction([
+    getDb().membership.deleteMany({ where: { orgId, userId } }),
+    getDb().apiKey.deleteMany({ where: { userId, orgId } }),
+  ]);
 }

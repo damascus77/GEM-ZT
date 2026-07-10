@@ -6,7 +6,7 @@ import { apiError, handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
 import { addMembership, listMembersOfOrg } from '@/lib/services/orgs';
 import { createUser } from '@/lib/services/auth';
-import { ORG_ROLES, type OrgRole } from '@/lib/authz/roles';
+import { ORG_ROLES, ROLE_RANK, type OrgRole } from '@/lib/authz/roles';
 import { getDb } from '@/lib/db/client';
 
 type Ctx = { params: Promise<{ orgId: string }> };
@@ -68,9 +68,12 @@ export async function POST(req: Request, { params }: Ctx) {
   try {
     const body = createMemberSchema.parse(await req.json());
 
-    // Only an owner (or super-admin) may grant the owner role.
-    if (body.role === 'owner' && !auth.isSuperAdmin && auth.role !== 'owner') {
-      return apiError('FORBIDDEN', 'Only an owner may grant the owner role.', 403);
+    // Callers may only grant roles strictly below their own rank; owners may
+    // grant any role including owner. This mirrors the API key role-cap.
+    if (!auth.isSuperAdmin && auth.role !== 'owner') {
+      if (!auth.role || ROLE_RANK[body.role] >= ROLE_RANK[auth.role]) {
+        return apiError('FORBIDDEN', 'You may not grant a role at or above your own.', 403);
+      }
     }
 
     const existing = await getDb().user.findUnique({ where: { username: body.username } });
@@ -79,7 +82,18 @@ export async function POST(req: Request, { params }: Ctx) {
     }
 
     const user = await createUser(body.username, body.password);
-    await addMembership(orgId, user.id, body.role);
+    try {
+      await addMembership(orgId, user.id, body.role);
+    } catch (membershipErr) {
+      // createUser succeeded but addMembership failed — clean up the orphaned
+      // user account so the admin can retry without a dangling credential.
+      try {
+        await getDb().user.delete({ where: { id: user.id } });
+      } catch {
+        // Best-effort; if cleanup also fails, the orphan is logged below.
+      }
+      throw membershipErr;
+    }
     await logAudit({
       userId: auth.user.id,
       orgId,
