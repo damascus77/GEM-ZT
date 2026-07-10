@@ -1,0 +1,12 @@
+# Normalize line endings across platforms. Text files are checked out with LF
+# on every OS so files baked into the Linux container are never CRLF.
+#
+# This matters most for shell scripts: a CRLF shebang (`#!/bin/sh\r`) makes the
+# kernel look for an interpreter literally named `/bin/sh\r`, and the container
+# dies at startup with:
+#   exec: ./docker-entrypoint.sh: not found   (exit 127)
+* text=auto eol=lf
+
+# Be explicit for the script types that must be LF to execute in the image.
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf
