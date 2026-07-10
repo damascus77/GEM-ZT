@@ -45,6 +45,22 @@ RUN npm run build
 # ---- runner: minimal, non-root runtime image -------------------------------
 FROM base AS runner
 WORKDIR /app
+
+# OCI image labels (https://github.com/opencontainers/image-spec/blob/main/annotations.md).
+# IMAGE_VERSION is an ARG so CI can stamp the real release version at build time. Use
+# semantic versioning (semver.org) — 0.1.0, 0.2.0, 1.0.0, never a raw commit hash or
+# `git describe` suffix — matching the version already tracked in package.json:
+#   docker build --build-arg IMAGE_VERSION=$(node -p "require('./package.json').version") .
+# The static default below is just the fallback for a plain `docker build` with no arg;
+# keep it in sync with package.json's "version" field when you bump a release.
+ARG IMAGE_VERSION=0.1.0
+LABEL org.opencontainers.image.title="GEM-ZT" \
+      org.opencontainers.image.description="Self-hosted ZeroTier network controller web GUI + REST API. This image is the app container only — it must run alongside the zyclonite/zerotier controller image via Docker Compose; see the repo README for the required deployment model." \
+      org.opencontainers.image.source="https://github.com/damascus77/GEM-ZT" \
+      org.opencontainers.image.documentation="https://github.com/damascus77/GEM-ZT#readme" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.version="${IMAGE_VERSION}"
+
 ENV NODE_ENV=production
 # Default SQLite location so the image runs standalone (`docker run`) as well
 # as via docker-compose (which sets the same value). The directory must exist
