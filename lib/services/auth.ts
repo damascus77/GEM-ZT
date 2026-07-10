@@ -65,7 +65,7 @@ export function userCount(): Promise<number> {
 export async function createUser(
   username: string,
   password: string,
-  role: InstanceRole = 'user',
+  role: InstanceRole = 'user'
 ): Promise<User> {
   const passwordHash = await hashPassword(password);
   return getDb().user.create({ data: { username, passwordHash, role } });
@@ -105,7 +105,7 @@ export async function authenticateUser(username: string, password: string): Prom
 
 export async function login(
   username: string,
-  password: string,
+  password: string
 ): Promise<{ user: User; session: Session } | null> {
   const user = await authenticateUser(username, password);
   if (!user) return null;
@@ -113,23 +113,25 @@ export async function login(
   return { user, session };
 }
 
-export async function getSession(
-  sessionId: string,
-): Promise<(Session & { user: User }) | null> {
+export async function getSession(sessionId: string): Promise<(Session & { user: User }) | null> {
   const session = await getDb().session.findUnique({
     where: { id: sessionId },
     include: { user: true },
   });
   if (!session) return null;
   if (session.expiresAt.getTime() <= Date.now()) {
-    await getDb().session.delete({ where: { id: sessionId } }).catch(() => undefined);
+    await getDb()
+      .session.delete({ where: { id: sessionId } })
+      .catch(() => undefined);
     return null;
   }
   return session;
 }
 
 export async function logout(sessionId: string): Promise<void> {
-  await getDb().session.delete({ where: { id: sessionId } }).catch(() => undefined);
+  await getDb()
+    .session.delete({ where: { id: sessionId } })
+    .catch(() => undefined);
 }
 
 /**
@@ -156,7 +158,7 @@ export async function setPassword(userId: string, password: string): Promise<voi
  */
 export async function invalidateOtherSessions(
   userId: string,
-  exceptSessionId?: string,
+  exceptSessionId?: string
 ): Promise<number> {
   const where = exceptSessionId ? { userId, id: { not: exceptSessionId } } : { userId };
   const { count } = await getDb().session.deleteMany({ where });

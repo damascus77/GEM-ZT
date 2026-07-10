@@ -39,7 +39,7 @@ describe('POST /orgs/{orgId}/invitations', () => {
         role: 'editor',
         email: 'invitee@example.com',
       }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -58,7 +58,7 @@ describe('POST /orgs/{orgId}/invitations', () => {
     const { cookie, orgId } = await createTestUserAndSession({ role: 'editor' });
     const res = await invitationsPost(
       req(`http://x/orgs/${orgId}/invitations`, 'POST', cookie, { role: 'viewer' }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(403);
   });
@@ -67,7 +67,7 @@ describe('POST /orgs/{orgId}/invitations', () => {
     const { cookie, orgId } = await createTestUserAndSession({ role: 'admin' });
     const res = await invitationsPost(
       req(`http://x/orgs/${orgId}/invitations`, 'POST', cookie, { role: 'bogus' }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(400);
   });
@@ -76,7 +76,7 @@ describe('POST /orgs/{orgId}/invitations', () => {
     const { cookie, orgId } = await createTestUserAndSession({ role: 'admin' });
     const res = await invitationsPost(
       req(`http://x/orgs/${orgId}/invitations`, 'POST', cookie, { role: 'owner' }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(403);
     const body = await res.json();
@@ -87,7 +87,7 @@ describe('POST /orgs/{orgId}/invitations', () => {
     const { cookie, orgId } = await createTestUserAndSession({ role: 'owner' });
     const res = await invitationsPost(
       req(`http://x/orgs/${orgId}/invitations`, 'POST', cookie, { role: 'owner' }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -128,7 +128,7 @@ describe('DELETE /orgs/{orgId}/invitations/{id}', () => {
     });
     const res = await invitationDelete(
       req(`http://x/orgs/${orgId}/invitations/${invitation.id}`, 'DELETE', cookie),
-      { params: Promise.resolve({ orgId, id: invitation.id }) },
+      { params: Promise.resolve({ orgId, id: invitation.id }) }
     );
     expect(res.status).toBe(204);
     expect(await getDb().invitation.findUnique({ where: { id: invitation.id } })).toBeNull();
@@ -142,7 +142,7 @@ describe('DELETE /orgs/{orgId}/invitations/{id}', () => {
     const { cookie, orgId } = await createTestUserAndSession({ role: 'admin' });
     const res = await invitationDelete(
       req(`http://x/orgs/${orgId}/invitations/nonexistent`, 'DELETE', cookie),
-      { params: Promise.resolve({ orgId, id: 'nonexistent' }) },
+      { params: Promise.resolve({ orgId, id: 'nonexistent' }) }
     );
     expect(res.status).toBe(404);
   });
@@ -157,7 +157,7 @@ describe('DELETE /orgs/{orgId}/invitations/{id}', () => {
     });
     const res = await invitationDelete(
       req(`http://x/orgs/${orgId}/invitations/${invitation.id}`, 'DELETE', cookie),
-      { params: Promise.resolve({ orgId, id: invitation.id }) },
+      { params: Promise.resolve({ orgId, id: invitation.id }) }
     );
     expect(res.status).toBe(403);
   });
@@ -199,7 +199,7 @@ describe('GET /invitations/{token} (public preview)', () => {
   it('404s an unknown token', async () => {
     const res = await invitationPreviewGet(
       req(`http://x/invitations/inv_${'0'.repeat(48)}`, 'GET'),
-      { params: Promise.resolve({ token: `inv_${'0'.repeat(48)}` }) },
+      { params: Promise.resolve({ token: `inv_${'0'.repeat(48)}` }) }
     );
     expect(res.status).toBe(404);
   });
@@ -217,7 +217,7 @@ describe('GET /invitations/{token} (public preview)', () => {
         username: `previewused_${Date.now()}`,
         password: 'password12345',
       }),
-      { params: Promise.resolve({ token }) },
+      { params: Promise.resolve({ token }) }
     );
     const res = await invitationPreviewGet(req(`http://x/invitations/${token}`, 'GET'), {
       params: Promise.resolve({ token }),
@@ -242,7 +242,7 @@ describe('POST /invitations/{token}/accept (public)', () => {
         username,
         password: 'password12345',
       }),
-      { params: Promise.resolve({ token }) },
+      { params: Promise.resolve({ token }) }
     );
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -267,7 +267,7 @@ describe('POST /invitations/{token}/accept (public)', () => {
         username: `expiredaccept_${Date.now()}`,
         password: 'password12345',
       }),
-      { params: Promise.resolve({ token }) },
+      { params: Promise.resolve({ token }) }
     );
     expect(res.status).toBe(410);
     expect((await res.json()).error.code).toBe('INVITATION_EXPIRED');
@@ -286,7 +286,7 @@ describe('POST /invitations/{token}/accept (public)', () => {
         username: `reused1_${Date.now()}`,
         password: 'password12345',
       }),
-      { params: Promise.resolve({ token }) },
+      { params: Promise.resolve({ token }) }
     );
     expect(first.status).toBe(201);
     const second = await invitationAcceptPost(
@@ -294,7 +294,7 @@ describe('POST /invitations/{token}/accept (public)', () => {
         username: `reused2_${Date.now()}`,
         password: 'password12345',
       }),
-      { params: Promise.resolve({ token }) },
+      { params: Promise.resolve({ token }) }
     );
     expect(second.status).toBe(409);
     expect((await second.json()).error.code).toBe('INVITATION_USED');
@@ -306,7 +306,7 @@ describe('POST /invitations/{token}/accept (public)', () => {
         username: `unknownaccept_${Date.now()}`,
         password: 'password12345',
       }),
-      { params: Promise.resolve({ token: `inv_${'a'.repeat(48)}` }) },
+      { params: Promise.resolve({ token: `inv_${'a'.repeat(48)}` }) }
     );
     expect(res.status).toBe(404);
   });
@@ -325,7 +325,7 @@ describe('POST /invitations/{token}/accept (public)', () => {
         username: existingUsername,
         password: 'password12345',
       }),
-      { params: Promise.resolve({ token: t1 }) },
+      { params: Promise.resolve({ token: t1 }) }
     );
     const { token: t2 } = await createInvitation({
       orgId,
@@ -338,7 +338,7 @@ describe('POST /invitations/{token}/accept (public)', () => {
         username: existingUsername,
         password: 'password12345',
       }),
-      { params: Promise.resolve({ token: t2 }) },
+      { params: Promise.resolve({ token: t2 }) }
     );
     expect(res.status).toBe(409);
     expect((await res.json()).error.code).toBe('USERNAME_TAKEN');
@@ -357,7 +357,7 @@ describe('POST /invitations/{token}/accept (public)', () => {
         username: 'ab',
         password: 'short',
       }),
-      { params: Promise.resolve({ token }) },
+      { params: Promise.resolve({ token }) }
     );
     expect(res.status).toBe(400);
   });

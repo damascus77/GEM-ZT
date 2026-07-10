@@ -51,7 +51,7 @@ export const updateNetworkSchema = z
             target: z.string().refine(isValidCidr, { message: 'must be a valid CIDR' }),
             via: z.string().ip().nullable().optional(),
           })
-          .strict(),
+          .strict()
       )
       .max(128)
       .optional(),
@@ -62,7 +62,7 @@ export const updateNetworkSchema = z
             ipRangeStart: z.string().ip(),
             ipRangeEnd: z.string().ip(),
           })
-          .strict(),
+          .strict()
       )
       .max(64)
       .optional(),
@@ -108,7 +108,7 @@ const META_UPSERT_WARNING =
 async function toDetail(config: ControllerNetwork): Promise<NetworkDetail> {
   const meta = await getDb()
     .networkMeta.findUnique({ where: { nwid: config.id } })
-    .catch((e) => {
+    .catch(e => {
       console.error('[gem-zt] networkMeta read failed in toDetail:', e);
       return null;
     });
@@ -126,13 +126,13 @@ export async function listNetworks(): Promise<NetworkSummary[]> {
   const ids = await client.listNetworkIds();
   const metas = await getDb()
     .networkMeta.findMany({ where: { nwid: { in: ids } } })
-    .catch((e) => {
+    .catch(e => {
       console.error('[gem-zt] networkMeta read failed in listNetworks:', e);
       return [];
     });
-  const metaMap = new Map(metas.map((m) => [m.nwid, m]));
+  const metaMap = new Map(metas.map(m => [m.nwid, m]));
   return Promise.all(
-    ids.map(async (nwid) => {
+    ids.map(async nwid => {
       const [config, memberIds] = await Promise.all([
         client.getNetwork(nwid),
         client.listMemberIds(nwid),
@@ -146,7 +146,7 @@ export async function listNetworks(): Promise<NetworkSummary[]> {
         private: config.private,
         memberCount: Object.keys(memberIds).length,
       };
-    }),
+    })
   );
 }
 
@@ -155,16 +155,16 @@ export async function listNetworksForOrg(orgId: string): Promise<NetworkSummary[
   const ids = await client.listNetworkIds();
   const metas = await getDb()
     .networkMeta.findMany({ where: { nwid: { in: ids }, orgId } })
-    .catch((e) => {
+    .catch(e => {
       console.error('[gem-zt] networkMeta read failed in listNetworksForOrg:', e);
       return [];
     });
-  const owned = new Set(metas.map((m) => m.nwid));
-  const metaMap = new Map(metas.map((m) => [m.nwid, m]));
+  const owned = new Set(metas.map(m => m.nwid));
+  const metaMap = new Map(metas.map(m => [m.nwid, m]));
   return Promise.all(
     ids
-      .filter((nwid) => owned.has(nwid))
-      .map(async (nwid) => {
+      .filter(nwid => owned.has(nwid))
+      .map(async nwid => {
         const [config, memberIds] = await Promise.all([
           client.getNetwork(nwid),
           client.listMemberIds(nwid),
@@ -178,7 +178,7 @@ export async function listNetworksForOrg(orgId: string): Promise<NetworkSummary[
           private: config.private,
           memberCount: Object.keys(memberIds).length,
         };
-      }),
+      })
   );
 }
 
@@ -189,10 +189,7 @@ export async function assertNetworkInOrg(nwid: string, orgId: string): Promise<b
 }
 
 /** Org-scoped `getNetwork`: returns null (not the controller's data) for a network outside `orgId`. */
-export async function getNetworkForOrg(
-  nwid: string,
-  orgId: string,
-): Promise<NetworkDetail | null> {
+export async function getNetworkForOrg(nwid: string, orgId: string): Promise<NetworkDetail | null> {
   if (!(await assertNetworkInOrg(nwid, orgId))) return null;
   return getNetwork(nwid);
 }
@@ -203,15 +200,15 @@ export async function listUnassignedNetworks(): Promise<NetworkSummary[]> {
   const ids = await client.listNetworkIds();
   const metas = await getDb()
     .networkMeta.findMany({ where: { nwid: { in: ids } } })
-    .catch((e) => {
+    .catch(e => {
       console.error('[gem-zt] networkMeta read failed in listUnassignedNetworks:', e);
       return [];
     });
-  const metaMap = new Map(metas.map((m) => [m.nwid, m]));
-  const assigned = new Set(metas.filter((m) => m.orgId).map((m) => m.nwid));
-  const orphanIds = ids.filter((nwid) => !assigned.has(nwid));
+  const metaMap = new Map(metas.map(m => [m.nwid, m]));
+  const assigned = new Set(metas.filter(m => m.orgId).map(m => m.nwid));
+  const orphanIds = ids.filter(nwid => !assigned.has(nwid));
   return Promise.all(
-    orphanIds.map(async (nwid) => {
+    orphanIds.map(async nwid => {
       const [config, memberIds] = await Promise.all([
         client.getNetwork(nwid),
         client.listMemberIds(nwid),
@@ -225,13 +222,13 @@ export async function listUnassignedNetworks(): Promise<NetworkSummary[]> {
         private: config.private,
         memberCount: Object.keys(memberIds).length,
       };
-    }),
+    })
   );
 }
 
 export async function createNetwork(
   input: CreateNetworkInput,
-  orgId?: string,
+  orgId?: string
 ): Promise<WriteResult<NetworkDetail>> {
   const client = await getControllerClient();
   const status = await client.getStatus();
@@ -329,7 +326,7 @@ export async function createNetworkFromConfig(input: {
 
 export async function cloneNetwork(
   nwid: string,
-  orgId?: string,
+  orgId?: string
 ): Promise<WriteResult<NetworkDetail> | null> {
   const client = await getControllerClient();
   let source: ControllerNetwork;
@@ -341,7 +338,7 @@ export async function cloneNetwork(
   }
   const sourceMeta = await getDb()
     .networkMeta.findUnique({ where: { nwid } })
-    .catch((e) => {
+    .catch(e => {
       console.error('[gem-zt] networkMeta read failed in cloneNetwork:', e);
       return null;
     });
@@ -367,7 +364,7 @@ export async function getNetwork(nwid: string): Promise<NetworkDetail | null> {
 
 export async function updateNetwork(
   nwid: string,
-  patch: UpdateNetworkInput,
+  patch: UpdateNetworkInput
 ): Promise<WriteResult<NetworkDetail>> {
   const client = await getControllerClient();
   // GET-first: the ZT controller upserts on POST, so a PATCH to a typo'd or

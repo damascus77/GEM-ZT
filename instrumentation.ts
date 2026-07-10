@@ -5,12 +5,17 @@
 //
 // See: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
 
+import { validateRateLimitEnv } from '@/lib/util/envValidation';
+
 // Module-level guard: memoize the promise so `register()` — and any code that
 // might call it more than once within the same process — only runs the
 // backfill a single time.
 let started: Promise<void> | null = null;
 
 export async function register() {
+  // Fail fast on invalid environment configuration before accepting requests
+  validateRateLimitEnv();
+
   // instrumentation.ts is evaluated for every Next.js runtime (nodejs and
   // edge). The backfill needs a live Prisma/SQLite connection, which is only
   // available in the nodejs runtime — skip otherwise.

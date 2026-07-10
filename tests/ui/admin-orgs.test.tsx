@@ -17,7 +17,12 @@ const orgs = [
 
 function stubFetch(
   isSuperAdmin: boolean,
-  opts: { createStatus?: number; createBody?: unknown; deleteStatus?: number; deleteBody?: unknown } = {},
+  opts: {
+    createStatus?: number;
+    createBody?: unknown;
+    deleteStatus?: number;
+    deleteBody?: unknown;
+  } = {}
 ) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url === '/api/v1/me') {
@@ -27,7 +32,7 @@ function stubFetch(
           activeOrgId: 'org-1',
           memberships: [{ orgId: 'org-1', role: 'owner' }],
         }),
-        { status: 200 },
+        { status: 200 }
       );
     }
     if (url === '/api/v1/orgs' && init?.method === 'POST') {
@@ -103,21 +108,25 @@ describe('AdminOrgs', () => {
     await screen.findByText('Acme');
     const row = screen.getByText('Acme').closest('tr')!;
     await userEvent.click(row.querySelector('button')!);
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 50));
     expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE')).toBeUndefined();
   });
 
   it('surfaces a 409 ORG_NOT_EMPTY error inline without crashing', async () => {
     stubFetch(true, {
       deleteStatus: 409,
-      deleteBody: { error: { code: 'ORG_NOT_EMPTY', message: 'Organization still has networks assigned.' } },
+      deleteBody: {
+        error: { code: 'ORG_NOT_EMPTY', message: 'Organization still has networks assigned.' },
+      },
     });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderWithQuery(<AdminOrgs />);
     await screen.findByText('Acme');
     const row = screen.getByText('Acme').closest('tr')!;
     await userEvent.click(row.querySelector('button')!);
-    expect(await screen.findByText(/organization still has networks assigned/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/organization still has networks assigned/i)
+    ).toBeInTheDocument();
     // Org list should still be rendered (no crash).
     expect(screen.getByText('Acme')).toBeInTheDocument();
   });

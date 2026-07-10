@@ -64,9 +64,9 @@ export function OrgSwitcher({ className }: { className?: string }) {
         value={activeOrgId ?? ''}
         onChange={handleChange}
         disabled={switching}
-        className="rounded-md bg-primary-deep text-on-primary text-sm px-2 py-1 border border-hairline-dark disabled:opacity-60"
+        className="rounded-md border border-hairline-dark bg-primary-deep px-2 py-1 text-sm text-on-primary disabled:opacity-60"
       >
-        {memberships.map((m) => (
+        {memberships.map(m => (
           <option key={m.orgId} value={m.orgId}>
             {m.orgName}
           </option>

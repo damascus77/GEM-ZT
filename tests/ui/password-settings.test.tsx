@@ -23,7 +23,9 @@ describe('PasswordSettings', () => {
   });
 
   it('PATCHes /api/v1/auth/password and shows a success message', async () => {
-    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 }));
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 })
+    );
     vi.stubGlobal('fetch', fetchMock);
     render(<PasswordSettings />);
     await userEvent.type(screen.getByLabelText(/current password/i), 'password12345');
@@ -44,9 +46,11 @@ describe('PasswordSettings', () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(
-          JSON.stringify({ error: { code: 'CURRENT_PASSWORD_INVALID', message: 'Current password is incorrect.' } }),
-          { status: 400 },
-        ),
+          JSON.stringify({
+            error: { code: 'CURRENT_PASSWORD_INVALID', message: 'Current password is incorrect.' },
+          }),
+          { status: 400 }
+        )
     );
     vi.stubGlobal('fetch', fetchMock);
     render(<PasswordSettings />);

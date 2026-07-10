@@ -102,7 +102,7 @@ describe('POST /api/v1/backup/restore', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validBackup),
-      }),
+      })
     );
     expect(res.status).toBe(401);
   });

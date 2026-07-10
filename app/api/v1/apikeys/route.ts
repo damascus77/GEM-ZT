@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       return apiError(
         'FORBIDDEN',
         'Cannot create an API key with a role higher than your own.',
-        403,
+        403
       );
     }
 
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       auth.user.id,
       body.name,
       body.expiresAt ? new Date(body.expiresAt) : undefined,
-      { orgId: auth.orgId!, role: body.role },
+      { orgId: auth.orgId!, role: body.role }
     );
     await logAudit({
       userId: auth.user.id,

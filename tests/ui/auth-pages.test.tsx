@@ -22,8 +22,9 @@ afterEach(() => {
 
 describe('LoginPage', () => {
   it('POSTs credentials to /api/v1/auth/login and redirects to /networks', async () => {
-    const fetchMock = vi.fn(async (url: string, init?: RequestInit) =>
-      new Response(JSON.stringify({ user: {} }), { status: 200 }),
+    const fetchMock = vi.fn(
+      async (url: string, init?: RequestInit) =>
+        new Response(JSON.stringify({ user: {} }), { status: 200 })
     );
     vi.stubGlobal('fetch', fetchMock);
     renderWithQuery(<LoginPage />);
@@ -33,18 +34,24 @@ describe('LoginPage', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/networks'));
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/v1/auth/login');
-    expect(JSON.parse(init!.body as string)).toEqual({ username: 'admin', password: 'password12345' });
+    expect(JSON.parse(init!.body as string)).toEqual({
+      username: 'admin',
+      password: 'password12345',
+    });
   });
 
   it('shows the error envelope message on 401', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({ error: { code: 'UNAUTHORIZED', message: 'Invalid username or password.' } }),
-          { status: 401 },
-        ),
-      ),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: { code: 'UNAUTHORIZED', message: 'Invalid username or password.' },
+            }),
+            { status: 401 }
+          )
+      )
     );
     renderWithQuery(<LoginPage />);
     await userEvent.type(screen.getByLabelText(/username/i), 'admin');
@@ -56,7 +63,10 @@ describe('LoginPage', () => {
 
 describe('SetupPage', () => {
   function stubSetupFetch() {
-    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ user: {} }), { status: 201 }));
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify({ user: {} }), { status: 201 })
+    );
     vi.stubGlobal('fetch', fetchMock);
     return fetchMock;
   }

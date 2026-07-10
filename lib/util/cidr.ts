@@ -13,7 +13,7 @@ function isIpv6(addr: string): boolean {
   const parseGroups = (str: string): string[] | null => {
     if (str === '') return [];
     const groups = str.split(':');
-    return groups.every((g) => /^[0-9a-fA-F]{1,4}$/.test(g)) ? groups : null;
+    return groups.every(g => /^[0-9a-fA-F]{1,4}$/.test(g)) ? groups : null;
   };
   const parts = addr.split('::');
   if (parts.length > 2) return false; // more than one '::'
@@ -39,9 +39,7 @@ export function isValidCidr(cidr: string): boolean {
 }
 
 function ipv4ToInt(ip: string): number {
-  return ip
-    .split('.')
-    .reduce((acc, octet) => acc * 256 + Number(octet), 0);
+  return ip.split('.').reduce((acc, octet) => acc * 256 + Number(octet), 0);
 }
 
 const IPV4_ADDR_RE = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
@@ -64,7 +62,7 @@ export function ipv4CidrRange(cidr: string): [number, number] | null {
 }
 
 function intToIpv4(n: number): string {
-  return [24, 16, 8, 0].map((shift) => (n >>> shift) & 0xff).join('.');
+  return [24, 16, 8, 0].map(shift => (n >>> shift) & 0xff).join('.');
 }
 
 const IPV6_GROUP_COUNT = 8;
@@ -74,7 +72,7 @@ const IPV6_ALL_ONES = (1n << IPV6_BITS) - 1n;
 /** Expand a (possibly '::'-compressed) IPv6 address into its 8 groups as bigints. */
 function expandIpv6Groups(addr: string): bigint[] {
   const parseGroups = (s: string): bigint[] =>
-    s === '' ? [] : s.split(':').map((g) => BigInt(parseInt(g, 16)));
+    s === '' ? [] : s.split(':').map(g => BigInt(parseInt(g, 16)));
   const parts = addr.split('::');
   if (parts.length === 2) {
     const left = parseGroups(parts[0]);

@@ -122,7 +122,7 @@ describe('exportBackup', () => {
     expect(net.config).not.toHaveProperty('revision');
 
     expect(net.members).toHaveLength(2);
-    const m1 = net.members.find((m) => m.memberId === 'deadbeef01')!;
+    const m1 = net.members.find(m => m.memberId === 'deadbeef01')!;
     expect(m1.config).toEqual({
       authorized: true,
       activeBridge: false,
@@ -133,7 +133,7 @@ describe('exportBackup', () => {
     });
     expect(m1.meta).toEqual({ name: 'laptop', notes: 'work laptop' });
 
-    const m2 = net.members.find((m) => m.memberId === 'deadbeef02')!;
+    const m2 = net.members.find(m => m.memberId === 'deadbeef02')!;
     expect(m2.meta).toEqual({ name: '', notes: '' });
   });
 
@@ -142,7 +142,7 @@ describe('exportBackup', () => {
     expect(backup.networks).toHaveLength(1);
     const net = backup.networks[0];
     expect(net.meta).toEqual({ name: '', description: '', tags: [], rulesSource: '' });
-    expect(net.members.every((m) => m.meta.name === '' && m.meta.notes === '')).toBe(true);
+    expect(net.members.every(m => m.meta.name === '' && m.meta.notes === '')).toBe(true);
   });
 
   it('returns an empty networks array when the controller has no networks', async () => {

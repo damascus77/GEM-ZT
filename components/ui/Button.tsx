@@ -11,14 +11,14 @@ export function Button({
   return (
     <button
       className={clsx(
-        'text-base font-bold leading-none px-5 py-3 transition-colors',
-        'disabled:opacity-50 disabled:cursor-not-allowed',
+        'px-5 py-3 text-base font-bold leading-none transition-colors',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         variant === 'primary' &&
-          'bg-primary text-on-primary rounded-md active:bg-primary-deep hover:bg-primary-deep',
+          'rounded-md bg-primary text-on-primary hover:bg-primary-deep active:bg-primary-deep',
         variant === 'outline' &&
-          'bg-canvas text-ink border border-hairline-dark rounded-md hover:bg-canvas-soft',
-        variant === 'pill' && 'bg-violet-soft text-primary rounded-full',
-        className,
+          'rounded-md border border-hairline-dark bg-canvas text-ink hover:bg-canvas-soft',
+        variant === 'pill' && 'rounded-full bg-violet-soft text-primary',
+        className
       )}
       {...props}
     />

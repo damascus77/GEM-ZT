@@ -16,9 +16,11 @@ describe('AccountPage', () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(
-          JSON.stringify({ user: { id: 'u1', username: 'admin', role: 'admin', totpEnabled: false } }),
-          { status: 200 },
-        ),
+          JSON.stringify({
+            user: { id: 'u1', username: 'admin', role: 'admin', totpEnabled: false },
+          }),
+          { status: 200 }
+        )
     );
     vi.stubGlobal('fetch', fetchMock);
 
@@ -34,9 +36,11 @@ describe('AccountPage', () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(
-          JSON.stringify({ user: { id: 'u1', username: 'admin', role: 'admin', totpEnabled: true } }),
-          { status: 200 },
-        ),
+          JSON.stringify({
+            user: { id: 'u1', username: 'admin', role: 'admin', totpEnabled: true },
+          }),
+          { status: 200 }
+        )
     );
     vi.stubGlobal('fetch', fetchMock);
 

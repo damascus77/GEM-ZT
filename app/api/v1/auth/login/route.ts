@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiError, handleRouteError } from '@/lib/api/errors';
 import { clientIp } from '@/lib/api/net';
-import { authenticateUser, createSession, SESSION_COOKIE, sessionCookieOptions } from '@/lib/services/auth';
+import {
+  authenticateUser,
+  createSession,
+  SESSION_COOKIE,
+  sessionCookieOptions,
+} from '@/lib/services/auth';
 import { createRateLimiter } from '@/lib/services/rateLimit';
 import { runRetention } from '@/lib/services/retention';
 import { verifyTotp } from '@/lib/services/totp';
@@ -44,12 +49,9 @@ export async function POST(req: Request) {
     const ipGate = ipLimiter.check(ipKey);
     if (!gate.allowed || !ipGate.allowed) {
       const retryAfterMs = Math.max(gate.retryAfterMs, ipGate.retryAfterMs);
-      return apiError(
-        'RATE_LIMITED',
-        'Too many failed login attempts. Try again later.',
-        429,
-        { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) },
-      );
+      return apiError('RATE_LIMITED', 'Too many failed login attempts. Try again later.', 429, {
+        'Retry-After': String(Math.ceil(retryAfterMs / 1000)),
+      });
     }
     const user = await authenticateUser(body.username, body.password);
     if (!user) {

@@ -4,10 +4,7 @@ import { createTestUserAndSession } from '../helpers/auth';
 import { getDb } from '@/lib/db/client';
 import { createUser } from '@/lib/services/auth';
 import { addMembership, getMembership } from '@/lib/services/orgs';
-import {
-  GET as membersGet,
-  POST as membersPost,
-} from '@/app/api/v1/orgs/[orgId]/members/route';
+import { GET as membersGet, POST as membersPost } from '@/app/api/v1/orgs/[orgId]/members/route';
 import {
   PATCH as memberPatch,
   DELETE as memberDelete,
@@ -111,7 +108,7 @@ describe('POST /orgs/{orgId}/members (direct-create)', () => {
         password: 'password12345',
         role: 'editor',
       }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -137,7 +134,7 @@ describe('POST /orgs/{orgId}/members (direct-create)', () => {
         password: 'password12345',
         role: 'viewer',
       }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(403);
   });
@@ -150,7 +147,7 @@ describe('POST /orgs/{orgId}/members (direct-create)', () => {
         password: 'password12345',
         role: 'owner',
       }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(403);
   });
@@ -163,7 +160,7 @@ describe('POST /orgs/{orgId}/members (direct-create)', () => {
         password: 'password12345',
         role: 'owner',
       }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(201);
   });
@@ -178,7 +175,7 @@ describe('POST /orgs/{orgId}/members (direct-create)', () => {
         password: 'password12345',
         role: 'viewer',
       }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(409);
   });
@@ -191,7 +188,7 @@ describe('POST /orgs/{orgId}/members (direct-create)', () => {
         password: 'short',
         role: 'editor',
       }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(400);
   });
@@ -205,7 +202,7 @@ describe('POST /orgs/{orgId}/members (direct-create)', () => {
         password: 'password12345',
         role: 'viewer',
       }),
-      { params: Promise.resolve({ orgId }) },
+      { params: Promise.resolve({ orgId }) }
     );
     expect(res.status).toBe(403);
   });
@@ -218,7 +215,7 @@ describe('PATCH /orgs/{orgId}/members/{userId}', () => {
     await addMembership(orgId, target.id, 'viewer');
     const res = await memberPatch(
       req(`http://x/orgs/${orgId}/members/${target.id}`, 'PATCH', cookie, { role: 'editor' }),
-      { params: Promise.resolve({ orgId, userId: target.id }) },
+      { params: Promise.resolve({ orgId, userId: target.id }) }
     );
     expect(res.status).toBe(200);
     const membership = await getMembership(target.id, orgId);
@@ -233,7 +230,7 @@ describe('PATCH /orgs/{orgId}/members/{userId}', () => {
     const { cookie, orgId, user } = await createTestUserAndSession(); // owner, sole owner
     const res = await memberPatch(
       req(`http://x/orgs/${orgId}/members/${user.id}`, 'PATCH', cookie, { role: 'admin' }),
-      { params: Promise.resolve({ orgId, userId: user.id }) },
+      { params: Promise.resolve({ orgId, userId: user.id }) }
     );
     expect(res.status).toBe(409);
     const body = await res.json();
@@ -246,7 +243,7 @@ describe('PATCH /orgs/{orgId}/members/{userId}', () => {
     await addMembership(orgId, target.id, 'editor');
     const res = await memberPatch(
       req(`http://x/orgs/${orgId}/members/${target.id}`, 'PATCH', cookie, { role: 'owner' }),
-      { params: Promise.resolve({ orgId, userId: target.id }) },
+      { params: Promise.resolve({ orgId, userId: target.id }) }
     );
     expect(res.status).toBe(403);
   });
@@ -258,7 +255,7 @@ describe('PATCH /orgs/{orgId}/members/{userId}', () => {
     await addMembership(orgId, owner2.id, 'owner');
     const res = await memberPatch(
       req(`http://x/orgs/${orgId}/members/${owner2.id}`, 'PATCH', cookie, { role: 'admin' }),
-      { params: Promise.resolve({ orgId, userId: owner2.id }) },
+      { params: Promise.resolve({ orgId, userId: owner2.id }) }
     );
     expect(res.status).toBe(403);
     void adminUser;
@@ -270,7 +267,7 @@ describe('PATCH /orgs/{orgId}/members/{userId}', () => {
     await addMembership(orgId, target.id, 'editor');
     const res = await memberPatch(
       req(`http://x/orgs/${orgId}/members/${target.id}`, 'PATCH', cookie, { role: 'owner' }),
-      { params: Promise.resolve({ orgId, userId: target.id }) },
+      { params: Promise.resolve({ orgId, userId: target.id }) }
     );
     expect(res.status).toBe(200);
   });
@@ -282,7 +279,7 @@ describe('PATCH /orgs/{orgId}/members/{userId}', () => {
       req(`http://x/orgs/${orgId}/members/${otherUser.id}`, 'PATCH', otherCookie, {
         role: 'viewer',
       }),
-      { params: Promise.resolve({ orgId, userId: otherUser.id }) },
+      { params: Promise.resolve({ orgId, userId: otherUser.id }) }
     );
     expect(res.status).toBe(403);
   });
@@ -293,7 +290,7 @@ describe('PATCH /orgs/{orgId}/members/{userId}', () => {
     await addMembership(orgId, target.id, 'viewer');
     const res = await memberPatch(
       req(`http://x/orgs/${orgId}/members/${target.id}`, 'PATCH', cookie, { role: 'bogus' }),
-      { params: Promise.resolve({ orgId, userId: target.id }) },
+      { params: Promise.resolve({ orgId, userId: target.id }) }
     );
     expect(res.status).toBe(400);
   });
@@ -306,7 +303,7 @@ describe('DELETE /orgs/{orgId}/members/{userId}', () => {
     await addMembership(orgId, target.id, 'viewer');
     const res = await memberDelete(
       req(`http://x/orgs/${orgId}/members/${target.id}`, 'DELETE', cookie),
-      { params: Promise.resolve({ orgId, userId: target.id }) },
+      { params: Promise.resolve({ orgId, userId: target.id }) }
     );
     expect(res.status).toBe(204);
     const membership = await getMembership(target.id, orgId);
@@ -321,7 +318,7 @@ describe('DELETE /orgs/{orgId}/members/{userId}', () => {
     const { cookie, orgId, user } = await createTestUserAndSession(); // sole owner
     const res = await memberDelete(
       req(`http://x/orgs/${orgId}/members/${user.id}`, 'DELETE', cookie),
-      { params: Promise.resolve({ orgId, userId: user.id }) },
+      { params: Promise.resolve({ orgId, userId: user.id }) }
     );
     expect(res.status).toBe(409);
     const body = await res.json();
@@ -334,7 +331,7 @@ describe('DELETE /orgs/{orgId}/members/{userId}', () => {
     await addMembership(orgId, target.id, 'viewer');
     const res = await memberDelete(
       req(`http://x/orgs/${orgId}/members/${target.id}`, 'DELETE', cookie),
-      { params: Promise.resolve({ orgId, userId: target.id }) },
+      { params: Promise.resolve({ orgId, userId: target.id }) }
     );
     expect(res.status).toBe(403);
   });
@@ -344,7 +341,7 @@ describe('DELETE /orgs/{orgId}/members/{userId}', () => {
     const { cookie: otherCookie, user: otherUser } = await createTestUserAndSession();
     const res = await memberDelete(
       req(`http://x/orgs/${orgId}/members/${otherUser.id}`, 'DELETE', otherCookie),
-      { params: Promise.resolve({ orgId, userId: otherUser.id }) },
+      { params: Promise.resolve({ orgId, userId: otherUser.id }) }
     );
     expect(res.status).toBe(403);
   });

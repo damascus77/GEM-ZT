@@ -99,7 +99,7 @@ describe('settings webhook route', () => {
     const getRes = await webhookGet(req('GET', undefined, true, editorCookie));
     expect(getRes.status).toBe(403);
     const putRes = await webhookPut(
-      req('PUT', { newMemberUrl: 'https://example.com/hook' }, true, editorCookie),
+      req('PUT', { newMemberUrl: 'https://example.com/hook' }, true, editorCookie)
     );
     expect(putRes.status).toBe(403);
   });

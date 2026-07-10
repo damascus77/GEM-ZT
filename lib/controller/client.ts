@@ -12,7 +12,7 @@ export class ControllerUnreachableError extends Error {
 export class ControllerApiError extends Error {
   constructor(
     public readonly status: number,
-    message: string,
+    message: string
   ) {
     super(message);
   }
@@ -58,7 +58,7 @@ export class ControllerClient {
   private async request<T>(
     method: 'GET' | 'POST' | 'DELETE',
     path: string,
-    body?: unknown,
+    body?: unknown
   ): Promise<T> {
     let res: Response;
     try {
@@ -73,13 +73,13 @@ export class ControllerClient {
       });
     } catch (e) {
       throw new ControllerUnreachableError(
-        `Controller request failed: ${method} ${path}: ${(e as Error).message}`,
+        `Controller request failed: ${method} ${path}: ${(e as Error).message}`
       );
     }
     if (!res.ok) {
       throw new ControllerApiError(
         res.status,
-        `Controller returned ${res.status} for ${method} ${path}`,
+        `Controller returned ${res.status} for ${method} ${path}`
       );
     }
     return (await res.json()) as T;
@@ -100,13 +100,16 @@ export class ControllerClient {
 
   async createNetwork(
     nodeId: string,
-    config: Partial<ControllerNetwork> = {},
+    config: Partial<ControllerNetwork> = {}
   ): Promise<ControllerNetwork> {
     assertNodeId(nodeId, 'node');
     return this.request<ControllerNetwork>('POST', `/controller/network/${nodeId}______`, config);
   }
 
-  async updateNetwork(nwid: string, config: Partial<ControllerNetwork>): Promise<ControllerNetwork> {
+  async updateNetwork(
+    nwid: string,
+    config: Partial<ControllerNetwork>
+  ): Promise<ControllerNetwork> {
     assertNwid(nwid);
     return this.request<ControllerNetwork>('POST', `/controller/network/${nwid}`, config);
   }
@@ -124,23 +127,20 @@ export class ControllerClient {
   async getMember(nwid: string, memberId: string): Promise<ControllerMember> {
     assertNwid(nwid);
     assertNodeId(memberId, 'member');
-    return this.request<ControllerMember>(
-      'GET',
-      `/controller/network/${nwid}/member/${memberId}`,
-    );
+    return this.request<ControllerMember>('GET', `/controller/network/${nwid}/member/${memberId}`);
   }
 
   async updateMember(
     nwid: string,
     memberId: string,
-    config: Partial<ControllerMember>,
+    config: Partial<ControllerMember>
   ): Promise<ControllerMember> {
     assertNwid(nwid);
     assertNodeId(memberId, 'member');
     return this.request<ControllerMember>(
       'POST',
       `/controller/network/${nwid}/member/${memberId}`,
-      config,
+      config
     );
   }
 

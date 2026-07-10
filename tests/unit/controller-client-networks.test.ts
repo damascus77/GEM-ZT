@@ -2,11 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { ControllerClient } from '@/lib/controller/client';
 
 function jsonFetch(body: unknown) {
-  return vi.fn(async () =>
-    new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }),
+  return vi.fn(
+    async () =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
   ) as unknown as typeof globalThis.fetch;
 }
 

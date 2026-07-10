@@ -100,7 +100,7 @@ export function OrgMembers({ orgId }: { orgId: string }) {
   });
 
   const me = meQuery.data;
-  const myRole = me?.memberships.find((m) => m.orgId === orgId)?.role;
+  const myRole = me?.memberships.find(m => m.orgId === orgId)?.role;
   const canManage = Boolean(me?.user.isSuperAdmin || myRole === 'owner' || myRole === 'admin');
 
   function confirmRemove(member: Member) {
@@ -112,7 +112,7 @@ export function OrgMembers({ orgId }: { orgId: string }) {
   return (
     <div className="flex flex-col gap-6">
       <Card className="overflow-x-auto">
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Members</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Members</h2>
         {membersQuery.isLoading && <p className="text-ink-mute">Loading…</p>}
         {membersQuery.isError && !membersQuery.data && (
           <p role="alert" className="text-sm text-ink">
@@ -120,30 +120,30 @@ export function OrgMembers({ orgId }: { orgId: string }) {
           </p>
         )}
         {changeRole.isError && (
-          <p role="alert" className="text-sm text-ink mb-2">
+          <p role="alert" className="mb-2 text-sm text-ink">
             {(changeRole.error as Error).message}
           </p>
         )}
         {removeMember.isError && (
-          <p role="alert" className="text-sm text-ink mb-2">
+          <p role="alert" className="mb-2 text-sm text-ink">
             {(removeMember.error as Error).message}
           </p>
         )}
         {membersQuery.data && (
           <table className="w-full text-left">
             <thead>
-              <tr className="text-xs text-ink-faint uppercase">
+              <tr className="text-xs uppercase text-ink-faint">
                 <th className="pb-2 pr-4">Username</th>
                 <th className="pb-2 pr-4">Role</th>
                 <th className="pb-2">&nbsp;</th>
               </tr>
             </thead>
             <tbody>
-              {membersQuery.data.members.map((member) => {
+              {membersQuery.data.members.map(member => {
                 const isPhantom = member.role === 'superadmin';
                 return (
                   <tr key={member.userId} className="border-t border-hairline">
-                    <td className="py-3 pr-4 wght-540">{member.username}</td>
+                    <td className="wght-540 py-3 pr-4">{member.username}</td>
                     <td className="py-3 pr-4">
                       {isPhantom ? (
                         <Pill>Super-admin</Pill>
@@ -157,15 +157,15 @@ export function OrgMembers({ orgId }: { orgId: string }) {
                           id={`role-${member.userId}`}
                           value={member.role}
                           disabled={changeRole.isPending}
-                          onChange={(e) =>
+                          onChange={e =>
                             changeRole.mutate({
                               userId: member.userId,
                               role: e.target.value as OrgRole,
                             })
                           }
-                          className="bg-canvas text-ink text-sm rounded-sm border border-hairline px-2 py-1.5 focus:outline-none focus:border-hairline-dark"
+                          className="rounded-sm border border-hairline bg-canvas px-2 py-1.5 text-sm text-ink focus:border-hairline-dark focus:outline-none"
                         >
-                          {ORG_ROLES.map((r) => (
+                          {ORG_ROLES.map(r => (
                             <option key={r} value={r}>
                               {r}
                             </option>
@@ -173,7 +173,9 @@ export function OrgMembers({ orgId }: { orgId: string }) {
                         </select>
                       )}
                       {!isPhantom && !canManage && (
-                        <span className={clsx('text-sm text-ink-mute capitalize')}>{member.role}</span>
+                        <span className={clsx('text-sm capitalize text-ink-mute')}>
+                          {member.role}
+                        </span>
                       )}
                     </td>
                     <td className="py-3">
@@ -198,10 +200,10 @@ export function OrgMembers({ orgId }: { orgId: string }) {
 
       {canManage && (
         <Card>
-          <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Add member</h2>
+          <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Add member</h2>
           <form
-            className="flex gap-2 flex-wrap items-end"
-            onSubmit={(e) => {
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={e => {
               e.preventDefault();
               addMember.mutate();
             }}
@@ -210,7 +212,7 @@ export function OrgMembers({ orgId }: { orgId: string }) {
               Username
               <Input
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={e => setUsername(e.target.value)}
                 required
                 className="w-48"
               />
@@ -220,7 +222,7 @@ export function OrgMembers({ orgId }: { orgId: string }) {
               <Input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 required
                 minLength={10}
                 className="w-48"
@@ -230,22 +232,25 @@ export function OrgMembers({ orgId }: { orgId: string }) {
               Role
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as OrgRole)}
-                className="mt-1 block bg-canvas text-ink text-base rounded-sm border border-hairline px-3 py-2.5 focus:outline-none focus:border-hairline-dark"
+                onChange={e => setRole(e.target.value as OrgRole)}
+                className="mt-1 block rounded-sm border border-hairline bg-canvas px-3 py-2.5 text-base text-ink focus:border-hairline-dark focus:outline-none"
               >
-                {ORG_ROLES.map((r) => (
+                {ORG_ROLES.map(r => (
                   <option key={r} value={r}>
                     {r}
                   </option>
                 ))}
               </select>
             </label>
-            <Button type="submit" disabled={addMember.isPending || username === '' || password === ''}>
+            <Button
+              type="submit"
+              disabled={addMember.isPending || username === '' || password === ''}
+            >
               Add member
             </Button>
           </form>
           {addMember.isError && (
-            <p role="alert" className="text-sm text-ink mt-2">
+            <p role="alert" className="mt-2 text-sm text-ink">
               {(addMember.error as Error).message}
             </p>
           )}

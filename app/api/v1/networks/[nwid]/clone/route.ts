@@ -24,7 +24,10 @@ export async function POST(req: Request, { params }: Ctx) {
       targetId: result.data.nwid,
       detail: { from: nwid },
     });
-    return NextResponse.json({ network: result.data, metaWarning: result.metaWarning }, { status: 201 });
+    return NextResponse.json(
+      { network: result.data, metaWarning: result.metaWarning },
+      { status: 201 }
+    );
   } catch (e) {
     return handleRouteError(e);
   }

@@ -39,7 +39,10 @@ export const updateMemberSchema = z
     noAutoAssignIps: z.boolean().optional(),
     ipAssignments: z.array(z.string().ip()).max(32).optional(),
     capabilities: z.array(z.number().int().min(0)).max(128).optional(),
-    tags: z.array(z.tuple([z.number().int().min(0), z.number().int().min(0)])).max(128).optional(),
+    tags: z
+      .array(z.tuple([z.number().int().min(0), z.number().int().min(0)]))
+      .max(128)
+      .optional(),
   })
   .strict();
 
@@ -61,10 +64,10 @@ const META_UPSERT_WARNING =
 function toView(
   m: ControllerMember,
   peer: ControllerPeer | undefined,
-  meta: { name: string; notes: string } | undefined,
+  meta: { name: string; notes: string } | undefined
 ): MemberView {
   const activePath =
-    peer?.paths.find((p) => p.active && p.preferred) ?? peer?.paths.find((p) => p.active);
+    peer?.paths.find(p => p.active && p.preferred) ?? peer?.paths.find(p => p.active);
   return {
     memberId: m.id,
     nwid: m.nwid,
@@ -75,7 +78,7 @@ function toView(
     noAutoAssignIps: m.noAutoAssignIps,
     ipAssignments: m.ipAssignments,
     lastAuthorizedTime: m.lastAuthorizedTime,
-    online: peer ? peer.paths.some((p) => p.active) : null,
+    online: peer ? peer.paths.some(p => p.active) : null,
     latency: peer && peer.latency >= 0 ? peer.latency : null,
     physicalAddress: activePath?.address ?? null,
     clientVersion: peer && peer.version !== '-1.-1.-1' ? peer.version : null,
@@ -90,21 +93,21 @@ async function loadContext(nwid: string): Promise<{
 }> {
   const client = await getControllerClient();
   const [peers, metas] = await Promise.all([
-    client.listPeers().catch((e) => {
+    client.listPeers().catch(e => {
       // Presence/latency is best-effort; degrade gracefully but don't hide why.
       console.error('[gem-zt] listPeers failed in loadContext:', e);
       return [] as ControllerPeer[];
     }),
     getDb()
       .memberMeta.findMany({ where: { nwid } })
-      .catch((e) => {
+      .catch(e => {
         console.error('[gem-zt] memberMeta read failed in loadContext:', e);
         return [];
       }),
   ]);
   return {
-    peerMap: new Map(peers.map((p) => [p.address, p])),
-    metaMap: new Map(metas.map((m) => [m.memberId, { name: m.name, notes: m.notes }])),
+    peerMap: new Map(peers.map(p => [p.address, p])),
+    metaMap: new Map(metas.map(m => [m.memberId, { name: m.name, notes: m.notes }])),
   };
 }
 
@@ -112,10 +115,10 @@ export async function listMembers(nwid: string): Promise<MemberView[]> {
   const client = await getControllerClient();
   const ids = Object.keys(await client.listMemberIds(nwid));
   const [members, { peerMap, metaMap }] = await Promise.all([
-    mapWithConcurrency(ids, MEMBER_FETCH_CONCURRENCY, (id) => client.getMember(nwid, id)),
+    mapWithConcurrency(ids, MEMBER_FETCH_CONCURRENCY, id => client.getMember(nwid, id)),
     loadContext(nwid),
   ]);
-  return members.map((m) => toView(m, peerMap.get(m.id), metaMap.get(m.id)));
+  return members.map(m => toView(m, peerMap.get(m.id), metaMap.get(m.id)));
 }
 
 export async function getMember(nwid: string, memberId: string): Promise<MemberView | null> {
@@ -135,7 +138,7 @@ export async function getMember(nwid: string, memberId: string): Promise<MemberV
 export async function updateMember(
   nwid: string,
   memberId: string,
-  patch: UpdateMemberInput,
+  patch: UpdateMemberInput
 ): Promise<WriteResult<MemberView>> {
   const client = await getControllerClient();
   // GET-first: the ZT controller upserts on POST, so a PATCH to a typo'd

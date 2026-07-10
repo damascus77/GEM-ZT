@@ -22,19 +22,27 @@ const METRICS: MetricDef[] = [
   {
     name: 'gemzt_controller_reachable',
     help: 'Whether the ZeroTier controller responded (1) or not (0).',
-    value: (m) => (m.controllerReachable ? 1 : 0),
+    value: m => (m.controllerReachable ? 1 : 0),
   },
-  { name: 'gemzt_networks_total', help: 'Number of networks on the controller.', value: (m) => m.networks },
-  { name: 'gemzt_members_total', help: 'Total members across all networks.', value: (m) => m.members },
+  {
+    name: 'gemzt_networks_total',
+    help: 'Number of networks on the controller.',
+    value: m => m.networks,
+  },
+  {
+    name: 'gemzt_members_total',
+    help: 'Total members across all networks.',
+    value: m => m.members,
+  },
   {
     name: 'gemzt_members_authorized',
     help: 'Authorized members across all networks.',
-    value: (m) => m.authorizedMembers,
+    value: m => m.authorizedMembers,
   },
   {
     name: 'gemzt_members_online',
     help: 'Members currently seen online (via controller peers).',
-    value: (m) => m.onlineMembers,
+    value: m => m.onlineMembers,
   },
 ];
 
@@ -59,20 +67,20 @@ export async function collectMetrics(): Promise<MetricsSnapshot> {
     const client = await getControllerClient();
     const [ids, peers] = await Promise.all([
       client.listNetworkIds(),
-      client.listPeers().catch((e) => {
+      client.listPeers().catch(e => {
         console.error('[gem-zt] listPeers failed in collectMetrics:', e);
         return [];
       }),
     ]);
     const onlineAddrs = new Set(
-      peers.filter((p) => p.paths.some((path) => path.active)).map((p) => p.address),
+      peers.filter(p => p.paths.some(path => path.active)).map(p => p.address)
     );
     let members = 0;
     let authorizedMembers = 0;
     let onlineMembers = 0;
-    const perNetwork = await mapWithConcurrency(ids, 8, async (nwid) => {
+    const perNetwork = await mapWithConcurrency(ids, 8, async nwid => {
       const memberIds = Object.keys(await client.listMemberIds(nwid));
-      const detailed = await mapWithConcurrency(memberIds, 8, (id) => client.getMember(nwid, id));
+      const detailed = await mapWithConcurrency(memberIds, 8, id => client.getMember(nwid, id));
       return detailed;
     });
     for (const netMembers of perNetwork) {
@@ -91,7 +99,13 @@ export async function collectMetrics(): Promise<MetricsSnapshot> {
     };
   } catch (e) {
     if (e instanceof ControllerUnreachableError) {
-      return { controllerReachable: false, networks: 0, members: 0, authorizedMembers: 0, onlineMembers: 0 };
+      return {
+        controllerReachable: false,
+        networks: 0,
+        members: 0,
+        authorizedMembers: 0,
+        onlineMembers: 0,
+      };
     }
     throw e;
   }

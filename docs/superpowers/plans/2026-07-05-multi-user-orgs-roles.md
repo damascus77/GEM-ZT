@@ -29,11 +29,13 @@ Ships a schema that models orgs/memberships/invitations/identities and an idempo
 ### Task 1: Prisma schema — orgs, memberships, invitations, identities, org-scoping columns
 
 **Files:**
+
 - Modify: `prisma/schema.prisma`
 - Create (generated): `prisma/migrations/<timestamp>_multi_user_orgs/migration.sql` (authored by Prisma)
 - Test: `tests/unit/db-schema.test.ts` (extend existing)
 
 **Interfaces:**
+
 - Produces: Prisma models `Organization`, `Membership`, `Invitation`, `Identity`; new columns `User.role` (default `"user"`), `User.passwordHash String?`, `Session.activeOrgId String?`, `NetworkMeta.orgId String?`, `ApiKey.orgId String?`, `ApiKey.role String?`, `AuditLog.orgId String?`, `NetworkTemplate.orgId String?`.
 
 - [ ] **Step 1: Write the failing schema test**
@@ -249,10 +251,12 @@ git commit -m "feat(schema): add orgs, memberships, invitations, identities; org
 ### Task 2: Role constants & types
 
 **Files:**
+
 - Create: `lib/authz/roles.ts`
 - Test: `tests/unit/roles.test.ts`
 
 **Interfaces:**
+
 - Produces: `type InstanceRole`, `type OrgRole`, `ORG_ROLES`, `ROLE_RANK`, `isOrgRole(x): x is OrgRole`, `SUPERADMIN`, `USER`.
 
 - [ ] **Step 1: Write the failing test**
@@ -318,10 +322,12 @@ git commit -m "feat(authz): add instance/org role constants and ranking"
 ### Task 3: Membership & organization service
 
 **Files:**
+
 - Create: `lib/services/orgs.ts`
 - Test: `tests/unit/orgs-service.test.ts`
 
 **Interfaces:**
+
 - Consumes: `OrgRole` from `lib/authz/roles`.
 - Produces:
   - `slugify(name: string): string`
@@ -341,12 +347,20 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
 import {
-  slugify, createOrg, getMembership, setMemberRole, removeMember,
-  addMembership, listMembersOfOrg, LastOwnerError,
+  slugify,
+  createOrg,
+  getMembership,
+  setMemberRole,
+  removeMember,
+  addMembership,
+  listMembersOfOrg,
+  LastOwnerError,
 } from '@/lib/services/orgs';
 
 beforeAll(() => setupTestDb());
-afterAll(async () => { await getDb().$disconnect(); });
+afterAll(async () => {
+  await getDb().$disconnect();
+});
 
 async function mkUser(name: string) {
   return getDb().user.create({ data: { username: name, passwordHash: 'x', role: 'user' } });
@@ -378,7 +392,7 @@ describe('orgs service', () => {
     await addMembership(org.id, second.id, 'owner');
     await setMemberRole(org.id, owner.id, 'admin'); // now allowed, 1 owner remains
     const members = await listMembersOfOrg(org.id);
-    expect(members.find((m) => m.userId === owner.id)?.role).toBe('admin');
+    expect(members.find(m => m.userId === owner.id)?.role).toBe('admin');
   });
 });
 ```
@@ -498,11 +512,13 @@ git commit -m "feat(orgs): org + membership service with unique slugs and last-o
 ### Task 4: Idempotent backfill / default-org bootstrap
 
 **Files:**
+
 - Create: `lib/db/backfill.ts`
 - Modify: `lib/db/client.ts` (call backfill once after client init) — or wire into app boot; see Step 3.
 - Test: `tests/unit/backfill.test.ts`
 
 **Interfaces:**
+
 - Consumes: `createOrg`, `addMembership` from `lib/services/orgs`.
 - Produces: `ensureDefaultOrgAndBackfill(): Promise<{ orgId: string } | null>` — idempotent; returns the default org id, or `null` if there are zero users (fresh install pre-setup, nothing to backfill).
 - `DEFAULT_ORG_SLUG = 'default'`.
@@ -516,7 +532,9 @@ import { getDb } from '@/lib/db/client';
 import { ensureDefaultOrgAndBackfill, DEFAULT_ORG_SLUG } from '@/lib/db/backfill';
 
 beforeEach(() => setupTestDb());
-afterAll(async () => { await getDb().$disconnect(); });
+afterAll(async () => {
+  await getDb().$disconnect();
+});
 
 describe('backfill', () => {
   it('is a no-op on a fresh (userless) DB', async () => {
@@ -543,9 +561,13 @@ describe('backfill', () => {
     const org = await getDb().organization.findUnique({ where: { slug: DEFAULT_ORG_SLUG } });
     expect(org?.id).toBe(orgId);
     expect((await getDb().user.findUnique({ where: { id: admin.id } }))?.role).toBe('superadmin');
-    expect((await getDb().membership.findUnique({
-      where: { userId_orgId: { userId: admin.id, orgId } },
-    }))?.role).toBe('owner');
+    expect(
+      (
+        await getDb().membership.findUnique({
+          where: { userId_orgId: { userId: admin.id, orgId } },
+        })
+      )?.role
+    ).toBe('owner');
     expect((await getDb().networkMeta.findUnique({ where: { nwid: 'net1' } }))?.orgId).toBe(orgId);
     expect((await getDb().apiKey.findFirst({ where: { userId: admin.id } }))?.orgId).toBe(orgId);
     expect((await getDb().apiKey.findFirst({ where: { userId: admin.id } }))?.role).toBe('owner');
@@ -590,7 +612,10 @@ export async function ensureDefaultOrgAndBackfill(): Promise<{ orgId: string } |
     org = await createOrg({ name: 'Default', createdById: firstUser!.id });
     // createOrg forced slug from name ("default"); assert it matched the constant.
     if (org.slug !== DEFAULT_ORG_SLUG) {
-      org = await db.organization.update({ where: { id: org.id }, data: { slug: DEFAULT_ORG_SLUG } });
+      org = await db.organization.update({
+        where: { id: org.id },
+        data: { slug: DEFAULT_ORG_SLUG },
+      });
     }
   }
   const orgId = org.id;
@@ -638,11 +663,13 @@ git commit -m "feat(db): idempotent default-org backfill for existing single-adm
 ### Task 5: First-run setup creates a super-admin + default org
 
 **Files:**
+
 - Modify: `app/api/v1/setup/route.ts`
 - Modify: `lib/services/auth.ts` (`createUser` gains optional instance role)
 - Test: `tests/integration/setup-auth-routes.test.ts` (extend)
 
 **Interfaces:**
+
 - Consumes: `createOrg` (orgs service), `ensureDefaultOrgAndBackfill`.
 - Produces: after setup, exactly one org (slug `default`), the new user with `role: 'superadmin'` and an `owner` membership. `createUser(username, password, role?: InstanceRole)`.
 
@@ -657,16 +684,20 @@ it('setup creates a super-admin who owns a fresh default org', async () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: 'root', password: 'password12345' }),
-    }),
+    })
   );
   expect(res.status).toBe(201);
   const user = await getDb().user.findUnique({ where: { username: 'root' } });
   expect(user?.role).toBe('superadmin');
   const org = await getDb().organization.findUnique({ where: { slug: 'default' } });
   expect(org).not.toBeNull();
-  expect((await getDb().membership.findUnique({
-    where: { userId_orgId: { userId: user!.id, orgId: org!.id } },
-  }))?.role).toBe('owner');
+  expect(
+    (
+      await getDb().membership.findUnique({
+        where: { userId_orgId: { userId: user!.id, orgId: org!.id } },
+      })
+    )?.role
+  ).toBe('owner');
 });
 ```
 
@@ -687,7 +718,7 @@ import type { InstanceRole } from '@/lib/authz/roles';
 export async function createUser(
   username: string,
   password: string,
-  role: InstanceRole = 'user',
+  role: InstanceRole = 'user'
 ): Promise<User> {
   const passwordHash = await hashPassword(password);
   return getDb().user.create({ data: { username, passwordHash, role } });
@@ -725,10 +756,12 @@ Wires enforcement into every existing route. After Phase 2 the single default or
 ### Task 6: Policy module
 
 **Files:**
+
 - Create: `lib/authz/policy.ts`
 - Test: `tests/unit/policy.test.ts`
 
 **Interfaces:**
+
 - Consumes: `OrgRole`, `ROLE_RANK` from `lib/authz/roles`.
 - Produces: `type Action` (union below); `can(role: OrgRole, action: Action): boolean`; `ACTION_MIN_RANK: Record<Action, OrgRole>`.
 
@@ -832,12 +865,14 @@ git commit -m "feat(authz): pure policy module (can(role, action)) with full mat
 ### Task 7: AuthContext resolution — `requireOrgRole` / `requireSuperAdmin`
 
 **Files:**
+
 - Modify: `lib/services/apiKeys.ts` (add `verifyApiKeyWithRecord`)
 - Modify: `lib/api/auth.ts` (add `resolveAuth`; keep `requireAuth` delegating)
 - Create: `lib/api/authz.ts`
 - Test: `tests/integration/authz.test.ts`
 
 **Interfaces:**
+
 - Consumes: `getSession` (returns `Session & {user}`, includes `activeOrgId`), `verifyApiKeyWithRecord`, `getMembership`, `listMembershipsForUser`, `can`, `Action`.
 - Produces:
   - `verifyApiKeyWithRecord(fullKey): Promise<{ user: User; apiKey: ApiKey } | null>`
@@ -858,7 +893,9 @@ import { createApiKey } from '@/lib/services/apiKeys';
 import { requireOrgRole, requireSuperAdmin } from '@/lib/api/authz';
 
 beforeAll(() => setupTestDb());
-afterAll(async () => { await getDb().$disconnect(); });
+afterAll(async () => {
+  await getDb().$disconnect();
+});
 
 function cookieReq(cookie: string) {
   return new Request('http://x', { headers: { cookie } });
@@ -938,7 +975,7 @@ import type { ApiKey } from '@prisma/client';
 import type { OrgRole } from '@/lib/authz/roles';
 
 export async function verifyApiKeyWithRecord(
-  fullKey: string,
+  fullKey: string
 ): Promise<{ user: User; apiKey: ApiKey } | null> {
   const hashedKey = createHash('sha256').update(fullKey).digest('hex');
   const row = await getDb().apiKey.findUnique({ where: { hashedKey }, include: { user: true } });
@@ -979,7 +1016,7 @@ export interface AuthContext {
 
 async function resolveActiveOrg(
   auth: Awaited<ReturnType<typeof resolveAuth>>,
-  requestedOrgId?: string,
+  requestedOrgId?: string
 ): Promise<{ orgId: string | null; role: OrgRole | null }> {
   if (!auth) return { orgId: null, role: null };
   if (auth.via === 'apikey') {
@@ -1000,7 +1037,7 @@ async function resolveActiveOrg(
 export async function requireOrgRole(
   req: Request,
   action: Action,
-  opts?: { orgId?: string },
+  opts?: { orgId?: string }
 ): Promise<AuthContext | Response> {
   const auth = await resolveAuth(req);
   if (!auth) return apiError('UNAUTHORIZED', 'Authentication required.', 401);
@@ -1030,7 +1067,12 @@ export async function requireSuperAdmin(req: Request): Promise<AuthContext | Res
   return ctx(auth.user, true, null, null);
 }
 
-function ctx(user: User, isSuperAdmin: boolean, orgId: string | null, role: OrgRole | null): AuthContext {
+function ctx(
+  user: User,
+  isSuperAdmin: boolean,
+  orgId: string | null,
+  role: OrgRole | null
+): AuthContext {
   return { user, isSuperAdmin, orgId, role };
 }
 ```
@@ -1057,6 +1099,7 @@ git commit -m "feat(authz): AuthContext resolution with requireOrgRole/requireSu
 ### Task 8: Org-scoped data accessors (the isolation backstop)
 
 **Files:**
+
 - Modify: `lib/services/networks.ts` (add `*ForOrg` accessors; `createNetwork` writes `orgId`)
 - Modify: `lib/services/templates.ts` (org-scoped list/get/create)
 - Modify: `lib/services/audit.ts` (`logAudit` gains `orgId`; `listAuditLogForOrg`)
@@ -1064,6 +1107,7 @@ git commit -m "feat(authz): AuthContext resolution with requireOrgRole/requireSu
 - Test: `tests/unit/org-scoped-accessors.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `listNetworksForOrg(orgId: string): Promise<NetworkSummary[]>` — only nwids whose `NetworkMeta.orgId === orgId`.
   - `getNetworkForOrg(nwid: string, orgId: string): Promise<NetworkDetail | null>` — null if the network's `NetworkMeta.orgId !== orgId` (even when the controller knows it).
@@ -1084,7 +1128,11 @@ import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
 import { listNetworksForOrg, getNetworkForOrg, assertNetworkInOrg } from '@/lib/services/networks';
 
-const NET = { id: 'aaaa000000000001', name: 'x', private: true, /* …minimal ControllerNetwork… */ } as any;
+const NET = {
+  id: 'aaaa000000000001',
+  name: 'x',
+  private: true /* …minimal ControllerNetwork… */,
+} as any;
 const client = {
   listNetworkIds: vi.fn().mockResolvedValue(['aaaa000000000001', 'bbbb000000000002']),
   getNetwork: vi.fn().mockResolvedValue(NET),
@@ -1096,14 +1144,16 @@ beforeEach(async () => {
   vi.clearAllMocks();
   (getControllerClient as any).mockResolvedValue(client);
 });
-afterAll(async () => { await getDb().$disconnect(); });
+afterAll(async () => {
+  await getDb().$disconnect();
+});
 
 it('lists only the org’s networks and blocks cross-org fetch', async () => {
   await getDb().networkMeta.create({ data: { nwid: 'aaaa000000000001', orgId: 'orgA' } });
   await getDb().networkMeta.create({ data: { nwid: 'bbbb000000000002', orgId: 'orgB' } });
 
   const listed = await listNetworksForOrg('orgA');
-  expect(listed.map((n) => n.nwid)).toEqual(['aaaa000000000001']);
+  expect(listed.map(n => n.nwid)).toEqual(['aaaa000000000001']);
 
   expect(await getNetworkForOrg('aaaa000000000001', 'orgA')).not.toBeNull();
   expect(await getNetworkForOrg('aaaa000000000001', 'orgB')).toBeNull(); // cross-org denied
@@ -1123,24 +1173,26 @@ export async function listNetworksForOrg(orgId: string): Promise<NetworkSummary[
   const client = await getControllerClient();
   const ids = await client.listNetworkIds();
   const metas = await getDb().networkMeta.findMany({ where: { nwid: { in: ids }, orgId } });
-  const owned = new Set(metas.map((m) => m.nwid));
-  const metaMap = new Map(metas.map((m) => [m.nwid, m]));
+  const owned = new Set(metas.map(m => m.nwid));
+  const metaMap = new Map(metas.map(m => [m.nwid, m]));
   return Promise.all(
-    ids.filter((nwid) => owned.has(nwid)).map(async (nwid) => {
-      const [config, memberIds] = await Promise.all([
-        client.getNetwork(nwid),
-        client.listMemberIds(nwid),
-      ]);
-      const meta = metaMap.get(nwid);
-      return {
-        nwid,
-        name: meta?.name || config.name || nwid,
-        description: meta?.description ?? '',
-        tags: meta ? (JSON.parse(meta.tags) as string[]) : [],
-        private: config.private,
-        memberCount: Object.keys(memberIds).length,
-      };
-    }),
+    ids
+      .filter(nwid => owned.has(nwid))
+      .map(async nwid => {
+        const [config, memberIds] = await Promise.all([
+          client.getNetwork(nwid),
+          client.listMemberIds(nwid),
+        ]);
+        const meta = metaMap.get(nwid);
+        return {
+          nwid,
+          name: meta?.name || config.name || nwid,
+          description: meta?.description ?? '',
+          tags: meta ? (JSON.parse(meta.tags) as string[]) : [],
+          private: config.private,
+          memberCount: Object.keys(memberIds).length,
+        };
+      })
   );
 }
 
@@ -1158,8 +1210,8 @@ export async function listUnassignedNetworks(): Promise<NetworkSummary[]> {
   const client = await getControllerClient();
   const ids = await client.listNetworkIds();
   const metas = await getDb().networkMeta.findMany({ where: { nwid: { in: ids } } });
-  const assigned = new Set(metas.filter((m) => m.orgId).map((m) => m.nwid));
-  const orphanIds = ids.filter((nwid) => !assigned.has(nwid));
+  const assigned = new Set(metas.filter(m => m.orgId).map(m => m.nwid));
+  const orphanIds = ids.filter(nwid => !assigned.has(nwid));
   // …same summary mapping as above for orphanIds…
   return Promise.all(orphanIds.map(/* summary mapper */));
 }
@@ -1207,9 +1259,13 @@ This task converts each existing route from `requireAuth` to `requireOrgRole(act
 ```ts
 it('403s an editor-less (viewer) session on POST', async () => {
   const { cookie } = await createTestUserAndSession({ role: 'viewer' });
-  const res = await createPost(new Request('http://x/api/v1/networks', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: '{}',
-  }));
+  const res = await createPost(
+    new Request('http://x/api/v1/networks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie },
+      body: '{}',
+    })
+  );
   expect(res.status).toBe(403);
 });
 
@@ -1271,30 +1327,30 @@ Expected: PASS.
 
 **Enumeration — apply the identical pattern (action in parentheses; use `getNetworkForOrg`/`assertNetworkInOrg` for anything under a network; pass `orgId` to `logAudit`):**
 
-| Route file | Reads → action | Writes → action | Scoping call |
-|---|---|---|---|
-| `app/api/v1/networks/[nwid]/route.ts` | GET → `network:read` | PATCH → `network:write`, DELETE → `network:write` | `getNetworkForOrg(nwid, orgId)`; 404 if null |
-| `app/api/v1/networks/[nwid]/members/route.ts` | GET → `member:read` | — | gate: `assertNetworkInOrg(nwid, orgId)` else 404 |
-| `app/api/v1/networks/[nwid]/members/[memberId]/route.ts` | GET → `member:read` | PATCH/DELETE → `member:write` | `assertNetworkInOrg` gate |
-| `app/api/v1/networks/[nwid]/rules/route.ts` | GET → `network:read` | PUT → `rules:write` | `assertNetworkInOrg` gate |
-| `app/api/v1/networks/[nwid]/clone/route.ts` | — | → `network:write` | `assertNetworkInOrg(source, orgId)`; clone into same org |
-| `app/api/v1/networks/[nwid]/presence/route.ts` | GET → `network:read` | — | `assertNetworkInOrg` gate |
-| `app/api/v1/templates/route.ts` | GET → `template:read` | POST → `template:write` | `*TemplatesForOrg(orgId)` |
-| `app/api/v1/templates/[id]/route.ts` | GET → `template:read` | PATCH → `template:write` | `getTemplateForOrg(id, orgId)` |
-| `app/api/v1/templates/[id]/apply/route.ts` | — | → `network:write` | create into `orgId` |
-| `app/api/v1/settings/webhook/route.ts` | GET → `webhook:manage` | POST → `webhook:manage` | `*WebhookConfig(orgId)` |
-| `app/api/v1/audit/route.ts` | GET → `org:read` | — | `listAuditLogForOrg(orgId)` |
-| `app/api/v1/pending/route.ts` | GET → `member:read` | — | filter to org’s networks |
-| `app/api/v1/apikeys/*` | GET → `apikey:manage` | POST/DELETE → `apikey:manage` | list/scope by `orgId` (Task 18 refines create) |
+| Route file                                               | Reads → action         | Writes → action                                   | Scoping call                                             |
+| -------------------------------------------------------- | ---------------------- | ------------------------------------------------- | -------------------------------------------------------- |
+| `app/api/v1/networks/[nwid]/route.ts`                    | GET → `network:read`   | PATCH → `network:write`, DELETE → `network:write` | `getNetworkForOrg(nwid, orgId)`; 404 if null             |
+| `app/api/v1/networks/[nwid]/members/route.ts`            | GET → `member:read`    | —                                                 | gate: `assertNetworkInOrg(nwid, orgId)` else 404         |
+| `app/api/v1/networks/[nwid]/members/[memberId]/route.ts` | GET → `member:read`    | PATCH/DELETE → `member:write`                     | `assertNetworkInOrg` gate                                |
+| `app/api/v1/networks/[nwid]/rules/route.ts`              | GET → `network:read`   | PUT → `rules:write`                               | `assertNetworkInOrg` gate                                |
+| `app/api/v1/networks/[nwid]/clone/route.ts`              | —                      | → `network:write`                                 | `assertNetworkInOrg(source, orgId)`; clone into same org |
+| `app/api/v1/networks/[nwid]/presence/route.ts`           | GET → `network:read`   | —                                                 | `assertNetworkInOrg` gate                                |
+| `app/api/v1/templates/route.ts`                          | GET → `template:read`  | POST → `template:write`                           | `*TemplatesForOrg(orgId)`                                |
+| `app/api/v1/templates/[id]/route.ts`                     | GET → `template:read`  | PATCH → `template:write`                          | `getTemplateForOrg(id, orgId)`                           |
+| `app/api/v1/templates/[id]/apply/route.ts`               | —                      | → `network:write`                                 | create into `orgId`                                      |
+| `app/api/v1/settings/webhook/route.ts`                   | GET → `webhook:manage` | POST → `webhook:manage`                           | `*WebhookConfig(orgId)`                                  |
+| `app/api/v1/audit/route.ts`                              | GET → `org:read`       | —                                                 | `listAuditLogForOrg(orgId)`                              |
+| `app/api/v1/pending/route.ts`                            | GET → `member:read`    | —                                                 | filter to org’s networks                                 |
+| `app/api/v1/apikeys/*`                                   | GET → `apikey:manage`  | POST/DELETE → `apikey:manage`                     | list/scope by `orgId` (Task 18 refines create)           |
 
 **Instance-global → `requireSuperAdmin(req)` (no org scoping):**
 
-| Route file |
-|---|
+| Route file                              |
+| --------------------------------------- |
 | `app/api/v1/controller/status/route.ts` |
-| `app/api/v1/metrics/route.ts` |
-| `app/api/v1/backup/route.ts` |
-| `app/api/v1/backup/restore/route.ts` |
+| `app/api/v1/metrics/route.ts`           |
+| `app/api/v1/backup/route.ts`            |
+| `app/api/v1/backup/restore/route.ts`    |
 
 **`app/api/v1/me/route.ts`** — keep `requireAuth`; extend the response with memberships + active org + `isSuperAdmin` (Task 10 covers the shape).
 
@@ -1310,7 +1366,7 @@ import type { OrgRole } from '@/lib/authz/roles';
 let counter = 0;
 
 export async function createTestUserAndSession(
-  opts: { role?: OrgRole; superadmin?: boolean } = {},
+  opts: { role?: OrgRole; superadmin?: boolean } = {}
 ): Promise<{ user: User; cookie: string; orgId: string }> {
   counter += 1;
   const user = await createUser(`admin${Date.now()}_${counter}`, 'password12345');
@@ -1348,6 +1404,7 @@ Adds the org CRUD, membership management, org-switcher, and super-admin surfaces
 **Files:** Modify `app/api/v1/me/route.ts`; Create `app/api/v1/orgs/[orgId]/active/route.ts`; Test `tests/integration/me-active-org.test.ts`.
 
 **Interfaces:**
+
 - Produces `GET /me` body: `{ user: { id, username, role, totpEnabled, isSuperAdmin }, activeOrgId, memberships: { orgId, orgName, orgSlug, role }[] }`.
 - `POST /orgs/{orgId}/active` — sets `Session.activeOrgId` (must be a member or super-admin); returns 204. Only valid for cookie sessions (API keys are org-bound already → 400 for API-key callers).
 
@@ -1358,6 +1415,7 @@ Key code: resolve session id from the cookie (reuse `resolveAuth`), verify membe
 **Files:** Create `app/api/v1/orgs/route.ts`, `app/api/v1/orgs/[orgId]/route.ts`; service additions in `lib/services/orgs.ts` (`renameOrg`, `deleteOrg`); Test `tests/integration/orgs-routes.test.ts`.
 
 **Interfaces / rules:**
+
 - `GET /orgs` — members: their orgs (`listMembershipsForUser`); super-admin: all orgs. Body `{ orgs: { id, name, slug, role }[] }`.
 - `POST /orgs` — **super-admin only** (`requireSuperAdmin`); zod `{ name: string(1..60) }`; `createOrg({ name, createdById: user.id })`; audit `org.create`.
 - `PATCH /orgs/{orgId}` — `requireOrgRole(req, 'org:manage', { orgId })`; rename (regenerates nothing — slug is stable); audit `org.update`.
@@ -1370,6 +1428,7 @@ Key code: resolve session id from the cookie (reuse `resolveAuth`), verify membe
 **Files:** Create `app/api/v1/orgs/[orgId]/members/route.ts`, `app/api/v1/orgs/[orgId]/members/[userId]/route.ts`; Test `tests/integration/org-members-routes.test.ts`.
 
 **Interfaces / rules:**
+
 - `GET` — `requireOrgRole(req, 'org:read', { orgId })`; returns `listMembersOfOrg(orgId)` mapped to `{ userId, username, role }`. **Super-admin visibility rule:** super-admins who are not explicit members are appended to the list ONLY when the caller is an owner/admin or a super-admin; editors/viewers never see them (see spec §4). Implement a `visibleMembers(orgId, caller)` helper.
 - `POST` (direct-create) — `requireOrgRole(req, 'org:manage-members', { orgId })`; zod `{ username(3..32), password(10..128), role: OrgRole }`; `createUser` + `addMembership`; audit `member.create`. 409 if username taken.
 - `PATCH /{userId}` — `requireOrgRole(req, 'org:manage-members', { orgId })`; zod `{ role: OrgRole }`; `setMemberRole` (maps `LastOwnerError` → 409 `LAST_OWNER`). Only owners may grant/revoke `owner` (admins can set editor/viewer/admin but not owner) — enforce with an explicit check.
@@ -1402,6 +1461,7 @@ Key code: resolve session id from the cookie (reuse `resolveAuth`), verify membe
 **Files:** Create `lib/services/invitations.ts`; Create `app/api/v1/orgs/[orgId]/invitations/route.ts`, `app/api/v1/orgs/[orgId]/invitations/[id]/route.ts`, `app/api/v1/invitations/[token]/route.ts`, `app/api/v1/invitations/[token]/accept/route.ts`; Test `tests/unit/invitations-service.test.ts`, `tests/integration/invitations-routes.test.ts`.
 
 **Interfaces / rules (mirror the API-key hashed-token pattern in `lib/services/apiKeys.ts`):**
+
 - `generateInvitationToken(): { token, hashedToken }` — `token = inv_<hex>`; store only the SHA-256 hash.
 - `createInvitation({ orgId, role, email?, createdById, ttlMs })` → returns `{ invitation, token }` (token shown once).
 - `getInvitationByToken(token)` → validates not expired / not accepted; returns `{ orgId, orgName, role }` for preview.
@@ -1421,6 +1481,7 @@ Key code: resolve session id from the cookie (reuse `resolveAuth`), verify membe
 **Files:** Modify `lib/services/apiKeys.ts` (create/list/delete scoped by org + role — the `createApiKey` scope arg was added in Task 7); Modify `app/api/v1/apikeys/*`; Test `tests/integration/apikeys-routes.test.ts` (extend), `tests/unit/apikeys-service.test.ts` (extend).
 
 **Interfaces / rules:**
+
 - `createApiKey(userId, name, expiresAt?, scope: { orgId: string; role: OrgRole })` — persists `orgId` + `role`; **role capped at the creator's live role** (reject with 403 if `ROLE_RANK[requestedRole] > ROLE_RANK[callerRole]`).
 - `listApiKeys(userId, orgId)` — scoped to the active org.
 - `deleteApiKey(id, userId, orgId)` — scoped delete.
@@ -1443,6 +1504,7 @@ Key code: resolve session id from the cookie (reuse `resolveAuth`), verify membe
 ## Self-Review
 
 **Spec coverage:**
+
 - §3 data model → Task 1 (all models/columns), Task 2 (roles). ✓
 - §4 policy + AuthContext + scoped accessors + API-key scoping + audit orgId → Tasks 6, 7, 8, 18, 8. ✓
 - §5 migration/backfill + first-run + orphan guard → Task 4, Task 5, Task 8 (`listUnassignedNetworks`) + Task 11 (delete guard). ✓

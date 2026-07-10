@@ -36,7 +36,7 @@ function fakeNetwork(id: string, name: string): ControllerNetwork {
 function fakeMember(
   nwid: string,
   id: string,
-  overrides: Partial<ControllerMember> = {},
+  overrides: Partial<ControllerMember> = {}
 ): ControllerMember {
   return {
     id,
@@ -79,10 +79,10 @@ beforeEach(async () => {
 
   mockClient.listNetworkIds.mockResolvedValue([NET_A, NET_B]);
   mockClient.getNetwork.mockImplementation(async (nwid: string) =>
-    fakeNetwork(nwid, nwid === NET_A ? 'Network A' : 'Network B'),
+    fakeNetwork(nwid, nwid === NET_A ? 'Network A' : 'Network B')
   );
   mockClient.listMemberIds.mockImplementation(async (nwid: string) =>
-    nwid === NET_A ? { m1: 1, m2: 1 } : { m3: 1 },
+    nwid === NET_A ? { m1: 1, m2: 1 } : { m3: 1 }
   );
   mockClient.getMember.mockImplementation(async (nwid: string, id: string) => {
     if (nwid === NET_A && id === 'm1') {
@@ -105,19 +105,19 @@ describe('listPendingMembers', () => {
     const pending = await listPendingMembers();
 
     expect(pending).toHaveLength(2);
-    const ids = pending.map((p) => p.memberId).sort();
+    const ids = pending.map(p => p.memberId).sort();
     expect(ids).toEqual(['m1', 'm3']);
 
-    const m1 = pending.find((p) => p.memberId === 'm1')!;
+    const m1 = pending.find(p => p.memberId === 'm1')!;
     expect(m1.nwid).toBe(NET_A);
     expect(m1.networkName).toBe('Network A');
 
-    const m3 = pending.find((p) => p.memberId === 'm3')!;
+    const m3 = pending.find(p => p.memberId === 'm3')!;
     expect(m3.nwid).toBe(NET_B);
     expect(m3.networkName).toBe('Network B');
 
     // authorized member m2 must be excluded
-    expect(pending.some((p) => p.memberId === 'm2')).toBe(false);
+    expect(pending.some(p => p.memberId === 'm2')).toBe(false);
   });
 
   it('uses stored network metadata name over the controller config name when present', async () => {
@@ -125,13 +125,13 @@ describe('listPendingMembers', () => {
       data: { nwid: NET_A, name: 'Friendly A', description: '', tags: '[]' },
     });
     const pending = await listPendingMembers();
-    const m1 = pending.find((p) => p.memberId === 'm1')!;
+    const m1 = pending.find(p => p.memberId === 'm1')!;
     expect(m1.networkName).toBe('Friendly A');
   });
 
   it('returns an empty array when nothing is pending', async () => {
     mockClient.getMember.mockImplementation(async (nwid: string, id: string) =>
-      fakeMember(nwid, id, { authorized: true }),
+      fakeMember(nwid, id, { authorized: true })
     );
     const pending = await listPendingMembers();
     expect(pending).toEqual([]);

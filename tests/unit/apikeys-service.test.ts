@@ -69,10 +69,10 @@ describe('api key service', () => {
     });
     const keys = await listApiKeys(userId, orgId);
     expect(keys.length).toBeGreaterThanOrEqual(1);
-    expect(keys.map((k) => k.id)).toContain(apiKey.id);
+    expect(keys.map(k => k.id)).toContain(apiKey.id);
     expect(await deleteApiKey(apiKey.id, 'someone-else', orgId)).toBe(false);
     expect(await deleteApiKey(apiKey.id, userId, orgId)).toBe(true);
-    expect((await listApiKeys(userId, orgId)).map((k) => k.id)).not.toContain(apiKey.id);
+    expect((await listApiKeys(userId, orgId)).map(k => k.id)).not.toContain(apiKey.id);
   });
 
   it('scopes list to the active org — keys from another org are excluded', async () => {
@@ -84,10 +84,10 @@ describe('api key service', () => {
       orgId: otherOrgId,
       role: 'viewer',
     });
-    const orgAKeys = (await listApiKeys(userId, orgId)).map((k) => k.id);
+    const orgAKeys = (await listApiKeys(userId, orgId)).map(k => k.id);
     expect(orgAKeys).toContain(keyA.id);
     expect(orgAKeys).not.toContain(keyB.id);
-    const orgBKeys = (await listApiKeys(userId, otherOrgId)).map((k) => k.id);
+    const orgBKeys = (await listApiKeys(userId, otherOrgId)).map(k => k.id);
     expect(orgBKeys).toContain(keyB.id);
     expect(orgBKeys).not.toContain(keyA.id);
   });

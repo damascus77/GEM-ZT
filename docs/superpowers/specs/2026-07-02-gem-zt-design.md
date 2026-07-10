@@ -54,18 +54,18 @@ that gap.
 
 ## 3. Decisions (locked)
 
-| Area | Decision |
-|---|---|
-| v1 scope | Core + power features, single admin (no multi-tenancy yet) |
-| Stack | Next.js 14 (App Router) + TypeScript + Tailwind + Prisma + **SQLite** |
-| App structure | Route Handlers **are** the REST API; UI consumes `/api/v1/*` |
-| Controller packaging | Separate official `zerotier-one` container |
-| Audience | Personal / internal use first |
-| Public API | Full documented REST API from day one (OpenAPI), API-key auth |
-| Auth | Username + password (argon2) login, DB-backed sessions, + API keys |
-| First run | Setup wizard creates the admin account (no default/env password) |
-| Live status | Polling (react-query `refetchInterval`) |
-| Project name | **GEM-ZT** |
+| Area                 | Decision                                                              |
+| -------------------- | --------------------------------------------------------------------- |
+| v1 scope             | Core + power features, single admin (no multi-tenancy yet)            |
+| Stack                | Next.js 14 (App Router) + TypeScript + Tailwind + Prisma + **SQLite** |
+| App structure        | Route Handlers **are** the REST API; UI consumes `/api/v1/*`          |
+| Controller packaging | Separate official `zerotier-one` container                            |
+| Audience             | Personal / internal use first                                         |
+| Public API           | Full documented REST API from day one (OpenAPI), API-key auth         |
+| Auth                 | Username + password (argon2) login, DB-backed sessions, + API keys    |
+| First run            | Setup wizard creates the admin account (no default/env password)      |
+| Live status          | Polling (react-query `refetchInterval`)                               |
+| Project name         | **GEM-ZT**                                                            |
 
 ## 4. Architecture
 

@@ -38,21 +38,21 @@ export default function SetupPage() {
 
   return (
     <Card className="w-full max-w-sm">
-      <h1 className="text-[22px] wght-540 tracking-[-0.315px] mb-2">Welcome to GEM-ZT</h1>
-      <p className="text-sm text-ink-mute mb-6">
+      <h1 className="wght-540 mb-2 text-[22px] tracking-[-0.315px]">Welcome to GEM-ZT</h1>
+      <p className="mb-6 text-sm text-ink-mute">
         First-run setup: create the administrator account. No default passwords, ever.
       </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <label className="text-sm text-ink-mute">
           Username
-          <Input value={username} onChange={(e) => setUsername(e.target.value)} required />
+          <Input value={username} onChange={e => setUsername(e.target.value)} required />
         </label>
         <label className="text-sm text-ink-mute">
           Password
           <Input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             minLength={10}
             required
           />
@@ -62,7 +62,7 @@ export default function SetupPage() {
           <Input
             type="password"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={e => setConfirm(e.target.value)}
             required
           />
         </label>

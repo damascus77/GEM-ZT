@@ -44,7 +44,7 @@ export async function listAuditLog(limit = 100): Promise<AuditEntry[]> {
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     include: { user: { select: { username: true } } },
   });
-  return rows.map((r) => ({
+  return rows.map(r => ({
     id: r.id,
     userId: r.userId,
     username: r.user.username,
@@ -65,7 +65,7 @@ export async function listAuditLogForOrg(orgId: string, limit = 100): Promise<Au
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     include: { user: { select: { username: true } } },
   });
-  return rows.map((r) => ({
+  return rows.map(r => ({
     id: r.id,
     userId: r.userId,
     username: r.user.username,

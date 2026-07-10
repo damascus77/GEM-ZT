@@ -121,18 +121,24 @@ describe('PATCH /orgs/{orgId}', () => {
   it('403s viewer/editor/admin roles', async () => {
     for (const role of ['viewer', 'editor', 'admin'] as const) {
       const { cookie, orgId } = await createTestUserAndSession({ role });
-      const res = await orgPatch(req(`http://x/orgs/${orgId}`, 'PATCH', cookie, { name: 'Renamed' }), {
-        params: Promise.resolve({ orgId }),
-      });
+      const res = await orgPatch(
+        req(`http://x/orgs/${orgId}`, 'PATCH', cookie, { name: 'Renamed' }),
+        {
+          params: Promise.resolve({ orgId }),
+        }
+      );
       expect(res.status).toBe(403);
     }
   });
 
   it('owner can rename, and it audits', async () => {
     const { cookie, orgId, user } = await createTestUserAndSession();
-    const res = await orgPatch(req(`http://x/orgs/${orgId}`, 'PATCH', cookie, { name: 'Renamed Org' }), {
-      params: Promise.resolve({ orgId }),
-    });
+    const res = await orgPatch(
+      req(`http://x/orgs/${orgId}`, 'PATCH', cookie, { name: 'Renamed Org' }),
+      {
+        params: Promise.resolve({ orgId }),
+      }
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.org.name).toBe('Renamed Org');
@@ -158,9 +164,12 @@ describe('PATCH /orgs/{orgId}', () => {
     const { cookie } = await createTestUserAndSession();
     const { user: otherUser } = await createTestUserAndSession();
     const otherOrg = await createOrg({ name: 'Someone Else 2', createdById: otherUser.id });
-    const res = await orgPatch(req(`http://x/orgs/${otherOrg.id}`, 'PATCH', cookie, { name: 'X' }), {
-      params: Promise.resolve({ orgId: otherOrg.id }),
-    });
+    const res = await orgPatch(
+      req(`http://x/orgs/${otherOrg.id}`, 'PATCH', cookie, { name: 'X' }),
+      {
+        params: Promise.resolve({ orgId: otherOrg.id }),
+      }
+    );
     expect(res.status).toBe(403);
   });
 });

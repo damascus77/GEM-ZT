@@ -105,7 +105,10 @@ describe('openApiSpec', () => {
   });
 
   it('documents 401 and 403 on every non-public, role-checked path', () => {
-    const paths = openApiSpec.paths as Record<string, Record<string, { responses?: Record<string, unknown> }>>;
+    const paths = openApiSpec.paths as Record<
+      string,
+      Record<string, { responses?: Record<string, unknown> }>
+    >;
     for (const [path, method] of expected) {
       if (publicOps.has(`${path} ${method}`) || authOnlyOps.has(`${path} ${method}`)) continue;
       const op = paths[path][method];
@@ -116,7 +119,10 @@ describe('openApiSpec', () => {
   });
 
   it('documents 401 (but not a fabricated 403) on auth-only, non-role-checked paths', () => {
-    const paths = openApiSpec.paths as Record<string, Record<string, { responses?: Record<string, unknown> }>>;
+    const paths = openApiSpec.paths as Record<
+      string,
+      Record<string, { responses?: Record<string, unknown> }>
+    >;
     for (const [path, method] of expected) {
       if (!authOnlyOps.has(`${path} ${method}`)) continue;
       const responses = paths[path][method].responses ?? {};
@@ -143,7 +149,13 @@ describe('openApiSpec', () => {
 
   it('documents the OrgRole enum on the API-key create schema', () => {
     const createKey = openApiSpec.paths['/apikeys'].post as {
-      requestBody?: { content: { 'application/json': { schema: { properties: Record<string, { enum?: readonly string[] }> } } } };
+      requestBody?: {
+        content: {
+          'application/json': {
+            schema: { properties: Record<string, { enum?: readonly string[] }> };
+          };
+        };
+      };
     };
     const roleProp = createKey.requestBody?.content['application/json'].schema.properties.role;
     expect(roleProp, 'apikey create schema missing role property').toBeDefined();

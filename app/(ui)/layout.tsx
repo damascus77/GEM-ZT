@@ -19,40 +19,40 @@ const navAfter = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex">
-      <aside className="w-60 shrink-0 bg-primary text-on-primary flex flex-col">
-        <div className="px-6 py-5 text-[20px] wght-540 tracking-[-0.4px]">GEM-ZT</div>
+    <div className="flex min-h-screen">
+      <aside className="flex w-60 shrink-0 flex-col bg-primary text-on-primary">
+        <div className="wght-540 px-6 py-5 text-[20px] tracking-[-0.4px]">GEM-ZT</div>
         <nav className="flex flex-col gap-1 px-3">
-          {navBefore.map((item) => (
+          {navBefore.map(item => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-md px-3 py-2 text-on-dark-mute hover:text-on-primary hover:bg-primary-deep"
+              className="rounded-md px-3 py-2 text-on-dark-mute hover:bg-primary-deep hover:text-on-primary"
             >
               {item.label}
             </Link>
           ))}
           <StatusNavLink />
-          {navAfter.map((item) => (
+          {navAfter.map(item => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-md px-3 py-2 text-on-dark-mute hover:text-on-primary hover:bg-primary-deep"
+              className="rounded-md px-3 py-2 text-on-dark-mute hover:bg-primary-deep hover:text-on-primary"
             >
               {item.label}
             </Link>
           ))}
           <AdminNavLink />
         </nav>
-        <div className="mt-auto px-6 py-5 flex flex-col gap-3 items-start">
+        <div className="mt-auto flex flex-col items-start gap-3 px-6 py-5">
           <OrgSwitcher className="w-full" />
           <ThemeToggle className="text-sm text-on-dark-faint hover:text-on-primary" />
           <SignOutButton />
         </div>
       </aside>
-      <div className="flex-1 flex flex-col bg-canvas-soft">
+      <div className="flex flex-1 flex-col bg-canvas-soft">
         <DegradedBanner />
-        <main className="max-w-[1100px] w-full mx-auto px-6 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1100px] px-6 py-8">{children}</main>
       </div>
     </div>
   );

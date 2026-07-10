@@ -17,7 +17,7 @@ describe('prisma schema', () => {
     });
     expect(user.role).toBe('user');
     await expect(
-      getDb().user.create({ data: { username: 'noah', passwordHash: 'y' } }),
+      getDb().user.create({ data: { username: 'noah', passwordHash: 'y' } })
     ).rejects.toThrow();
   });
 

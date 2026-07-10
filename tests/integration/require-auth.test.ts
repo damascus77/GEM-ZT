@@ -25,7 +25,7 @@ describe('requireAuth', () => {
   it('accepts a valid session cookie', async () => {
     const { user, cookie } = await createTestUserAndSession();
     const result = await requireAuth(
-      new Request('http://x/api/v1/networks', { headers: { cookie } }),
+      new Request('http://x/api/v1/networks', { headers: { cookie } })
     );
     expect(result).not.toBeInstanceOf(Response);
     expect((result as { user: { id: string } }).user.id).toBe(user.id);
@@ -37,7 +37,7 @@ describe('requireAuth', () => {
     const result = await requireAuth(
       new Request('http://x/api/v1/networks', {
         headers: { authorization: `Bearer ${fullKey}` },
-      }),
+      })
     );
     expect(result).not.toBeInstanceOf(Response);
     expect((result as { user: { id: string } }).user.id).toBe(user.id);
@@ -49,7 +49,7 @@ describe('requireAuth', () => {
     const result = await requireAuth(
       new Request('http://x/api/v1/networks', {
         headers: { authorization: `bearer ${fullKey}` },
-      }),
+      })
     );
     expect(result).not.toBeInstanceOf(Response);
     expect((result as { user: { id: string } }).user.id).toBe(user.id);
@@ -59,7 +59,7 @@ describe('requireAuth', () => {
     const result = await requireAuth(
       new Request('http://x/api/v1/networks', {
         headers: { authorization: `Bearer ztk_${'0'.repeat(48)}` },
-      }),
+      })
     );
     expect((result as Response).status).toBe(401);
   });
@@ -72,7 +72,7 @@ describe('requireAuth', () => {
     const result = await requireAuth(
       new Request('http://x/api/v1/networks', {
         headers: { cookie: `gemzt_session=${expired.id}` },
-      }),
+      })
     );
     expect((result as Response).status).toBe(401);
   });

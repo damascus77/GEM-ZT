@@ -23,7 +23,7 @@ describe('StatusDashboard', () => {
   it('renders inventory counts parsed from /api/v1/metrics', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(metricsText, { status: 200 })),
+      vi.fn(async () => new Response(metricsText, { status: 200 }))
     );
     renderWithQuery(<StatusDashboard />);
     expect(await screen.findByText('Reachable')).toBeInTheDocument();
@@ -34,10 +34,13 @@ describe('StatusDashboard', () => {
   });
 
   it('shows the controller as Unreachable when the gauge is 0', async () => {
-    const down = metricsText.replace('gemzt_controller_reachable 1', 'gemzt_controller_reachable 0');
+    const down = metricsText.replace(
+      'gemzt_controller_reachable 1',
+      'gemzt_controller_reachable 0'
+    );
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(down, { status: 200 })),
+      vi.fn(async () => new Response(down, { status: 200 }))
     );
     renderWithQuery(<StatusDashboard />);
     expect(await screen.findByText('Unreachable')).toBeInTheDocument();

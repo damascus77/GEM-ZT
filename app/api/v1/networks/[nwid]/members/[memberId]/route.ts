@@ -3,12 +3,7 @@ import { requireOrgRole } from '@/lib/api/authz';
 import { apiError, handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
 import { assertNetworkInOrg } from '@/lib/services/networks';
-import {
-  deleteMember,
-  getMember,
-  updateMember,
-  updateMemberSchema,
-} from '@/lib/services/members';
+import { deleteMember, getMember, updateMember, updateMemberSchema } from '@/lib/services/members';
 
 type Ctx = { params: Promise<{ nwid: string; memberId: string }> };
 

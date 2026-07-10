@@ -13,27 +13,30 @@ const nets = [
 
 describe('filterAndSortNetworks', () => {
   it('searches by name or nwid (case-insensitive)', () => {
-    expect(filterAndSortNetworks(nets, { search: 'HOME' }).map((x) => x.name)).toEqual(['home-lan']);
-    expect(filterAndSortNetworks(nets, { search: 'cccc0000' }).map((x) => x.name)).toEqual(['lab']);
+    expect(filterAndSortNetworks(nets, { search: 'HOME' }).map(x => x.name)).toEqual(['home-lan']);
+    expect(filterAndSortNetworks(nets, { search: 'cccc0000' }).map(x => x.name)).toEqual(['lab']);
   });
 
   it('filters by visibility', () => {
-    expect(filterAndSortNetworks(nets, { visibility: 'public' }).map((x) => x.name)).toEqual(['guest']);
-    expect(filterAndSortNetworks(nets, { visibility: 'private' }).map((x) => x.name).sort()).toEqual([
-      'home-lan',
-      'lab',
+    expect(filterAndSortNetworks(nets, { visibility: 'public' }).map(x => x.name)).toEqual([
+      'guest',
     ]);
+    expect(
+      filterAndSortNetworks(nets, { visibility: 'private' })
+        .map(x => x.name)
+        .sort()
+    ).toEqual(['home-lan', 'lab']);
   });
 
   it('sorts by name and by member count', () => {
-    expect(filterAndSortNetworks(nets, { sort: 'name', dir: 'asc' }).map((x) => x.name)).toEqual([
+    expect(filterAndSortNetworks(nets, { sort: 'name', dir: 'asc' }).map(x => x.name)).toEqual([
       'guest',
       'home-lan',
       'lab',
     ]);
-    expect(filterAndSortNetworks(nets, { sort: 'members', dir: 'desc' }).map((x) => x.memberCount)).toEqual([
-      10, 3, 1,
-    ]);
+    expect(
+      filterAndSortNetworks(nets, { sort: 'members', dir: 'desc' }).map(x => x.memberCount)
+    ).toEqual([10, 3, 1]);
   });
 
   it('does not mutate the input', () => {

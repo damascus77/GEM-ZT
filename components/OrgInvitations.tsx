@@ -33,7 +33,7 @@ export function OrgInvitations({ orgId }: { orgId: string }) {
   });
 
   const me = meQuery.data;
-  const myRole = me?.memberships.find((m) => m.orgId === orgId)?.role;
+  const myRole = me?.memberships.find(m => m.orgId === orgId)?.role;
   const isOwner = Boolean(me?.user.isSuperAdmin || myRole === 'owner');
   const canManage = Boolean(me?.user.isSuperAdmin || myRole === 'owner' || myRole === 'admin');
 
@@ -107,12 +107,12 @@ export function OrgInvitations({ orgId }: { orgId: string }) {
 
   if (!canManage) return null;
 
-  const availableRoles = isOwner ? ORG_ROLES : ORG_ROLES.filter((r) => r !== 'owner');
+  const availableRoles = isOwner ? ORG_ROLES : ORG_ROLES.filter(r => r !== 'owner');
 
   return (
     <div className="flex flex-col gap-6">
       <Card className="overflow-x-auto">
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Invitations</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Invitations</h2>
         {invitationsQuery.isLoading && <p className="text-ink-mute">Loading…</p>}
         {invitationsQuery.isError && !invitationsQuery.data && (
           <p role="alert" className="text-sm text-ink">
@@ -120,17 +120,17 @@ export function OrgInvitations({ orgId }: { orgId: string }) {
           </p>
         )}
         {revokeInvitation.isError && (
-          <p role="alert" className="text-sm text-ink mb-2">
+          <p role="alert" className="mb-2 text-sm text-ink">
             {(revokeInvitation.error as Error).message}
           </p>
         )}
         {invitationsQuery.data && invitationsQuery.data.invitations.length === 0 && (
-          <p className="text-ink-mute text-sm">No pending invitations.</p>
+          <p className="text-sm text-ink-mute">No pending invitations.</p>
         )}
         {invitationsQuery.data && invitationsQuery.data.invitations.length > 0 && (
           <table className="w-full text-left">
             <thead>
-              <tr className="text-xs text-ink-faint uppercase">
+              <tr className="text-xs uppercase text-ink-faint">
                 <th className="pb-2 pr-4">Email</th>
                 <th className="pb-2 pr-4">Role</th>
                 <th className="pb-2 pr-4">Expires</th>
@@ -138,9 +138,11 @@ export function OrgInvitations({ orgId }: { orgId: string }) {
               </tr>
             </thead>
             <tbody>
-              {invitationsQuery.data.invitations.map((inv) => (
+              {invitationsQuery.data.invitations.map(inv => (
                 <tr key={inv.id} className="border-t border-hairline">
-                  <td className="py-3 pr-4 wght-540">{inv.email ?? <span className="text-ink-faint">—</span>}</td>
+                  <td className="wght-540 py-3 pr-4">
+                    {inv.email ?? <span className="text-ink-faint">—</span>}
+                  </td>
                   <td className="py-3 pr-4 capitalize">{inv.role}</td>
                   <td className="py-3 pr-4 text-sm text-ink-mute">
                     {new Date(inv.expiresAt).toLocaleString()}
@@ -163,10 +165,10 @@ export function OrgInvitations({ orgId }: { orgId: string }) {
       </Card>
 
       <Card>
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Create invitation</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Create invitation</h2>
         <form
-          className="flex gap-2 flex-wrap items-end"
-          onSubmit={(e) => {
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={e => {
             e.preventDefault();
             createInvitation.mutate();
           }}
@@ -175,10 +177,10 @@ export function OrgInvitations({ orgId }: { orgId: string }) {
             Role
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as OrgRole)}
-              className="mt-1 block bg-canvas text-ink text-base rounded-sm border border-hairline px-3 py-2.5 focus:outline-none focus:border-hairline-dark"
+              onChange={e => setRole(e.target.value as OrgRole)}
+              className="mt-1 block rounded-sm border border-hairline bg-canvas px-3 py-2.5 text-base text-ink focus:border-hairline-dark focus:outline-none"
             >
-              {availableRoles.map((r) => (
+              {availableRoles.map(r => (
                 <option key={r} value={r}>
                   {r}
                 </option>
@@ -190,7 +192,7 @@ export function OrgInvitations({ orgId }: { orgId: string }) {
             <Input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               className="w-56"
             />
           </label>
@@ -200,7 +202,7 @@ export function OrgInvitations({ orgId }: { orgId: string }) {
               type="number"
               min={1}
               value={ttlHours}
-              onChange={(e) => setTtlHours(e.target.value)}
+              onChange={e => setTtlHours(e.target.value)}
               className="w-32"
             />
           </label>
@@ -209,18 +211,21 @@ export function OrgInvitations({ orgId }: { orgId: string }) {
           </Button>
         </form>
         {createInvitation.isError && (
-          <p role="alert" className="text-sm text-ink mt-2">
+          <p role="alert" className="mt-2 text-sm text-ink">
             {(createInvitation.error as Error).message}
           </p>
         )}
         {newInviteLink && (
           <div className="mt-4 flex flex-col gap-2 rounded-sm border border-hairline bg-canvas-soft p-4">
-            <p className="text-sm text-ink-mute">
-              Invitation link (shown once — copy it now):
-            </p>
-            <div className="flex gap-2 items-center flex-wrap">
-              <code className="text-sm break-all">{newInviteLink}</code>
-              <Button type="button" variant="outline" className="px-3 py-1.5 text-sm" onClick={copyLink}>
+            <p className="text-sm text-ink-mute">Invitation link (shown once — copy it now):</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="break-all text-sm">{newInviteLink}</code>
+              <Button
+                type="button"
+                variant="outline"
+                className="px-3 py-1.5 text-sm"
+                onClick={copyLink}
+              >
                 {copied ? 'Copied!' : 'Copy'}
               </Button>
             </div>

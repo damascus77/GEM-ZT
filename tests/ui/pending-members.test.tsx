@@ -99,7 +99,7 @@ describe('PendingMembers', () => {
     await screen.findByText('laptop');
     const buttons = screen.getAllByRole('button', { name: /^deny$/i });
     await userEvent.click(buttons[0]);
-    await new Promise((r) => setTimeout(r, 20));
+    await new Promise(r => setTimeout(r, 20));
     expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE')).toBeUndefined();
   });
 
@@ -108,7 +108,7 @@ describe('PendingMembers', () => {
       if (init?.method === 'PATCH') {
         return new Response(
           JSON.stringify({ error: { code: 'CONTROLLER_UNREACHABLE', message: 'controller down' } }),
-          { status: 502 },
+          { status: 502 }
         );
       }
       if (String(url).includes('/api/v1/pending')) {

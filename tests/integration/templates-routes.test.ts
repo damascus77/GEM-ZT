@@ -49,7 +49,11 @@ beforeAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks();
   (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
-  mockClient.getStatus.mockResolvedValue({ address: 'abcdef0123', online: true, version: '1.14.2' });
+  mockClient.getStatus.mockResolvedValue({
+    address: 'abcdef0123',
+    online: true,
+    version: '1.14.2',
+  });
   mockClient.getNetwork.mockResolvedValue(fakeNet);
   mockClient.createNetwork.mockResolvedValue(fakeNet);
   await getDb().networkTemplate.deleteMany();
@@ -96,7 +100,11 @@ describe('templates routes', () => {
 
   it('GET /templates lists only the active org’s templates', async () => {
     await getDb().networkTemplate.create({
-      data: { name: 'mine', config: JSON.stringify({ config, description: '', tags: '[]', rulesSource: '' }), orgId },
+      data: {
+        name: 'mine',
+        config: JSON.stringify({ config, description: '', tags: '[]', rulesSource: '' }),
+        orgId,
+      },
     });
     await getDb().networkTemplate.create({
       data: {
@@ -115,7 +123,7 @@ describe('templates routes', () => {
     // template:read only requires viewer, so GET should succeed for a viewer.
     const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
     const res = await listGet(
-      new Request('http://x/api/v1/templates', { headers: { cookie: viewerCookie } }),
+      new Request('http://x/api/v1/templates', { headers: { cookie: viewerCookie } })
     );
     expect(res.status).toBe(200);
   });
@@ -123,7 +131,7 @@ describe('templates routes', () => {
   it('POST /templates creates a template scoped to the caller’s org and audits', async () => {
     await getDb().networkMeta.create({ data: { nwid: SRC_NWID, orgId } });
     const res = await createPost(
-      req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'from-network' }),
+      req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'from-network' })
     );
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -138,7 +146,7 @@ describe('templates routes', () => {
   it('POST /templates 404s when the source network belongs to a different org (cross-org disclosure gate)', async () => {
     await getDb().networkMeta.create({ data: { nwid: SRC_NWID, orgId: 'other-org' } });
     const res = await createPost(
-      req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'exfiltrated' }),
+      req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'exfiltrated' })
     );
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe('NOT_FOUND');
@@ -153,7 +161,7 @@ describe('templates routes', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', cookie: viewerCookie },
         body: JSON.stringify({ nwid: SRC_NWID, name: 'x' }),
-      }),
+      })
     );
     expect(res.status).toBe(403);
   });
@@ -162,7 +170,7 @@ describe('templates routes', () => {
     await getDb().networkMeta.create({ data: { nwid: SRC_NWID, orgId } });
     await createPost(req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'dup' }));
     const res = await createPost(
-      req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'dup' }),
+      req('http://x/api/v1/templates', 'POST', { nwid: SRC_NWID, name: 'dup' })
     );
     expect(res.status).toBe(409);
     expect((await res.json()).error.code).toBe('TEMPLATE_NAME_TAKEN');
@@ -171,7 +179,11 @@ describe('templates routes', () => {
   describe('DELETE /templates/{id}', () => {
     it('403s a viewer session (below template:write)', async () => {
       const created = await getDb().networkTemplate.create({
-        data: { name: 'del-me', config: JSON.stringify({ config, description: '', tags: '[]', rulesSource: '' }), orgId },
+        data: {
+          name: 'del-me',
+          config: JSON.stringify({ config, description: '', tags: '[]', rulesSource: '' }),
+          orgId,
+        },
       });
       const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
       const res = await detailDelete(
@@ -179,14 +191,18 @@ describe('templates routes', () => {
           method: 'DELETE',
           headers: { cookie: viewerCookie },
         }),
-        { params: Promise.resolve({ id: created.id }) },
+        { params: Promise.resolve({ id: created.id }) }
       );
       expect(res.status).toBe(403);
     });
 
     it('deletes a template and audits', async () => {
       const created = await getDb().networkTemplate.create({
-        data: { name: 'del-me-2', config: JSON.stringify({ config, description: '', tags: '[]', rulesSource: '' }), orgId },
+        data: {
+          name: 'del-me-2',
+          config: JSON.stringify({ config, description: '', tags: '[]', rulesSource: '' }),
+          orgId,
+        },
       });
       const res = await detailDelete(req(`http://x/api/v1/templates/${created.id}`, 'DELETE'), {
         params: Promise.resolve({ id: created.id }),
@@ -200,7 +216,11 @@ describe('templates routes', () => {
   describe('POST /templates/{id}/apply', () => {
     it('403s a viewer session (below network:write)', async () => {
       const created = await getDb().networkTemplate.create({
-        data: { name: 'apply-me', config: JSON.stringify({ config, description: '', tags: '[]', rulesSource: '' }), orgId },
+        data: {
+          name: 'apply-me',
+          config: JSON.stringify({ config, description: '', tags: '[]', rulesSource: '' }),
+          orgId,
+        },
       });
       const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
       const res = await applyPost(
@@ -208,7 +228,7 @@ describe('templates routes', () => {
           method: 'POST',
           headers: { cookie: viewerCookie },
         }),
-        { params: Promise.resolve({ id: created.id }) },
+        { params: Promise.resolve({ id: created.id }) }
       );
       expect(res.status).toBe(403);
     });
@@ -230,7 +250,11 @@ describe('templates routes', () => {
 
     it('creates the new network into the caller’s org and audits', async () => {
       const created = await getDb().networkTemplate.create({
-        data: { name: 'apply-me-2', config: JSON.stringify({ config, description: '', tags: '[]', rulesSource: '' }), orgId },
+        data: {
+          name: 'apply-me-2',
+          config: JSON.stringify({ config, description: '', tags: '[]', rulesSource: '' }),
+          orgId,
+        },
       });
       const res = await applyPost(req(`http://x/api/v1/templates/${created.id}/apply`, 'POST'), {
         params: Promise.resolve({ id: created.id }),

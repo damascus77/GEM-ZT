@@ -33,18 +33,18 @@ export default function LoginPage() {
 
   return (
     <Card className="w-full max-w-sm">
-      <h1 className="text-[22px] wght-540 tracking-[-0.315px] mb-6">Sign in</h1>
+      <h1 className="wght-540 mb-6 text-[22px] tracking-[-0.315px]">Sign in</h1>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <label className="text-sm text-ink-mute">
           Username
-          <Input value={username} onChange={(e) => setUsername(e.target.value)} required />
+          <Input value={username} onChange={e => setUsername(e.target.value)} required />
         </label>
         <label className="text-sm text-ink-mute">
           Password
           <Input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             required
           />
         </label>

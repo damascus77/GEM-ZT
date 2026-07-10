@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'react';
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={clsx('bg-canvas border border-hairline rounded-lg p-8 shadow-lift', className)}
+      className={clsx('rounded-lg border border-hairline bg-canvas p-8 shadow-lift', className)}
       {...props}
     />
   );

@@ -5,9 +5,9 @@ export function Pill({ className, children, ...props }: HTMLAttributes<HTMLSpanE
   return (
     <span
       className={clsx(
-        'inline-flex items-center rounded-full px-3 py-1 text-xs wght-540',
+        'wght-540 inline-flex items-center rounded-full px-3 py-1 text-xs',
         'border border-hairline bg-canvas text-ink',
-        className,
+        className
       )}
       {...props}
     >

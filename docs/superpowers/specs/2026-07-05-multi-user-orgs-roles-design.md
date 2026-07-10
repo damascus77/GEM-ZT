@@ -10,6 +10,7 @@ users, multiple organizations, and role-based authorization enforced across ever
 service and API route.
 
 **In scope**
+
 - True multi-tenancy: organizations own their networks/members; data is isolated per org.
 - An instance-level **super-admin** role above all orgs.
 - Per-org roles: **Owner / Admin / Editor / Viewer**.
@@ -22,6 +23,7 @@ service and API route.
 - Idempotent migration of the existing single-admin deployment.
 
 **Out of scope (this wave)**
+
 - OIDC/SSO login button, discovery/callback route, provider config UI (separate P2 item).
 - SMTP email delivery of invitations (invite links are shared out-of-band; `email` field
   is reserved for when SMTP lands).
@@ -29,21 +31,22 @@ service and API route.
 
 ## 2. Load-bearing decisions
 
-| Decision | Choice |
-|---|---|
-| Org model | True multi-tenancy — orgs own networks/members; per-org isolation |
-| Instance admin | Distinct **super-admin** role above orgs |
-| Org roles | Owner / Admin / Editor / Viewer |
-| Membership | Multi-org (org-switcher + per-session active org) |
-| Provisioning | Invite links (token) **and** direct admin create |
-| OIDC | Schema + auth seams only; no OIDC code this wave |
-| Enforcement | Route-boundary policy module **+** mandatory org-scoped data accessors |
+| Decision       | Choice                                                                 |
+| -------------- | ---------------------------------------------------------------------- |
+| Org model      | True multi-tenancy — orgs own networks/members; per-org isolation      |
+| Instance admin | Distinct **super-admin** role above orgs                               |
+| Org roles      | Owner / Admin / Editor / Viewer                                        |
+| Membership     | Multi-org (org-switcher + per-session active org)                      |
+| Provisioning   | Invite links (token) **and** direct admin create                       |
+| OIDC           | Schema + auth seams only; no OIDC code this wave                       |
+| Enforcement    | Route-boundary policy module **+** mandatory org-scoped data accessors |
 
 ## 3. Data model
 
 String-typed enums (consistent with the existing `role` field and SQLite).
 
 ### New models
+
 - **`Organization`** — `id`, `name`, `slug` (unique), `createdAt`, `createdById`.
 - **`Membership`** (User↔Org join, source of truth for authorization) — `id`, `userId`,
   `orgId`, `role` (`owner`|`admin`|`editor`|`viewer`), `createdAt`,
@@ -56,6 +59,7 @@ String-typed enums (consistent with the existing `role` field and SQLite).
   upserts User + Identity with no schema change.
 
 ### Changed models
+
 - **`User`** — `passwordHash` becomes **optional** (`String?`); `role` repurposed as the
   **instance** role `superadmin | user`; add relations `memberships`, `identities`.
 - **`Session`** — add `activeOrgId String?` (org-switcher context, per session).
@@ -73,11 +77,13 @@ through the parent `NetworkMeta.orgId` — one source of truth per network's org
 ## 4. Authorization model (route policy + data backstop)
 
 ### AuthContext
+
 `requireAuth()` (returns `{ user }`) is extended to produce an **`AuthContext`**:
 `{ user, isSuperAdmin, orgId, role }`, resolving the active org against the caller's
 `Membership`.
 
 **Active-org resolution (precedence):**
+
 1. **API key** → the key's own `orgId`/`role` (explicit, immutable per key).
 2. **Session** → `Session.activeOrgId`; if null, default to the user's first membership.
    The org-switcher writes `activeOrgId`.
@@ -85,20 +91,22 @@ through the parent `NetworkMeta.orgId` — one source of truth per network's org
    require `isSuperAdmin`.
 
 ### Policy module
+
 Pure, unit-tested `can(role, action)` + `canInstance(user, action)`. Actions are a small
 enum (`network:read|create|update|delete`, `member:read|authorize|update`, `rules:write`,
 `template:*`, `apikey:manage`, `org:manage-members`, `org:delete`, …).
 
-| Action | Owner | Admin | Editor | Viewer |
-|---|:--:|:--:|:--:|:--:|
-| read networks / members / audit | ✓ | ✓ | ✓ | ✓ |
-| create/update/delete networks, authorize members, write rules, templates | ✓ | ✓ | ✓ | — |
-| manage org members & roles, invitations, webhooks, org API keys | ✓ | ✓ | — | — |
-| rename/delete org, transfer ownership | ✓ | — | — | — |
+| Action                                                                   | Owner | Admin | Editor | Viewer |
+| ------------------------------------------------------------------------ | :---: | :---: | :----: | :----: |
+| read networks / members / audit                                          |   ✓   |   ✓   |   ✓    |   ✓    |
+| create/update/delete networks, authorize members, write rules, templates |   ✓   |   ✓   |   ✓    |   —    |
+| manage org members & roles, invitations, webhooks, org API keys          |   ✓   |   ✓   |   —    |   —    |
+| rename/delete org, transfer ownership                                    |   ✓   |   —   |   —    |   —    |
 
 Super-admin passes every check, may act in any org, and holds instance-only actions.
 
 ### Enforcement (defense in depth — "C")
+
 - **Route boundary:** each handler calls `requireOrgRole(req, action)` → `403 FORBIDDEN`
   or `AuthContext`. One line per route; clear, testable.
 - **Data-layer backstop:** org-owned reads/writes go through scoped accessors that
@@ -109,10 +117,12 @@ Super-admin passes every check, may act in any org, and holds instance-only acti
   visible in code, never implicit.
 
 ### API keys
+
 Bound to one org + one role at creation (≤ creator's role). Independent grants: revoking a
 user's membership does not silently repoint their keys; keys are listed/revocable per org.
 
 ### Audit
+
 `logAudit` gains `orgId` from `AuthContext`; instance actions log `orgId = null`.
 
 ## 5. Migration & backward compatibility
@@ -120,6 +130,7 @@ user's membership does not silently repoint their keys; keys are listed/revocabl
 Prisma migration adds the new tables/columns, makes `passwordHash` nullable, adds FKs.
 
 **Idempotent backfill (runs once):**
+
 1. Create a **default org** (`name "Default"`, slug `default`).
 2. Each existing user → instance `role = superadmin` (all are `admin` today) + `owner`
    `Membership` in the default org.
@@ -149,17 +160,20 @@ All under `/api/v1`. Reuses the existing error envelope; adds `403 FORBIDDEN`. A
 zod-validated; `GET /openapi.json` regenerates.
 
 **New — org management**
+
 - `GET /orgs` · `POST /orgs` (**super-admin only**; creator → `owner`) ·
   `GET/PATCH/DELETE /orgs/{orgId}`
 - `POST /orgs/{orgId}/active` — set the session's `activeOrgId` (org-switcher)
 
 **New — members & roles (org-scoped)**
+
 - `GET /orgs/{orgId}/members`
 - `PATCH /orgs/{orgId}/members/{userId}` — change role (can't demote last owner)
 - `DELETE /orgs/{orgId}/members/{userId}`
 - `POST /orgs/{orgId}/members` — direct-create user (temp password + role)
 
 **New — invitations**
+
 - `GET/POST /orgs/{orgId}/invitations` (create returns link once) ·
   `DELETE /orgs/{orgId}/invitations/{id}`
 - `GET /invitations/{token}` (public preview) · `POST /invitations/{token}/accept`
@@ -189,6 +203,7 @@ and uses org-scoped accessors. `GET /networks` returns only the active org's net
 ## 8. OIDC/SSO seams (design only)
 
 Nothing OIDC-specific is built; these make it additive later:
+
 - `passwordHash` optional — a user can be authenticated entirely by an external provider.
 - `Identity` table — future OIDC callback upserts `Identity(provider=oidc, subject=sub)` →
   existing user, or creates User + Identity; org/role model untouched.

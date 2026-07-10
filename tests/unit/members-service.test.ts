@@ -7,12 +7,7 @@ import { ControllerApiError } from '@/lib/controller/client';
 import type { ControllerMember, ControllerPeer } from '@/lib/controller/types';
 import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
-import {
-  listMembers,
-  getMember,
-  updateMember,
-  deleteMember,
-} from '@/lib/services/members';
+import { listMembers, getMember, updateMember, deleteMember } from '@/lib/services/members';
 
 const NWID = 'abcdef0123456789';
 
@@ -69,11 +64,13 @@ beforeEach(async () => {
   (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
   mockClient.listMemberIds.mockResolvedValue({ deadbeef01: 1, deadbeef02: 1 });
   mockClient.getMember.mockImplementation(async (_nwid: string, id: string) =>
-    fakeMember(id, id === 'deadbeef01' ? { authorized: true, lastAuthorizedTime: 1719900000000 } : {}),
+    fakeMember(
+      id,
+      id === 'deadbeef01' ? { authorized: true, lastAuthorizedTime: 1719900000000 } : {}
+    )
   );
   mockClient.updateMember.mockImplementation(
-    async (_nwid: string, id: string, config: Partial<ControllerMember>) =>
-      fakeMember(id, config),
+    async (_nwid: string, id: string, config: Partial<ControllerMember>) => fakeMember(id, config)
   );
   mockClient.deleteMember.mockResolvedValue(undefined);
   mockClient.listPeers.mockResolvedValue([onlinePeer]);
@@ -90,7 +87,7 @@ describe('members service', () => {
       data: { nwid: NWID, memberId: 'deadbeef01', name: 'laptop', notes: 'noah' },
     });
     const members = await listMembers(NWID);
-    const laptop = members.find((m) => m.memberId === 'deadbeef01')!;
+    const laptop = members.find(m => m.memberId === 'deadbeef01')!;
     expect(laptop.name).toBe('laptop');
     expect(laptop.notes).toBe('noah');
     expect(laptop.authorized).toBe(true);
@@ -102,7 +99,7 @@ describe('members service', () => {
 
   it('reports online=null (unknown) when the node is not in /peer', async () => {
     const members = await listMembers(NWID);
-    const other = members.find((m) => m.memberId === 'deadbeef02')!;
+    const other = members.find(m => m.memberId === 'deadbeef02')!;
     expect(other.online).toBeNull();
     expect(other.latency).toBeNull();
     expect(other.physicalAddress).toBeNull();
@@ -127,7 +124,7 @@ describe('members service', () => {
     mockClient.getMember.mockImplementation(async (_nwid: string, id: string) => {
       inFlight++;
       peak = Math.max(peak, inFlight);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise(resolve => setTimeout(resolve, 0));
       inFlight--;
       return fakeMember(id);
     });
@@ -136,7 +133,7 @@ describe('members service', () => {
 
     expect(peak).toBeLessThanOrEqual(8);
     expect(members).toHaveLength(20);
-    expect(members.map((m) => m.memberId)).toEqual(ids);
+    expect(members.map(m => m.memberId)).toEqual(ids);
   });
 
   it('getMember returns a single view and null on controller 404', async () => {
@@ -167,9 +164,9 @@ describe('members service', () => {
 
   it('updateMember 404s on an unknown member instead of creating a phantom', async () => {
     mockClient.getMember.mockRejectedValueOnce(new ControllerApiError(404, 'gone'));
-    await expect(
-      updateMember(NWID, 'ffffffffff', { authorized: true }),
-    ).rejects.toBeInstanceOf(ControllerApiError);
+    await expect(updateMember(NWID, 'ffffffffff', { authorized: true })).rejects.toBeInstanceOf(
+      ControllerApiError
+    );
     // Must not POST to the controller (which would upsert a new member).
     expect(mockClient.updateMember).not.toHaveBeenCalled();
   });
@@ -200,7 +197,7 @@ describe('members service', () => {
     expect(
       await getDb().memberMeta.findUnique({
         where: { nwid_memberId: { nwid: NWID, memberId: 'deadbeef01' } },
-      }),
+      })
     ).toBeNull();
   });
 });

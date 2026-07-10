@@ -26,7 +26,10 @@ export async function ensureDefaultOrgAndBackfill(): Promise<{ orgId: string } |
     org = await createOrg({ name: 'Default', createdById: firstUser!.id });
     // createOrg forced slug from name ("default"); assert it matched the constant.
     if (org.slug !== DEFAULT_ORG_SLUG) {
-      org = await db.organization.update({ where: { id: org.id }, data: { slug: DEFAULT_ORG_SLUG } });
+      org = await db.organization.update({
+        where: { id: org.id },
+        data: { slug: DEFAULT_ORG_SLUG },
+      });
     }
   }
   const orgId = org.id;

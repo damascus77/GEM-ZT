@@ -22,20 +22,19 @@ function stubFetch(putResponse?: Response) {
             rules: [{ type: 'ACTION_ACCEPT' }],
             metaWarning: null,
           }),
-          { status: 200 },
+          { status: 200 }
         )
       );
     }
     if (String(url).includes('/controller/status')) {
       return new Response(
         JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
-        { status: 200 },
+        { status: 200 }
       );
     }
-    return new Response(
-      JSON.stringify({ source: 'accept;', rules: [{ type: 'ACTION_ACCEPT' }] }),
-      { status: 200 },
-    );
+    return new Response(JSON.stringify({ source: 'accept;', rules: [{ type: 'ACTION_ACCEPT' }] }), {
+      status: 200,
+    });
   });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
@@ -70,8 +69,8 @@ describe('RulesEditor', () => {
         JSON.stringify({
           error: { code: 'RULES_COMPILE_ERROR', message: 'line 1: unrecognized keyword' },
         }),
-        { status: 422 },
-      ),
+        { status: 422 }
+      )
     );
     renderWithQuery(<RulesEditor nwid={NWID} />);
     await screen.findByLabelText(/rules source/i);

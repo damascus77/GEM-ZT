@@ -26,7 +26,7 @@ function req(cookie: string, body: unknown) {
 async function enableTotpFor(cookie: string): Promise<void> {
   const enrolled = await (
     await enrollPost(
-      new Request('http://x/api/v1/auth/totp/enroll', { method: 'POST', headers: { cookie } }),
+      new Request('http://x/api/v1/auth/totp/enroll', { method: 'POST', headers: { cookie } })
     )
   ).json();
   await enablePost(
@@ -34,7 +34,7 @@ async function enableTotpFor(cookie: string): Promise<void> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', cookie },
       body: JSON.stringify({ code: totp(enrolled.secret) }),
-    }),
+    })
   );
 }
 
@@ -45,7 +45,7 @@ describe('POST /api/v1/auth/totp/disable', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword: 'password12345' }),
-      }),
+      })
     );
     expect(res.status).toBe(401);
   });

@@ -33,7 +33,7 @@ describe('readAuthToken', () => {
 
   it('throws AuthTokenError with guidance when the file is missing', async () => {
     process.env.ZT_TOKEN_PATH = join(dir, 'nope.secret');
-    const err = await readAuthToken().catch((e) => e);
+    const err = await readAuthToken().catch(e => e);
     expect(err).toBeInstanceOf(AuthTokenError);
     expect((err as Error).message).toContain('controller_data');
   });

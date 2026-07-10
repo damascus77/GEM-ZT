@@ -24,14 +24,14 @@ Passkey/WebAuthn support is explicitly **out of scope** for this spec (see
 
 ## 2. Decisions (locked)
 
-| Area | Decision |
-|---|---|
-| Setup token | Removed entirely. `needsSetup` (zero users in DB) remains the sole gate on the setup endpoint. Existing per-IP rate limit (10/15min) stays as the anti-abuse guard. |
-| Password change | Requires current password + new password (re-auth pattern). On success, all other sessions for that user are invalidated; the session making the request stays valid. |
-| TOTP enable | Reuses existing `enroll` + `enable` routes unchanged. |
-| TOTP disable | New route, requires current password to confirm. |
-| Settings page location | Single page at `/account`, consistent with the existing one-page-per-concern pattern (`/networks`, `/apikeys`, `/audit`). |
-| Passkeys/WebAuthn | Deferred to a follow-up spec (§6). |
+| Area                   | Decision                                                                                                                                                              |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Setup token            | Removed entirely. `needsSetup` (zero users in DB) remains the sole gate on the setup endpoint. Existing per-IP rate limit (10/15min) stays as the anti-abuse guard.   |
+| Password change        | Requires current password + new password (re-auth pattern). On success, all other sessions for that user are invalidated; the session making the request stays valid. |
+| TOTP enable            | Reuses existing `enroll` + `enable` routes unchanged.                                                                                                                 |
+| TOTP disable           | New route, requires current password to confirm.                                                                                                                      |
+| Settings page location | Single page at `/account`, consistent with the existing one-page-per-concern pattern (`/networks`, `/apikeys`, `/audit`).                                             |
+| Passkeys/WebAuthn      | Deferred to a follow-up spec (§6).                                                                                                                                    |
 
 ## 3. Setup token removal
 

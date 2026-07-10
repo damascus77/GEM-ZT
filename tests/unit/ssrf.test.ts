@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { isPrivateIp, isSafeWebhookUrl, assertSafeWebhookUrl, WebhookUrlError } from '@/lib/util/ssrf';
+import {
+  isPrivateIp,
+  isSafeWebhookUrl,
+  assertSafeWebhookUrl,
+  WebhookUrlError,
+} from '@/lib/util/ssrf';
 
 describe('isPrivateIp', () => {
   it('flags private/loopback/link-local IPv4', () => {

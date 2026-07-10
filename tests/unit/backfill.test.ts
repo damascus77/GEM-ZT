@@ -9,7 +9,9 @@ const LEGACY_WEBHOOK_KEY = 'webhook.new_member_url';
 beforeEach(() => {
   setupTestDb();
 });
-afterAll(async () => { await getDb().$disconnect(); });
+afterAll(async () => {
+  await getDb().$disconnect();
+});
 
 describe('backfill', () => {
   it('is a no-op on a fresh (userless) DB', async () => {
@@ -36,9 +38,13 @@ describe('backfill', () => {
     const org = await getDb().organization.findUnique({ where: { slug: DEFAULT_ORG_SLUG } });
     expect(org?.id).toBe(orgId);
     expect((await getDb().user.findUnique({ where: { id: admin.id } }))?.role).toBe('superadmin');
-    expect((await getDb().membership.findUnique({
-      where: { userId_orgId: { userId: admin.id, orgId } },
-    }))?.role).toBe('owner');
+    expect(
+      (
+        await getDb().membership.findUnique({
+          where: { userId_orgId: { userId: admin.id, orgId } },
+        })
+      )?.role
+    ).toBe('owner');
     expect((await getDb().networkMeta.findUnique({ where: { nwid: 'net1' } }))?.orgId).toBe(orgId);
     expect((await getDb().apiKey.findFirst({ where: { userId: admin.id } }))?.orgId).toBe(orgId);
     expect((await getDb().apiKey.findFirst({ where: { userId: admin.id } }))?.role).toBe('owner');
@@ -62,7 +68,9 @@ describe('backfill', () => {
     const first = await ensureDefaultOrgAndBackfill();
     const orgId = first!.orgId;
 
-    expect(await getWebhookConfig(orgId)).toEqual({ newMemberUrl: 'https://legacy.example.com/hook' });
+    expect(await getWebhookConfig(orgId)).toEqual({
+      newMemberUrl: 'https://legacy.example.com/hook',
+    });
     // Legacy key may be left in place (harmless) but must not be required to disappear.
 
     // Running again must not clobber a newer, deliberately-changed org config.

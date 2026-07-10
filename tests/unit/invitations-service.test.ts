@@ -122,7 +122,7 @@ describe('listInvitations', () => {
       ttlMs: 60_000,
     });
     const list = await listInvitations(orgId);
-    const found = list.find((i) => i.id === invitation.id);
+    const found = list.find(i => i.id === invitation.id);
     expect(found).toEqual({
       id: invitation.id,
       role: 'viewer',
@@ -153,7 +153,7 @@ describe('listInvitations', () => {
       password: 'password12345',
     });
     const list = await listInvitations(orgId);
-    const ids = list.map((i) => i.id);
+    const ids = list.map(i => i.id);
     expect(ids).not.toContain(expired.id);
     expect(ids).not.toContain(accepted.id);
   });
@@ -194,7 +194,10 @@ describe('acceptInvitation', () => {
     const membership = await getMembership(result.user.id, orgId);
     expect(membership?.role).toBe('admin');
 
-    const row = await getDb().invitation.findFirst({ where: { createdById: creatorId, role: 'admin' }, orderBy: { createdAt: 'desc' } });
+    const row = await getDb().invitation.findFirst({
+      where: { createdById: creatorId, role: 'admin' },
+      orderBy: { createdAt: 'desc' },
+    });
     expect(row?.acceptedAt).not.toBeNull();
   });
 

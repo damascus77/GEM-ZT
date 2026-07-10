@@ -34,7 +34,7 @@ export async function createApiKey(
   userId: string,
   name: string,
   expiresAt?: Date,
-  scope?: { orgId: string | null; role: OrgRole | null },
+  scope?: { orgId: string | null; role: OrgRole | null }
 ): Promise<{ apiKey: ApiKeySummary; fullKey: string }> {
   const { fullKey, prefix, hashedKey } = generateApiKey();
   const apiKey = await getDb().apiKey.create({
@@ -53,7 +53,7 @@ export async function createApiKey(
 }
 
 export async function verifyApiKeyWithRecord(
-  fullKey: string,
+  fullKey: string
 ): Promise<{ user: User; apiKey: ApiKey } | null> {
   const hashedKey = createHash('sha256').update(fullKey).digest('hex');
   const row = await getDb().apiKey.findUnique({ where: { hashedKey }, include: { user: true } });

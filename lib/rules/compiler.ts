@@ -30,7 +30,7 @@ export class RulesCompileError extends Error {
   constructor(
     public readonly line: number,
     public readonly col: number,
-    message: string,
+    message: string
   ) {
     super(`line ${line}: ${message}`);
   }
@@ -54,9 +54,10 @@ export function compileRules(source: string): CompileResult {
 // The UI needs simple name->id maps to render per-member capability/tag controls.
 // Pure and non-throwing: a source with a syntax error just yields empty maps
 // rather than breaking whatever page called this.
-export function capabilityTagMaps(
-  source: string,
-): { capabilities: Record<string, number>; tags: Record<string, number> } {
+export function capabilityTagMaps(source: string): {
+  capabilities: Record<string, number>;
+  tags: Record<string, number>;
+} {
   const result = compileRules(source);
   if (!result.ok) {
     return { capabilities: {}, tags: {} };

@@ -12,7 +12,9 @@ describe('sqlitePoolUrl', () => {
   });
 
   it('is idempotent when connection_limit is already set', () => {
-    expect(sqlitePoolUrl('file:./dev.db?connection_limit=5')).toBe('file:./dev.db?connection_limit=5');
+    expect(sqlitePoolUrl('file:./dev.db?connection_limit=5')).toBe(
+      'file:./dev.db?connection_limit=5'
+    );
   });
 });
 

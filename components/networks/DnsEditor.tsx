@@ -43,8 +43,8 @@ export function DnsEditor({ nwid }: { nwid: string }) {
             domain,
             servers: servers
               .split('\n')
-              .map((s) => s.trim())
-              .filter((s) => s !== ''),
+              .map(s => s.trim())
+              .filter(s => s !== ''),
           },
         }),
       });
@@ -63,7 +63,7 @@ export function DnsEditor({ nwid }: { nwid: string }) {
   if (!seeded) {
     return (
       <Card>
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">DNS</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">DNS</h2>
         {isError ? (
           <p role="alert" className="text-sm text-ink">
             Could not load DNS settings. Retrying…
@@ -77,32 +77,32 @@ export function DnsEditor({ nwid }: { nwid: string }) {
 
   return (
     <Card>
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-1">DNS</h2>
-      <p className="text-sm text-ink-mute mb-4">
+      <h2 className="wght-540 mb-1 text-[20px] tracking-[-0.4px]">DNS</h2>
+      <p className="mb-4 text-sm text-ink-mute">
         Pushed to members that allow managed DNS (ZeroTier client option).
       </p>
       <form
         className="flex flex-col gap-4"
         onChange={() => setDirty(true)}
-        onSubmit={(e) => {
+        onSubmit={e => {
           e.preventDefault();
           save.mutate();
         }}
       >
         <label className="text-sm text-ink-mute">
           Search domain
-          <Input value={domain} onChange={(e) => setDomain(e.target.value)} />
+          <Input value={domain} onChange={e => setDomain(e.target.value)} />
         </label>
         <label className="text-sm text-ink-mute">
           DNS servers (one per line)
           <textarea
             value={servers}
-            onChange={(e) => setServers(e.target.value)}
+            onChange={e => setServers(e.target.value)}
             rows={3}
-            className="mt-1 w-full bg-canvas text-ink text-base rounded-sm border border-hairline px-3 py-2.5 font-mono focus:outline-none focus:border-hairline-dark"
+            className="mt-1 w-full rounded-sm border border-hairline bg-canvas px-3 py-2.5 font-mono text-base text-ink focus:border-hairline-dark focus:outline-none"
           />
         </label>
-        {validateDnsServers(servers.split('\n').map((s) => s.trim())).map((w, i) => (
+        {validateDnsServers(servers.split('\n').map(s => s.trim())).map((w, i) => (
           <p key={i} role="status" className="text-sm text-ink-mute">
             ⚠ {w}
           </p>

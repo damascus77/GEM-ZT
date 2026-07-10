@@ -5,4 +5,4 @@ services:
       - ZT_OVERRIDE_LOCAL_CONF=true
       - ZT_ALLOW_MANAGEMENT_FROM=0.0.0.0/0
     ports:
-      - "127.0.0.1:19993:9993/tcp"
+      - '127.0.0.1:19993:9993/tcp'

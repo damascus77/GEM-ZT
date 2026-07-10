@@ -25,7 +25,7 @@ export function AdminNavLink() {
   return (
     <Link
       href="/admin"
-      className="rounded-md px-3 py-2 text-on-dark-mute hover:text-on-primary hover:bg-primary-deep"
+      className="rounded-md px-3 py-2 text-on-dark-mute hover:bg-primary-deep hover:text-on-primary"
     >
       Admin
     </Link>
@@ -38,7 +38,7 @@ export function StatusNavLink() {
   return (
     <Link
       href="/status"
-      className="rounded-md px-3 py-2 text-on-dark-mute hover:text-on-primary hover:bg-primary-deep"
+      className="rounded-md px-3 py-2 text-on-dark-mute hover:bg-primary-deep hover:text-on-primary"
     >
       Status
     </Link>

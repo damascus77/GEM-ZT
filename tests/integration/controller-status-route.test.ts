@@ -37,7 +37,7 @@ describe('GET /api/v1/controller/status', () => {
 
   it('rejects a non-super-admin with 403', async () => {
     const res = await statusGet(
-      new Request('http://x/api/v1/controller/status', { headers: { cookie: nonAdminCookie } }),
+      new Request('http://x/api/v1/controller/status', { headers: { cookie: nonAdminCookie } })
     );
     expect(res.status).toBe(403);
   });
@@ -49,7 +49,7 @@ describe('GET /api/v1/controller/status', () => {
       version: '1.14.2',
     });
     const res = await statusGet(
-      new Request('http://x/api/v1/controller/status', { headers: { cookie } }),
+      new Request('http://x/api/v1/controller/status', { headers: { cookie } })
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ address: 'abcdef0123', online: true, version: '1.14.2' });
@@ -58,7 +58,7 @@ describe('GET /api/v1/controller/status', () => {
   it('returns 502 CONTROLLER_UNREACHABLE when the controller is down', async () => {
     mockClient.getStatus.mockRejectedValue(new ControllerUnreachableError('down'));
     const res = await statusGet(
-      new Request('http://x/api/v1/controller/status', { headers: { cookie } }),
+      new Request('http://x/api/v1/controller/status', { headers: { cookie } })
     );
     expect(res.status).toBe(502);
     expect((await res.json()).error.code).toBe('CONTROLLER_UNREACHABLE');
@@ -66,10 +66,10 @@ describe('GET /api/v1/controller/status', () => {
 
   it('returns 502 with guidance when the auth token is missing at boot', async () => {
     (getControllerClient as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new AuthTokenError('Cannot read ZeroTier auth token; check controller_data mount.'),
+      new AuthTokenError('Cannot read ZeroTier auth token; check controller_data mount.')
     );
     const res = await statusGet(
-      new Request('http://x/api/v1/controller/status', { headers: { cookie } }),
+      new Request('http://x/api/v1/controller/status', { headers: { cookie } })
     );
     expect(res.status).toBe(502);
     expect((await res.json()).error.message).toContain('controller_data');

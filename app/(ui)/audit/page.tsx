@@ -19,15 +19,8 @@ interface AuditEntryRow {
 // Update routes log `detail: { before, after }` so the audit page can render a
 // readable diff. Older entries (and non-update actions) log a plain detail
 // object instead, which is rendered as-is for backward compatibility.
-function isBeforeAfterDetail(
-  detail: unknown,
-): detail is { before: unknown; after: unknown } {
-  return (
-    typeof detail === 'object' &&
-    detail !== null &&
-    'before' in detail &&
-    'after' in detail
-  );
+function isBeforeAfterDetail(detail: unknown): detail is { before: unknown; after: unknown } {
+  return typeof detail === 'object' && detail !== null && 'before' in detail && 'after' in detail;
 }
 
 function AuditDetail({ detail }: { detail: unknown }) {
@@ -36,7 +29,7 @@ function AuditDetail({ detail }: { detail: unknown }) {
     return (
       <pre
         data-testid="audit-diff"
-        className="bg-canvas-soft border border-hairline rounded-sm p-2 text-xs font-mono overflow-x-auto max-w-md whitespace-pre-wrap break-all"
+        className="max-w-md overflow-x-auto whitespace-pre-wrap break-all rounded-sm border border-hairline bg-canvas-soft p-2 font-mono text-xs"
       >
         {lines.map((line, i) => (
           <div
@@ -72,7 +65,7 @@ export default function AuditPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] wght-540 tracking-[-0.63px]">Audit Log</h1>
+      <h1 className="wght-540 text-[28px] tracking-[-0.63px]">Audit Log</h1>
       <Card className="overflow-x-auto">
         {isLoading && <p className="text-ink-mute">Loading…</p>}
         {isError && !data && (
@@ -86,7 +79,7 @@ export default function AuditPage() {
         {data && data.entries.length > 0 && (
           <table className="w-full text-left">
             <thead>
-              <tr className="text-xs text-ink-faint uppercase">
+              <tr className="text-xs uppercase text-ink-faint">
                 <th className="pb-2 pr-4">When</th>
                 <th className="pb-2 pr-4">Who</th>
                 <th className="pb-2 pr-4">Action</th>
@@ -95,17 +88,17 @@ export default function AuditPage() {
               </tr>
             </thead>
             <tbody>
-              {data.entries.map((e) => (
+              {data.entries.map(e => (
                 <tr key={e.id} className="border-t border-hairline align-top">
-                  <td className="py-3 pr-4 text-sm text-ink-mute whitespace-nowrap">
+                  <td className="whitespace-nowrap py-3 pr-4 text-sm text-ink-mute">
                     {new Date(e.createdAt).toLocaleString()}
                   </td>
-                  <td className="py-3 pr-4 text-sm wght-540">{e.username}</td>
+                  <td className="wght-540 py-3 pr-4 text-sm">{e.username}</td>
                   <td className="py-3 pr-4">
                     <Pill>{e.action}</Pill>
                   </td>
-                  <td className="py-3 pr-4 text-sm font-mono text-ink-mute">{e.targetId}</td>
-                  <td className="py-3 text-xs font-mono text-ink-mute break-all">
+                  <td className="py-3 pr-4 font-mono text-sm text-ink-mute">{e.targetId}</td>
+                  <td className="break-all py-3 font-mono text-xs text-ink-mute">
                     <AuditDetail detail={e.detail} />
                   </td>
                 </tr>

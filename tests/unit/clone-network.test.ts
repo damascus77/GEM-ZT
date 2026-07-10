@@ -49,13 +49,19 @@ beforeEach(async () => {
   vi.clearAllMocks();
   (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
   mockClient.getNetwork.mockResolvedValue(sourceConfig);
-  mockClient.getStatus.mockResolvedValue({ address: 'abcdef0123', online: true, version: '1.14.2' });
-  mockClient.createNetwork.mockImplementation(async (_addr: string, cfg: Partial<ControllerNetwork>) => ({
-    ...sourceConfig,
-    ...cfg,
-    id: NEW,
-    nwid: NEW,
-  }));
+  mockClient.getStatus.mockResolvedValue({
+    address: 'abcdef0123',
+    online: true,
+    version: '1.14.2',
+  });
+  mockClient.createNetwork.mockImplementation(
+    async (_addr: string, cfg: Partial<ControllerNetwork>) => ({
+      ...sourceConfig,
+      ...cfg,
+      id: NEW,
+      nwid: NEW,
+    })
+  );
   await getDb().networkMeta.deleteMany();
 });
 

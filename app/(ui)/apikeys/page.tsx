@@ -46,7 +46,7 @@ export default function ApiKeysPage() {
       }
       return res.json() as Promise<{ fullKey: string }>;
     },
-    onSuccess: (body) => {
+    onSuccess: body => {
       setRevealed(body.fullKey);
       setName('');
       setExpiresAt('');
@@ -73,13 +73,13 @@ export default function ApiKeysPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] wght-540 tracking-[-0.63px]">API Keys</h1>
+      <h1 className="wght-540 text-[28px] tracking-[-0.63px]">API Keys</h1>
 
       <Card>
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Create a key</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Create a key</h2>
         <form
-          className="flex gap-2 flex-wrap items-end"
-          onSubmit={(e) => {
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={e => {
             e.preventDefault();
             create.mutate();
           }}
@@ -87,7 +87,7 @@ export default function ApiKeysPage() {
           <Input
             placeholder="Key name (e.g. homelab-scripts)"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={e => setName(e.target.value)}
             required
             className="mt-0 w-64"
           />
@@ -96,7 +96,7 @@ export default function ApiKeysPage() {
             <Input
               type="date"
               value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
+              onChange={e => setExpiresAt(e.target.value)}
               className="mt-1 w-44"
             />
           </label>
@@ -105,17 +105,15 @@ export default function ApiKeysPage() {
           </Button>
         </form>
         {create.isError && (
-          <p role="alert" className="text-sm text-ink mt-2">
+          <p role="alert" className="mt-2 text-sm text-ink">
             {(create.error as Error).message}
           </p>
         )}
         {revealed && (
-          <div className="mt-4 bg-canvas-soft border border-hairline rounded-sm p-4">
-            <p className="text-sm wght-600 mb-1">
-              Copy this key now — it will not be shown again.
-            </p>
-            <code className="font-mono text-sm break-all">{revealed}</code>
-            <p className="text-xs text-ink-mute mt-2">
+          <div className="mt-4 rounded-sm border border-hairline bg-canvas-soft p-4">
+            <p className="wght-600 mb-1 text-sm">Copy this key now — it will not be shown again.</p>
+            <code className="break-all font-mono text-sm">{revealed}</code>
+            <p className="mt-2 text-xs text-ink-mute">
               Use it as <code>Authorization: Bearer {'<key>'}</code>.
             </p>
           </div>
@@ -123,7 +121,7 @@ export default function ApiKeysPage() {
       </Card>
 
       <Card className="overflow-x-auto">
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Existing keys</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Existing keys</h2>
         {isLoading && <p className="text-ink-mute">Loading…</p>}
         {isError && !data && (
           <p role="alert" className="text-sm text-ink">
@@ -131,7 +129,7 @@ export default function ApiKeysPage() {
           </p>
         )}
         {revoke.isError && (
-          <p role="alert" className="text-sm text-ink mb-2">
+          <p role="alert" className="mb-2 text-sm text-ink">
             {(revoke.error as Error).message}
           </p>
         )}
@@ -139,7 +137,7 @@ export default function ApiKeysPage() {
         {data && data.apiKeys.length > 0 && (
           <table className="w-full text-left">
             <thead>
-              <tr className="text-xs text-ink-faint uppercase">
+              <tr className="text-xs uppercase text-ink-faint">
                 <th className="pb-2 pr-4">Name</th>
                 <th className="pb-2 pr-4">Key</th>
                 <th className="pb-2 pr-4">Created</th>
@@ -149,9 +147,9 @@ export default function ApiKeysPage() {
               </tr>
             </thead>
             <tbody>
-              {data.apiKeys.map((k) => (
+              {data.apiKeys.map(k => (
                 <tr key={k.id} className="border-t border-hairline">
-                  <td className="py-3 pr-4 wght-540">{k.name}</td>
+                  <td className="wght-540 py-3 pr-4">{k.name}</td>
                   <td className="py-3 pr-4 font-mono text-sm text-ink-mute">{k.prefix}…</td>
                   <td className="py-3 pr-4 text-sm text-ink-mute">
                     {new Date(k.createdAt).toLocaleDateString()}

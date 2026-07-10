@@ -70,7 +70,7 @@ describe('BackupControls', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/v1/backup/restore',
-        expect.objectContaining({ method: 'POST' }),
+        expect.objectContaining({ method: 'POST' })
       );
     });
 
@@ -83,7 +83,9 @@ describe('BackupControls', () => {
   });
 
   it('shows an error when restore fails', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ error: { message: 'bad' } }), { status: 400 }));
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ error: { message: 'bad' } }), { status: 400 })
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     renderWithQuery(<BackupControls />);

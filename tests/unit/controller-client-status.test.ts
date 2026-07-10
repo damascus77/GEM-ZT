@@ -6,11 +6,12 @@ import {
 } from '@/lib/controller/client';
 
 function jsonFetch(status: number, body: unknown) {
-  return vi.fn(async () =>
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { 'Content-Type': 'application/json' },
-    }),
+  return vi.fn(
+    async () =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      })
   ) as unknown as typeof globalThis.fetch;
 }
 
@@ -32,7 +33,7 @@ describe('ControllerClient.getStatus', () => {
       token: 'bad',
       fetchFn: jsonFetch(401, {}),
     });
-    const err = await client.getStatus().catch((e) => e);
+    const err = await client.getStatus().catch(e => e);
     expect(err).toBeInstanceOf(ControllerApiError);
     expect((err as ControllerApiError).status).toBe(401);
   });

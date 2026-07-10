@@ -18,11 +18,11 @@ export interface NetworkPresenceEntry {
  */
 export async function recordPresenceSamples(
   nwid: string,
-  samples: PresenceSample[],
+  samples: PresenceSample[]
 ): Promise<void> {
   if (samples.length === 0) return;
   await getDb().memberPresence.createMany({
-    data: samples.map((s) => ({ nwid, memberId: s.memberId, online: s.online })),
+    data: samples.map(s => ({ nwid, memberId: s.memberId, online: s.online })),
   });
 }
 
@@ -35,8 +35,8 @@ export async function sampleNetworkPresence(nwid: string): Promise<void> {
   try {
     const members = await listMembers(nwid);
     const samples = members
-      .filter((m) => m.online !== null)
-      .map((m) => ({ memberId: m.memberId, online: m.online as boolean }));
+      .filter(m => m.online !== null)
+      .map(m => ({ memberId: m.memberId, online: m.online as boolean }));
     await recordPresenceSamples(nwid, samples);
   } catch (e) {
     console.error('[gem-zt] presence sampling failed:', e);
@@ -59,14 +59,14 @@ export async function getLastSeen(nwid: string, memberId: string): Promise<Date 
 export async function getRecentSamples(
   nwid: string,
   memberId: string,
-  limit = 48,
+  limit = 48
 ): Promise<Array<{ online: boolean; sampledAt: Date }>> {
   const rows = await getDb().memberPresence.findMany({
     where: { nwid, memberId },
     orderBy: { sampledAt: 'desc' },
     take: limit,
   });
-  return rows.reverse().map((r) => ({ online: r.online, sampledAt: r.sampledAt }));
+  return rows.reverse().map(r => ({ online: r.online, sampledAt: r.sampledAt }));
 }
 
 const DEFAULT_SAMPLE_LIMIT = 48;
@@ -82,7 +82,7 @@ const DEFAULT_SAMPLE_LIMIT = 48;
  * the [nwid, memberId, sampledAt] index serves directly.
  */
 export async function getNetworkPresence(
-  nwid: string,
+  nwid: string
 ): Promise<Record<string, NetworkPresenceEntry>> {
   const members = await getDb().memberPresence.groupBy({ by: ['memberId'], where: { nwid } });
   const result: Record<string, NetworkPresenceEntry> = {};
@@ -93,7 +93,7 @@ export async function getNetworkPresence(
     ]);
     result[memberId] = {
       lastSeen: lastSeen ? lastSeen.toISOString() : null,
-      samples: recent.map((s) => s.online),
+      samples: recent.map(s => s.online),
     };
   }
   return result;

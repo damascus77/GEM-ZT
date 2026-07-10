@@ -55,7 +55,7 @@ export function listTemplatesForOrg(orgId: string): Promise<TemplateSummary[]> {
 /** Fetch a single template, scoped to an org (null if it belongs to a different org). */
 export async function getTemplateForOrg(
   id: string,
-  orgId: string,
+  orgId: string
 ): Promise<TemplateSummary | null> {
   const template = await getDb().networkTemplate.findUnique({
     where: { id },
@@ -80,7 +80,7 @@ export async function createTemplate(
     tags?: string;
     rulesSource?: string;
   },
-  orgId?: string,
+  orgId?: string
 ): Promise<TemplateSummary> {
   const scope = orgId ?? null;
   const existing = await getDb().networkTemplate.findFirst({
@@ -108,7 +108,7 @@ export async function createTemplate(
 export async function saveTemplateFromNetwork(
   nwid: string,
   name: string,
-  orgId?: string,
+  orgId?: string
 ): Promise<TemplateSummary | null> {
   const client = await getControllerClient();
   let config;
@@ -121,7 +121,9 @@ export async function saveTemplateFromNetwork(
   const scope = orgId ?? null;
   const existing = await getDb().networkTemplate.findFirst({ where: { orgId: scope, name } });
   if (existing) throw new TemplateNameTakenError(name);
-  const meta = await getDb().networkMeta.findUnique({ where: { nwid } }).catch(() => null);
+  const meta = await getDb()
+    .networkMeta.findUnique({ where: { nwid } })
+    .catch(() => null);
   const stored: StoredTemplate = {
     config: toPortableConfig(config),
     description: meta?.description ?? '',
@@ -137,7 +139,7 @@ export async function saveTemplateFromNetwork(
 /** Create a new network from a stored template. Returns null if the template is gone. */
 export async function createNetworkFromTemplate(
   id: string,
-  orgId?: string,
+  orgId?: string
 ): Promise<WriteResult<NetworkDetail> | null> {
   const template = await getDb().networkTemplate.findUnique({ where: { id } });
   if (!template) return null;

@@ -69,7 +69,7 @@ export function InviteAccept({ token }: { token: string }) {
     else if (status === 404) heading = 'Invitation not found';
     return (
       <Card className="w-full max-w-sm">
-        <h1 className="text-[22px] wght-540 tracking-[-0.315px] mb-2">{heading}</h1>
+        <h1 className="wght-540 mb-2 text-[22px] tracking-[-0.315px]">{heading}</h1>
         <p role="alert" className="text-sm text-ink-mute">
           {previewQuery.error?.message ?? 'This invitation is invalid.'}
         </p>
@@ -81,23 +81,23 @@ export function InviteAccept({ token }: { token: string }) {
 
   return (
     <Card className="w-full max-w-sm">
-      <h1 className="text-[22px] wght-540 tracking-[-0.315px] mb-2">
+      <h1 className="wght-540 mb-2 text-[22px] tracking-[-0.315px]">
         You&apos;ve been invited to {preview.org.name}
       </h1>
-      <p className="text-sm text-ink-mute mb-6">
+      <p className="mb-6 text-sm text-ink-mute">
         Role: <span className="capitalize">{preview.role}</span>
       </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <label className="text-sm text-ink-mute">
           Username
-          <Input value={username} onChange={(e) => setUsername(e.target.value)} required />
+          <Input value={username} onChange={e => setUsername(e.target.value)} required />
         </label>
         <label className="text-sm text-ink-mute">
           Password
           <Input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             minLength={10}
             required
           />

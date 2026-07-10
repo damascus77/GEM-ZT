@@ -19,13 +19,13 @@ export async function readAuthToken(): Promise<string> {
     throw new AuthTokenError(
       `Cannot read ZeroTier auth token at ${path}. Check that the controller_data volume ` +
         `is mounted read-only at /controller, that the zerotier-controller service has ` +
-        `started at least once, or set ZT_AUTH_TOKEN directly.`,
+        `started at least once, or set ZT_AUTH_TOKEN directly.`
     );
   }
   if (token === '') {
     throw new AuthTokenError(
       `ZeroTier auth token file at ${path} is empty. The controller_data volume may not ` +
-        `be initialized yet; start the zerotier-controller service and retry.`,
+        `be initialized yet; start the zerotier-controller service and retry.`
     );
   }
   return token;

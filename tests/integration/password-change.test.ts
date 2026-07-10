@@ -36,14 +36,16 @@ describe('PATCH /api/v1/auth/password', () => {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword: 'password12345', newPassword: 'new-password-999' }),
-      }),
+      })
     );
     expect(res.status).toBe(401);
   });
 
   it('rejects the wrong current password with 400 CURRENT_PASSWORD_INVALID', async () => {
     const { cookie, user } = await createTestUserAndSession();
-    const res = await passwordPatch(req(cookie, { currentPassword: 'wrong', newPassword: 'new-password-999' }));
+    const res = await passwordPatch(
+      req(cookie, { currentPassword: 'wrong', newPassword: 'new-password-999' })
+    );
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('CURRENT_PASSWORD_INVALID');
     const unchanged = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
@@ -52,7 +54,9 @@ describe('PATCH /api/v1/auth/password', () => {
 
   it('rejects a new password shorter than 10 characters with 400 VALIDATION_ERROR', async () => {
     const { cookie } = await createTestUserAndSession();
-    const res = await passwordPatch(req(cookie, { currentPassword: 'password12345', newPassword: 'short' }));
+    const res = await passwordPatch(
+      req(cookie, { currentPassword: 'password12345', newPassword: 'short' })
+    );
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
   });
@@ -61,7 +65,9 @@ describe('PATCH /api/v1/auth/password', () => {
     const { cookie, user } = await createTestUserAndSession();
     const otherSession = await createSession(user.id);
 
-    const res = await passwordPatch(req(cookie, { currentPassword: 'password12345', newPassword: 'new-password-999' }));
+    const res = await passwordPatch(
+      req(cookie, { currentPassword: 'password12345', newPassword: 'new-password-999' })
+    );
     expect(res.status).toBe(204);
 
     const updated = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
@@ -74,7 +80,9 @@ describe('PATCH /api/v1/auth/password', () => {
 
   it('writes an audit log entry on success', async () => {
     const { cookie, user } = await createTestUserAndSession();
-    await passwordPatch(req(cookie, { currentPassword: 'password12345', newPassword: 'new-password-999' }));
+    await passwordPatch(
+      req(cookie, { currentPassword: 'password12345', newPassword: 'new-password-999' })
+    );
     const entry = await getDb().auditLog.findFirst({
       where: { userId: user.id, action: 'user.password_change' },
     });

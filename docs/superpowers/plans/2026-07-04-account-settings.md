@@ -23,6 +23,7 @@
 ### Task 1: Remove the setup-token requirement
 
 **Files:**
+
 - Modify: `app/api/v1/setup/route.ts`
 - Modify: `app/api/v1/setup/status/route.ts`
 - Modify: `app/(auth)/setup/page.tsx`
@@ -34,6 +35,7 @@
 - Modify: `README.md`
 
 **Interfaces:**
+
 - Produces: `GET /api/v1/setup/status` now responds `{ needsSetup: boolean }` (no `requiresToken` field). `POST /api/v1/setup` no longer accepts or checks a `setupToken` field.
 
 - [ ] **Step 1: Update the failing/changing tests first — rewrite `tests/integration/setup-auth-routes.test.ts`**
@@ -58,7 +60,12 @@ afterAll(async () => {
   await getDb().$disconnect();
 });
 
-function jsonReq(url: string, method: string, body?: unknown, headers: Record<string, string> = {}) {
+function jsonReq(
+  url: string,
+  method: string,
+  body?: unknown,
+  headers: Record<string, string> = {}
+) {
   return new Request(url, {
     method,
     headers: { 'Content-Type': 'application/json', ...headers },
@@ -81,7 +88,7 @@ describe('setup + auth routes', () => {
 
   it('creates the initial admin, sets a session cookie, then reports needsSetup=false', async () => {
     const res = await setupPost(
-      jsonReq('http://x/api/v1/setup', 'POST', { username: 'admin', password: 'password12345' }),
+      jsonReq('http://x/api/v1/setup', 'POST', { username: 'admin', password: 'password12345' })
     );
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -93,7 +100,7 @@ describe('setup + auth routes', () => {
 
   it('refuses setup once a user exists (409 SETUP_ALREADY_COMPLETE)', async () => {
     const res = await setupPost(
-      jsonReq('http://x/api/v1/setup', 'POST', { username: 'again', password: 'password12345' }),
+      jsonReq('http://x/api/v1/setup', 'POST', { username: 'again', password: 'password12345' })
     );
     expect(res.status).toBe(409);
     expect((await res.json()).error.code).toBe('SETUP_ALREADY_COMPLETE');
@@ -104,7 +111,7 @@ describe('setup + auth routes', () => {
       jsonReq('http://x/api/v1/auth/login', 'POST', {
         username: 'admin',
         password: 'password12345',
-      }),
+      })
     );
     expect(res.status).toBe(200);
     expect(res.headers.get('set-cookie')).toContain('gemzt_session=');
@@ -113,7 +120,7 @@ describe('setup + auth routes', () => {
 
   it('rejects bad credentials with 401', async () => {
     const res = await loginPost(
-      jsonReq('http://x/api/v1/auth/login', 'POST', { username: 'admin', password: 'wrong' }),
+      jsonReq('http://x/api/v1/auth/login', 'POST', { username: 'admin', password: 'wrong' })
     );
     expect(res.status).toBe(401);
     expect((await res.json()).error.code).toBe('UNAUTHORIZED');
@@ -124,7 +131,7 @@ describe('setup + auth routes', () => {
       jsonReq('http://x/api/v1/auth/login', 'POST', {
         username: 'admin',
         password: 'password12345',
-      }),
+      })
     );
     const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
     const ok = await meGet(new Request('http://x/api/v1/me', { headers: { cookie } }));
@@ -139,13 +146,15 @@ describe('setup + auth routes', () => {
       jsonReq('http://x/api/v1/auth/login', 'POST', {
         username: 'admin',
         password: 'password12345',
-      }),
+      })
     );
     const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
-    const res = await logoutPost(new Request('http://x/api/v1/auth/logout', {
-      method: 'POST',
-      headers: { cookie },
-    }));
+    const res = await logoutPost(
+      new Request('http://x/api/v1/auth/logout', {
+        method: 'POST',
+        headers: { cookie },
+      })
+    );
     expect(res.status).toBe(204);
     expect(res.headers.get('set-cookie')).toContain('Max-Age=0');
     const me = await meGet(new Request('http://x/api/v1/me', { headers: { cookie } }));
@@ -215,7 +224,7 @@ export async function POST(req: Request) {
     const session = await createSession(user.id);
     const res = NextResponse.json(
       { user: { id: user.id, username: user.username, role: user.role } },
-      { status: 201 },
+      { status: 201 }
     );
     res.cookies.set(SESSION_COOKIE, session.id, sessionCookieOptions());
     return res;
@@ -299,21 +308,21 @@ export default function SetupPage() {
 
   return (
     <Card className="w-full max-w-sm">
-      <h1 className="text-[22px] wght-540 tracking-[-0.315px] mb-2">Welcome to GEM-ZT</h1>
-      <p className="text-sm text-ink-mute mb-6">
+      <h1 className="wght-540 mb-2 text-[22px] tracking-[-0.315px]">Welcome to GEM-ZT</h1>
+      <p className="mb-6 text-sm text-ink-mute">
         First-run setup: create the administrator account. No default passwords, ever.
       </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <label className="text-sm text-ink-mute">
           Username
-          <Input value={username} onChange={(e) => setUsername(e.target.value)} required />
+          <Input value={username} onChange={e => setUsername(e.target.value)} required />
         </label>
         <label className="text-sm text-ink-mute">
           Password
           <Input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             minLength={10}
             required
           />
@@ -323,7 +332,7 @@ export default function SetupPage() {
           <Input
             type="password"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={e => setConfirm(e.target.value)}
             required
           />
         </label>
@@ -348,7 +357,9 @@ Replace the `describe('SetupPage', ...)` block (keep the `LoginPage` block above
 ```tsx
 describe('SetupPage', () => {
   function stubSetupFetch() {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ user: {} }), { status: 201 }));
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ user: {} }), { status: 201 })
+    );
     vi.stubGlobal('fetch', fetchMock);
     return fetchMock;
   }
@@ -404,9 +415,9 @@ Delete these lines from `.env.example` (the block right after the `ZT_AUTH_TOKEN
 In the `app.environment` list, delete:
 
 ```yaml
-      # Optional but recommended: set GEMZT_SETUP_TOKEN in a .env file to require a
-      # token when creating the admin account (guards first-run + app_data-loss re-open).
-      - GEMZT_SETUP_TOKEN=${GEMZT_SETUP_TOKEN:-}
+# Optional but recommended: set GEMZT_SETUP_TOKEN in a .env file to require a
+# token when creating the admin account (guards first-run + app_data-loss re-open).
+- GEMZT_SETUP_TOKEN=${GEMZT_SETUP_TOKEN:-}
 ```
 
 - [ ] **Step 12: Update `README.md`**
@@ -451,10 +462,12 @@ git commit -m "feat: remove setup-token requirement for first-run account creati
 ### Task 2: Add password-change and session-invalidation helpers to the auth service
 
 **Files:**
+
 - Modify: `lib/services/auth.ts`
 - Modify: `tests/unit/auth-service.test.ts`
 
 **Interfaces:**
+
 - Produces: `setPassword(userId: string, password: string): Promise<void>` — hashes `password` and updates `User.passwordHash`.
 - Produces: `invalidateOtherSessions(userId: string, exceptSessionId?: string): Promise<number>` — deletes every `Session` row for `userId` except `exceptSessionId` (deletes all of that user's sessions if `exceptSessionId` is omitted). Returns the number of rows deleted.
 
@@ -483,45 +496,45 @@ import {
 ```
 
 ```ts
-  it('setPassword replaces the password hash so the old password no longer verifies', async () => {
-    const user = await createUser('password-change-user', 'password12345');
-    await setPassword(user.id, 'new-password-999');
-    const updated = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
-    expect(await verifyPassword(updated.passwordHash, 'new-password-999')).toBe(true);
-    expect(await verifyPassword(updated.passwordHash, 'password12345')).toBe(false);
-  });
+it('setPassword replaces the password hash so the old password no longer verifies', async () => {
+  const user = await createUser('password-change-user', 'password12345');
+  await setPassword(user.id, 'new-password-999');
+  const updated = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
+  expect(await verifyPassword(updated.passwordHash, 'new-password-999')).toBe(true);
+  expect(await verifyPassword(updated.passwordHash, 'password12345')).toBe(false);
+});
 
-  it('invalidateOtherSessions deletes every session for the user except the excluded one', async () => {
-    const user = await createUser('multi-session-user', 'password12345');
-    const kept = await createSession(user.id);
-    const a = await createSession(user.id);
-    const b = await createSession(user.id);
-    const removed = await invalidateOtherSessions(user.id, kept.id);
-    expect(removed).toBe(2);
-    expect(await getSession(kept.id)).not.toBeNull();
-    expect(await getSession(a.id)).toBeNull();
-    expect(await getSession(b.id)).toBeNull();
-  });
+it('invalidateOtherSessions deletes every session for the user except the excluded one', async () => {
+  const user = await createUser('multi-session-user', 'password12345');
+  const kept = await createSession(user.id);
+  const a = await createSession(user.id);
+  const b = await createSession(user.id);
+  const removed = await invalidateOtherSessions(user.id, kept.id);
+  expect(removed).toBe(2);
+  expect(await getSession(kept.id)).not.toBeNull();
+  expect(await getSession(a.id)).toBeNull();
+  expect(await getSession(b.id)).toBeNull();
+});
 
-  it('invalidateOtherSessions with no exception deletes every session for the user', async () => {
-    const user = await createUser('all-sessions-user', 'password12345');
-    const a = await createSession(user.id);
-    const b = await createSession(user.id);
-    const removed = await invalidateOtherSessions(user.id);
-    expect(removed).toBe(2);
-    expect(await getSession(a.id)).toBeNull();
-    expect(await getSession(b.id)).toBeNull();
-  });
+it('invalidateOtherSessions with no exception deletes every session for the user', async () => {
+  const user = await createUser('all-sessions-user', 'password12345');
+  const a = await createSession(user.id);
+  const b = await createSession(user.id);
+  const removed = await invalidateOtherSessions(user.id);
+  expect(removed).toBe(2);
+  expect(await getSession(a.id)).toBeNull();
+  expect(await getSession(b.id)).toBeNull();
+});
 
-  it('invalidateOtherSessions never touches another user\'s sessions', async () => {
-    const userA = await createUser('session-owner-a', 'password12345');
-    const userB = await createUser('session-owner-b', 'password12345');
-    const sessionA = await createSession(userA.id);
-    const sessionB = await createSession(userB.id);
-    await invalidateOtherSessions(userA.id);
-    expect(await getSession(sessionA.id)).toBeNull();
-    expect(await getSession(sessionB.id)).not.toBeNull();
-  });
+it("invalidateOtherSessions never touches another user's sessions", async () => {
+  const userA = await createUser('session-owner-a', 'password12345');
+  const userB = await createUser('session-owner-b', 'password12345');
+  const sessionA = await createSession(userA.id);
+  const sessionB = await createSession(userB.id);
+  await invalidateOtherSessions(userA.id);
+  expect(await getSession(sessionA.id)).toBeNull();
+  expect(await getSession(sessionB.id)).not.toBeNull();
+});
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -546,7 +559,7 @@ export async function setPassword(userId: string, password: string): Promise<voi
  */
 export async function invalidateOtherSessions(
   userId: string,
-  exceptSessionId?: string,
+  exceptSessionId?: string
 ): Promise<number> {
   const where = exceptSessionId ? { userId, id: { not: exceptSessionId } } : { userId };
   const { count } = await getDb().session.deleteMany({ where });
@@ -571,12 +584,14 @@ git commit -m "feat: add setPassword and invalidateOtherSessions to the auth ser
 ### Task 3: Add `PATCH /api/v1/auth/password`
 
 **Files:**
+
 - Create: `app/api/v1/auth/password/route.ts`
 - Create: `tests/integration/password-change.test.ts`
 - Modify: `lib/api/openapi.ts`
 - Modify: `tests/unit/openapi.test.ts`
 
 **Interfaces:**
+
 - Consumes: `requireAuth(req)` from `lib/api/auth.ts` → `{ user: User } | Response`; `verifyPassword(hash, password)`, `setPassword(userId, password)`, `invalidateOtherSessions(userId, exceptSessionId?)`, `SESSION_COOKIE` from `lib/services/auth.ts`; `logAudit(input)` from `lib/services/audit.ts`; `apiError`, `handleRouteError` from `lib/api/errors.ts`; `getDb` from `lib/db/client`.
 - Produces: `PATCH /api/v1/auth/password` — body `{ currentPassword: string, newPassword: string }` → `204 No Content` on success (other sessions invalidated), `400 CURRENT_PASSWORD_INVALID` if `currentPassword` is wrong, `400 VALIDATION_ERROR` if the body fails schema validation, `401` if unauthenticated.
 
@@ -613,14 +628,16 @@ describe('PATCH /api/v1/auth/password', () => {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword: 'password12345', newPassword: 'new-password-999' }),
-      }),
+      })
     );
     expect(res.status).toBe(401);
   });
 
   it('rejects the wrong current password with 400 CURRENT_PASSWORD_INVALID', async () => {
     const { cookie, user } = await createTestUserAndSession();
-    const res = await passwordPatch(req(cookie, { currentPassword: 'wrong', newPassword: 'new-password-999' }));
+    const res = await passwordPatch(
+      req(cookie, { currentPassword: 'wrong', newPassword: 'new-password-999' })
+    );
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('CURRENT_PASSWORD_INVALID');
     const unchanged = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
@@ -629,7 +646,9 @@ describe('PATCH /api/v1/auth/password', () => {
 
   it('rejects a new password shorter than 10 characters with 400 VALIDATION_ERROR', async () => {
     const { cookie } = await createTestUserAndSession();
-    const res = await passwordPatch(req(cookie, { currentPassword: 'password12345', newPassword: 'short' }));
+    const res = await passwordPatch(
+      req(cookie, { currentPassword: 'password12345', newPassword: 'short' })
+    );
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
   });
@@ -638,7 +657,9 @@ describe('PATCH /api/v1/auth/password', () => {
     const { cookie, user } = await createTestUserAndSession();
     const otherSession = await createSession(user.id);
 
-    const res = await passwordPatch(req(cookie, { currentPassword: 'password12345', newPassword: 'new-password-999' }));
+    const res = await passwordPatch(
+      req(cookie, { currentPassword: 'password12345', newPassword: 'new-password-999' })
+    );
     expect(res.status).toBe(204);
 
     const updated = await getDb().user.findUniqueOrThrow({ where: { id: user.id } });
@@ -651,7 +672,9 @@ describe('PATCH /api/v1/auth/password', () => {
 
   it('writes an audit log entry on success', async () => {
     const { cookie, user } = await createTestUserAndSession();
-    await passwordPatch(req(cookie, { currentPassword: 'password12345', newPassword: 'new-password-999' }));
+    await passwordPatch(
+      req(cookie, { currentPassword: 'password12345', newPassword: 'new-password-999' })
+    );
     const entry = await getDb().auditLog.findFirst({
       where: { userId: user.id, action: 'user.password_change' },
     });
@@ -673,7 +696,12 @@ import { requireAuth } from '@/lib/api/auth';
 import { apiError, handleRouteError } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/client';
 import { logAudit } from '@/lib/services/audit';
-import { invalidateOtherSessions, SESSION_COOKIE, setPassword, verifyPassword } from '@/lib/services/auth';
+import {
+  invalidateOtherSessions,
+  SESSION_COOKIE,
+  setPassword,
+  verifyPassword,
+} from '@/lib/services/auth';
 
 const passwordSchema = z
   .object({
@@ -757,10 +785,12 @@ git commit -m "feat: add PATCH /api/v1/auth/password"
 ### Task 4: Expose `totpEnabled` on `GET /api/v1/me`
 
 **Files:**
+
 - Modify: `app/api/v1/me/route.ts`
 - Modify: `tests/integration/setup-auth-routes.test.ts`
 
 **Interfaces:**
+
 - Produces: `GET /api/v1/me` now responds `{ user: { id, username, role, totpEnabled } }`.
 
 - [ ] **Step 1: Extend the existing `/me` assertion — `tests/integration/setup-auth-routes.test.ts`**
@@ -768,13 +798,13 @@ git commit -m "feat: add PATCH /api/v1/auth/password"
 In the `'GET /me returns the current user...'` test, change:
 
 ```ts
-    expect((await ok.json()).user.username).toBe('admin');
+expect((await ok.json()).user.username).toBe('admin');
 ```
 
 to:
 
 ```ts
-    expect((await ok.json()).user).toMatchObject({ username: 'admin', totpEnabled: false });
+expect((await ok.json()).user).toMatchObject({ username: 'admin', totpEnabled: false });
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
@@ -797,7 +827,12 @@ export async function GET(req: Request) {
   try {
     const { user } = auth;
     return NextResponse.json({
-      user: { id: user.id, username: user.username, role: user.role, totpEnabled: user.totpEnabled },
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        totpEnabled: user.totpEnabled,
+      },
     });
   } catch (e) {
     return handleRouteError(e);
@@ -822,12 +857,14 @@ git commit -m "feat: expose totpEnabled on GET /api/v1/me"
 ### Task 5: Add `POST /api/v1/auth/totp/disable`
 
 **Files:**
+
 - Create: `app/api/v1/auth/totp/disable/route.ts`
 - Create: `tests/integration/totp-disable.test.ts`
 - Modify: `lib/api/openapi.ts`
 - Modify: `tests/unit/openapi.test.ts`
 
 **Interfaces:**
+
 - Consumes: `requireAuth`, `verifyPassword` (from `lib/services/auth.ts`), `getDb`, `logAudit`.
 - Produces: `POST /api/v1/auth/totp/disable` — body `{ currentPassword: string }` → `200 { enabled: false }` on success, `400 CURRENT_PASSWORD_INVALID`, `409 TOTP_NOT_ENABLED` if TOTP isn't currently enabled, `401` if unauthenticated.
 
@@ -862,7 +899,7 @@ function req(cookie: string, body: unknown) {
 async function enableTotpFor(cookie: string): Promise<void> {
   const enrolled = await (
     await enrollPost(
-      new Request('http://x/api/v1/auth/totp/enroll', { method: 'POST', headers: { cookie } }),
+      new Request('http://x/api/v1/auth/totp/enroll', { method: 'POST', headers: { cookie } })
     )
   ).json();
   await enablePost(
@@ -870,7 +907,7 @@ async function enableTotpFor(cookie: string): Promise<void> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', cookie },
       body: JSON.stringify({ code: totp(enrolled.secret) }),
-    }),
+    })
   );
 }
 
@@ -881,7 +918,7 @@ describe('POST /api/v1/auth/totp/disable', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword: 'password12345' }),
-      }),
+      })
     );
     expect(res.status).toBe(401);
   });
@@ -1026,11 +1063,13 @@ git commit -m "feat: add POST /api/v1/auth/totp/disable"
 ### Task 6: Add the `qrcode` dependency and the `PasswordSettings` component
 
 **Files:**
+
 - Modify: `package.json` (via `npm install`)
 - Create: `components/PasswordSettings.tsx`
 - Create: `tests/ui/password-settings.test.tsx`
 
 **Interfaces:**
+
 - Produces: `PasswordSettings` — a default-exportless named React component (`export function PasswordSettings()`), no props, self-contained (own fetch calls, own state). Renders a `<Card>` with a form calling `PATCH /api/v1/auth/password`.
 
 - [ ] **Step 1: Install the QR code dependency**
@@ -1091,9 +1130,11 @@ describe('PasswordSettings', () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(
-          JSON.stringify({ error: { code: 'CURRENT_PASSWORD_INVALID', message: 'Current password is incorrect.' } }),
-          { status: 400 },
-        ),
+          JSON.stringify({
+            error: { code: 'CURRENT_PASSWORD_INVALID', message: 'Current password is incorrect.' },
+          }),
+          { status: 400 }
+        )
     );
     vi.stubGlobal('fetch', fetchMock);
     render(<PasswordSettings />);
@@ -1159,14 +1200,14 @@ export function PasswordSettings() {
 
   return (
     <Card>
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Password</h2>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4 max-w-sm">
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Password</h2>
+      <form onSubmit={onSubmit} className="flex max-w-sm flex-col gap-4">
         <label className="text-sm text-ink-mute">
           Current password
           <Input
             type="password"
             value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
+            onChange={e => setCurrentPassword(e.target.value)}
             required
           />
         </label>
@@ -1175,7 +1216,7 @@ export function PasswordSettings() {
           <Input
             type="password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={e => setNewPassword(e.target.value)}
             minLength={10}
             required
           />
@@ -1185,7 +1226,7 @@ export function PasswordSettings() {
           <Input
             type="password"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={e => setConfirm(e.target.value)}
             required
           />
         </label>
@@ -1225,10 +1266,12 @@ git commit -m "feat: add PasswordSettings component and the qrcode dependency"
 ### Task 7: Add the `TotpSettings` component (enroll → confirm → enabled → disable)
 
 **Files:**
+
 - Create: `components/TotpSettings.tsx`
 - Create: `tests/ui/totp-settings.test.tsx`
 
 **Interfaces:**
+
 - Consumes: the `qrcode` package's default export (`QRCode.toDataURL(uri): Promise<string>`), installed in Task 6.
 - Produces: `TotpSettings` — `export function TotpSettings({ initialEnabled }: { initialEnabled: boolean })`. Calls `POST /api/v1/auth/totp/enroll`, `POST /api/v1/auth/totp/enable`, `POST /api/v1/auth/totp/disable` (all from Task 5 / existing routes).
 
@@ -1259,8 +1302,11 @@ describe('TotpSettings', () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (String(url).includes('/totp/enroll')) {
         return new Response(
-          JSON.stringify({ secret: 'ABCDEFGHIJKLMNOP', otpauthUri: 'otpauth://totp/GEM-ZT:admin?secret=ABCDEFGHIJKLMNOP' }),
-          { status: 200 },
+          JSON.stringify({
+            secret: 'ABCDEFGHIJKLMNOP',
+            otpauthUri: 'otpauth://totp/GEM-ZT:admin?secret=ABCDEFGHIJKLMNOP',
+          }),
+          { status: 200 }
         );
       }
       return new Response(JSON.stringify({ enabled: true }), { status: 200 });
@@ -1271,7 +1317,10 @@ describe('TotpSettings', () => {
     await userEvent.click(screen.getByRole('button', { name: /set up 2fa/i }));
 
     expect(await screen.findByText('ABCDEFGHIJKLMNOP')).toBeInTheDocument();
-    expect(await screen.findByAltText(/2fa qr code/i)).toHaveAttribute('src', 'data:image/png;base64,mock-qr');
+    expect(await screen.findByAltText(/2fa qr code/i)).toHaveAttribute(
+      'src',
+      'data:image/png;base64,mock-qr'
+    );
 
     await userEvent.type(screen.getByLabelText(/6-digit code/i), '123456');
     await userEvent.click(screen.getByRole('button', { name: /confirm and enable/i }));
@@ -1279,7 +1328,9 @@ describe('TotpSettings', () => {
     await waitFor(() => {
       const enableCall = fetchMock.mock.calls.find(([url]) => String(url).includes('/totp/enable'));
       expect(enableCall).toBeDefined();
-      expect(JSON.parse((enableCall![1] as RequestInit).body as string)).toEqual({ code: '123456' });
+      expect(JSON.parse((enableCall![1] as RequestInit).body as string)).toEqual({
+        code: '123456',
+      });
     });
     expect(await screen.findByText(/is enabled/i)).toBeInTheDocument();
   });
@@ -1288,13 +1339,18 @@ describe('TotpSettings', () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (String(url).includes('/totp/enroll')) {
         return new Response(
-          JSON.stringify({ secret: 'ABCDEFGHIJKLMNOP', otpauthUri: 'otpauth://totp/GEM-ZT:admin?secret=ABCDEFGHIJKLMNOP' }),
-          { status: 200 },
+          JSON.stringify({
+            secret: 'ABCDEFGHIJKLMNOP',
+            otpauthUri: 'otpauth://totp/GEM-ZT:admin?secret=ABCDEFGHIJKLMNOP',
+          }),
+          { status: 200 }
         );
       }
       return new Response(
-        JSON.stringify({ error: { code: 'INVALID_TOTP', message: 'Invalid or expired TOTP code.' } }),
-        { status: 400 },
+        JSON.stringify({
+          error: { code: 'INVALID_TOTP', message: 'Invalid or expired TOTP code.' },
+        }),
+        { status: 400 }
       );
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -1309,7 +1365,9 @@ describe('TotpSettings', () => {
   });
 
   it('disables 2FA with the current password when enabled', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ enabled: false }), { status: 200 }));
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ enabled: false }), { status: 200 })
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     render(<TotpSettings initialEnabled={true} />);
@@ -1320,7 +1378,9 @@ describe('TotpSettings', () => {
     await waitFor(() => {
       const [url, init] = fetchMock.mock.calls[0];
       expect(url).toBe('/api/v1/auth/totp/disable');
-      expect(JSON.parse((init as RequestInit).body as string)).toEqual({ currentPassword: 'password12345' });
+      expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+        currentPassword: 'password12345',
+      });
     });
     expect(await screen.findByRole('button', { name: /set up 2fa/i })).toBeInTheDocument();
   });
@@ -1409,14 +1469,14 @@ export function TotpSettings({ initialEnabled }: { initialEnabled: boolean }) {
 
   return (
     <Card>
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Two-Factor Authentication</h2>
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Two-Factor Authentication</h2>
       {error && (
-        <p role="alert" className="text-sm text-ink mb-4">
+        <p role="alert" className="mb-4 text-sm text-ink">
           {error}
         </p>
       )}
       {enabled && !secret && (
-        <div className="flex flex-col gap-4 max-w-sm">
+        <div className="flex max-w-sm flex-col gap-4">
           <p className="text-sm text-ink-mute">Two-factor authentication is enabled.</p>
           <form onSubmit={disable} className="flex flex-col gap-4">
             <label className="text-sm text-ink-mute">
@@ -1424,7 +1484,7 @@ export function TotpSettings({ initialEnabled }: { initialEnabled: boolean }) {
               <Input
                 type="password"
                 value={disablePassword}
-                onChange={(e) => setDisablePassword(e.target.value)}
+                onChange={e => setDisablePassword(e.target.value)}
                 required
               />
             </label>
@@ -1436,23 +1496,23 @@ export function TotpSettings({ initialEnabled }: { initialEnabled: boolean }) {
       )}
       {!enabled && !secret && (
         <div>
-          <p className="text-sm text-ink-mute mb-4">Two-factor authentication is not enabled.</p>
+          <p className="mb-4 text-sm text-ink-mute">Two-factor authentication is not enabled.</p>
           <Button onClick={startEnroll} disabled={busy}>
             Set up 2FA
           </Button>
         </div>
       )}
       {!enabled && secret && (
-        <div className="flex flex-col gap-4 max-w-sm">
+        <div className="flex max-w-sm flex-col gap-4">
           <p className="text-sm text-ink-mute">
             Scan this code with your authenticator app, or enter the key manually.
           </p>
           {qrDataUrl && <img src={qrDataUrl} alt="2FA QR code" width={200} height={200} />}
-          <code className="font-mono text-sm break-all">{secret}</code>
+          <code className="break-all font-mono text-sm">{secret}</code>
           <form onSubmit={confirmEnroll} className="flex flex-col gap-4">
             <label className="text-sm text-ink-mute">
               6-digit code
-              <Input value={code} onChange={(e) => setCode(e.target.value)} maxLength={6} required />
+              <Input value={code} onChange={e => setCode(e.target.value)} maxLength={6} required />
             </label>
             <Button type="submit" disabled={busy}>
               Confirm and enable
@@ -1482,11 +1542,13 @@ git commit -m "feat: add TotpSettings component (enroll, confirm, disable)"
 ### Task 8: Assemble the `/account` page, add nav link, run the full suite
 
 **Files:**
+
 - Create: `app/(ui)/account/page.tsx`
 - Modify: `app/(ui)/layout.tsx`
 - Create: `tests/ui/account-page.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `PasswordSettings` (Task 6), `TotpSettings` (Task 7), `GET /api/v1/me` (Task 4, returns `{ user: { id, username, role, totpEnabled } }`).
 
 - [ ] **Step 1: Write the failing UI test — `tests/ui/account-page.test.tsx`**
@@ -1510,9 +1572,11 @@ describe('AccountPage', () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(
-          JSON.stringify({ user: { id: 'u1', username: 'admin', role: 'admin', totpEnabled: false } }),
-          { status: 200 },
-        ),
+          JSON.stringify({
+            user: { id: 'u1', username: 'admin', role: 'admin', totpEnabled: false },
+          }),
+          { status: 200 }
+        )
     );
     vi.stubGlobal('fetch', fetchMock);
 
@@ -1528,9 +1592,11 @@ describe('AccountPage', () => {
     const fetchMock = vi.fn(
       async () =>
         new Response(
-          JSON.stringify({ user: { id: 'u1', username: 'admin', role: 'admin', totpEnabled: true } }),
-          { status: 200 },
-        ),
+          JSON.stringify({
+            user: { id: 'u1', username: 'admin', role: 'admin', totpEnabled: true },
+          }),
+          { status: 200 }
+        )
     );
     vi.stubGlobal('fetch', fetchMock);
 
@@ -1568,17 +1634,17 @@ export default function AccountPage() {
 
   useEffect(() => {
     fetch('/api/v1/me')
-      .then((r) => r.json())
-      .then((d) => setMe(d.user))
+      .then(r => r.json())
+      .then(d => setMe(d.user))
       .catch(() => {});
   }, []);
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] wght-540 tracking-[-0.63px]">Account</h1>
+      <h1 className="wght-540 text-[28px] tracking-[-0.63px]">Account</h1>
 
       <Card>
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Profile</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Profile</h2>
         {me ? (
           <dl className="text-sm">
             <div className="flex gap-2">

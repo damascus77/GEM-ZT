@@ -116,7 +116,7 @@ export const openApiSpec = {
     '/auth/password': {
       patch: {
         tags: ['auth'],
-        summary: 'Change the current user\'s password; invalidates every other session',
+        summary: "Change the current user's password; invalidates every other session",
         responses: {
           '204': { description: 'Password changed' },
           '400': errorResponse,
@@ -134,15 +134,15 @@ export const openApiSpec = {
     '/apikeys': {
       get: {
         tags: ['apikeys'],
-        summary: 'List API keys for the caller\'s active org (prefix only; never the full key)',
+        summary: "List API keys for the caller's active org (prefix only; never the full key)",
         responses: { '200': { description: '{ apiKeys[] }' }, ...authz },
       },
       post: {
         tags: ['apikeys'],
         summary:
           'Create an org-scoped API key; the full ztk_ key is returned exactly once. The key ' +
-          'inherits the given role (capped at the creator\'s own role) and is bound to the ' +
-          'caller\'s active org',
+          "inherits the given role (capped at the creator's own role) and is bound to the " +
+          "caller's active org",
         requestBody: {
           required: true,
           content: {
@@ -159,7 +159,11 @@ export const openApiSpec = {
             },
           },
         },
-        responses: { '201': { description: '{ apiKey, fullKey }' }, '400': errorResponse, ...authz },
+        responses: {
+          '201': { description: '{ apiKey, fullKey }' },
+          '400': errorResponse,
+          ...authz,
+        },
       },
     },
     '/apikeys/{id}': {
@@ -289,9 +293,14 @@ export const openApiSpec = {
     '/audit': {
       get: {
         tags: ['audit'],
-        summary: 'Audit log entries for the caller\'s active org, newest first (?limit=, max 500)',
+        summary: "Audit log entries for the caller's active org, newest first (?limit=, max 500)",
         parameters: [
-          { name: 'limit', in: 'query', required: false, schema: { type: 'integer', maximum: 500 } },
+          {
+            name: 'limit',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', maximum: 500 },
+          },
         ],
         responses: { '200': { description: '{ entries[] }' }, ...authz },
       },
@@ -379,14 +388,18 @@ export const openApiSpec = {
           'Replay a backup against the live controller: updates networks that still exist, ' +
           're-creates ones that do not (new nwid), restores joined members, skips the rest; ' +
           'super-admin only',
-        responses: { '200': { description: 'RestoreSummary JSON' }, '400': errorResponse, ...authz },
+        responses: {
+          '200': { description: 'RestoreSummary JSON' },
+          '400': errorResponse,
+          ...authz,
+        },
       },
     },
     '/settings/webhook': {
       get: {
         tags: ['settings'],
         summary:
-          'Get the caller\'s org-scoped webhook config (outbound URL for ' +
+          "Get the caller's org-scoped webhook config (outbound URL for " +
           'new-unauthorized-member alerts); requires webhook:manage (admin+)',
         responses: { '200': { description: '{ newMemberUrl: string | null }' }, ...authz },
       },
@@ -420,7 +433,7 @@ export const openApiSpec = {
     '/orgs/{orgId}': {
       get: {
         tags: ['orgs'],
-        summary: 'Organization detail, including the caller\'s role in it',
+        summary: "Organization detail, including the caller's role in it",
         parameters: [{ name: 'orgId', in: 'path', required: true, schema: { type: 'string' } }],
         responses: { '200': { description: '{ org }' }, '404': errorResponse, ...authz },
       },
@@ -441,7 +454,7 @@ export const openApiSpec = {
       post: {
         tags: ['orgs'],
         summary:
-          'Switch the caller\'s active org for the current session (session auth only; ' +
+          "Switch the caller's active org for the current session (session auth only; " +
           'API keys are bound to one org and cannot switch)',
         parameters: [{ name: 'orgId', in: 'path', required: true, schema: { type: 'string' } }],
         responses: {
@@ -478,7 +491,7 @@ export const openApiSpec = {
       patch: {
         tags: ['orgs'],
         summary:
-          'Change a member\'s role; requires org:manage-members (only an owner or ' +
+          "Change a member's role; requires org:manage-members (only an owner or " +
           'super-admin may grant or change the owner role; 409 if it would leave the org ' +
           'without an owner)',
         parameters: [

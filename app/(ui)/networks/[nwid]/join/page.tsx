@@ -1,17 +1,13 @@
 import Link from 'next/link';
 import { JoinInstructions } from '@/components/networks/JoinInstructions';
 
-export default async function JoinNetworkPage({
-  params,
-}: {
-  params: Promise<{ nwid: string }>;
-}) {
+export default async function JoinNetworkPage({ params }: { params: Promise<{ nwid: string }> }) {
   const { nwid } = await params;
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-[28px] wght-540 tracking-[-0.63px]">Join network</h1>
-        <p className="text-sm text-ink-mute font-mono mt-1">{nwid}</p>
+        <h1 className="wght-540 text-[28px] tracking-[-0.63px]">Join network</h1>
+        <p className="mt-1 font-mono text-sm text-ink-mute">{nwid}</p>
       </div>
 
       <p className="text-sm text-ink-mute">

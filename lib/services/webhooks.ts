@@ -66,10 +66,10 @@ export async function setNewMemberWebhookUrl(url: string | null): Promise<void> 
  */
 export function diffNewUnauthorized(
   members: Array<{ memberId: string; authorized: boolean }>,
-  knownIds: string[],
+  knownIds: string[]
 ): string[] {
   const known = new Set(knownIds);
-  return members.filter((m) => !m.authorized && !known.has(m.memberId)).map((m) => m.memberId);
+  return members.filter(m => !m.authorized && !known.has(m.memberId)).map(m => m.memberId);
 }
 
 /**
@@ -105,7 +105,7 @@ function parseKnownIds(raw: string | undefined): string[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.every((x) => typeof x === 'string')) return parsed;
+    if (Array.isArray(parsed) && parsed.every(x => typeof x === 'string')) return parsed;
     return [];
   } catch {
     return [];
@@ -137,7 +137,7 @@ export async function notifyNewUnauthorizedMembers(nwid: string): Promise<void> 
     const knownIds = parseKnownIds(row?.value);
 
     const newUnauthorized = diffNewUnauthorized(members, knownIds);
-    const byId = new Map(members.map((m) => [m.memberId, m]));
+    const byId = new Map(members.map(m => [m.memberId, m]));
     for (const memberId of newUnauthorized) {
       const member = byId.get(memberId);
       await dispatchWebhook(url, {
@@ -148,9 +148,7 @@ export async function notifyNewUnauthorizedMembers(nwid: string): Promise<void> 
       });
     }
 
-    const updatedKnown = Array.from(
-      new Set([...knownIds, ...members.map((m) => m.memberId)]),
-    );
+    const updatedKnown = Array.from(new Set([...knownIds, ...members.map(m => m.memberId)]));
     await getDb().setting.upsert({
       where: { key },
       create: { key, value: JSON.stringify(updatedKnown) },

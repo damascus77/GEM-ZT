@@ -15,7 +15,7 @@ run('e2e: real zerotier-one controller', () => {
     for (let i = 0; i < 30; i += 1) {
       try {
         token = execSync(
-          `${COMPOSE} exec -T zerotier-controller cat /var/lib/zerotier-one/authtoken.secret`,
+          `${COMPOSE} exec -T zerotier-controller cat /var/lib/zerotier-one/authtoken.secret`
         )
           .toString()
           .trim();
@@ -23,7 +23,7 @@ run('e2e: real zerotier-one controller', () => {
       } catch {
         // container still starting
       }
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 1000));
     }
     expect(token).not.toBe('');
     client = new ControllerClient({ baseUrl: 'http://127.0.0.1:19993', token });
@@ -33,7 +33,7 @@ run('e2e: real zerotier-one controller', () => {
         await client.getStatus();
         return;
       } catch {
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 1000));
       }
     }
     throw new Error('controller HTTP API never came up');

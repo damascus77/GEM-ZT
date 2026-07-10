@@ -26,8 +26,8 @@ function CommandBlock({ label, copyLabel, command }: JoinCommand) {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="text-sm wght-600 text-ink">{label}</span>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="wght-600 text-sm text-ink">{label}</span>
         <Button
           variant="outline"
           className="px-3 py-1 text-xs"
@@ -37,7 +37,7 @@ function CommandBlock({ label, copyLabel, command }: JoinCommand) {
           {copied ? 'Copied!' : 'Copy'}
         </Button>
       </div>
-      <pre className="bg-canvas-soft border border-hairline rounded-md p-3 overflow-x-auto">
+      <pre className="overflow-x-auto rounded-md border border-hairline bg-canvas-soft p-3">
         <code className="font-mono text-sm text-ink">{command}</code>
       </pre>
     </div>
@@ -56,13 +56,14 @@ export function JoinInstructions({ nwid }: { nwid: string }) {
 
   return (
     <Card className="flex flex-col gap-4">
-      {commands.map((c) => (
+      {commands.map(c => (
         <CommandBlock key={c.label} {...c} />
       ))}
       <div>
-        <span className="text-sm wght-600 text-ink block mb-1">Mobile</span>
+        <span className="wght-600 mb-1 block text-sm text-ink">Mobile</span>
         <p className="text-sm text-ink-mute">
-          Open the ZeroTier One app → tap + → enter <code className="font-mono text-ink">{nwid}</code>
+          Open the ZeroTier One app → tap + → enter{' '}
+          <code className="font-mono text-ink">{nwid}</code>
         </p>
       </div>
     </Card>

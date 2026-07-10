@@ -2,8 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Neutral surface/text tokens as "R G B" triplets. Tailwind maps canvas/ink/etc.
-   to rgb(var(--c-*) / <alpha>). The .dark class (set on <html>) flips them. */
+/* Design tokens are defined in lib/design/tokens.ts — this file mirrors the
+   semantic color values as CSS variables so Tailwind can consume them via
+   rgb(var(--c-*) / <alpha-value>). Keep in sync with tokens.ts. */
 :root {
   --c-canvas: 255 255 255; /* #ffffff */
   --c-canvas-soft: 250 250 248; /* #fafaf8 */

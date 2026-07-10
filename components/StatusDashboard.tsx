@@ -15,7 +15,7 @@ function StatCard({ label, value }: { label: string; value: number | undefined }
   return (
     <Card className="p-6">
       <div className="text-sm text-ink-mute">{label}</div>
-      <div className="text-[32px] wght-540 tracking-[-0.5px]">{value ?? '—'}</div>
+      <div className="wght-540 text-[32px] tracking-[-0.5px]">{value ?? '—'}</div>
     </Card>
   );
 }
@@ -40,9 +40,9 @@ export function StatusDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="p-6 flex items-center justify-between gap-4">
+      <Card className="flex items-center justify-between gap-4 p-6">
         <div>
-          <div className="text-[20px] wght-540 tracking-[-0.4px]">Controller</div>
+          <div className="wght-540 text-[20px] tracking-[-0.4px]">Controller</div>
           <div className="text-sm text-ink-mute">Local ZeroTier controller API</div>
         </div>
         {reachable ? (
@@ -52,7 +52,7 @@ export function StatusDashboard() {
         )}
       </Card>
 
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label="Networks" value={data.gemzt_networks_total} />
         <StatCard label="Members" value={data.gemzt_members_total} />
         <StatCard label="Authorized" value={data.gemzt_members_authorized} />

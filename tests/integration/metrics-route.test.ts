@@ -46,7 +46,13 @@ beforeEach(() => {
     vRev: 2,
   }));
   mockClient.listPeers.mockResolvedValue([
-    { address: 'deadbeef01', latency: 10, version: '1.14.2', role: 'LEAF', paths: [{ active: true }] },
+    {
+      address: 'deadbeef01',
+      latency: 10,
+      version: '1.14.2',
+      role: 'LEAF',
+      paths: [{ active: true }],
+    },
   ]);
 });
 
@@ -62,7 +68,7 @@ describe('GET /api/v1/metrics', () => {
 
   it('rejects a non-super-admin with 403', async () => {
     const res = await metricsGet(
-      new Request('http://x/api/v1/metrics', { headers: { cookie: nonAdminCookie } }),
+      new Request('http://x/api/v1/metrics', { headers: { cookie: nonAdminCookie } })
     );
     expect(res.status).toBe(403);
   });

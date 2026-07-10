@@ -106,7 +106,7 @@ describe('otpauthUri', () => {
   it('formats a standard otpauth:// TOTP URI', () => {
     const uri = otpauthUri('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ', 'alice');
     expect(uri).toBe(
-      'otpauth://totp/GEM-ZT:alice?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=GEM-ZT&algorithm=SHA1&digits=6&period=30',
+      'otpauth://totp/GEM-ZT:alice?secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ&issuer=GEM-ZT&algorithm=SHA1&digits=6&period=30'
     );
   });
 

@@ -19,7 +19,7 @@ Verified by reading the actual components (the TODO item's premise was stale):
 ## The actual gap
 
 `cidrToPool()` in `lib/util/cidr.ts` only handles IPv4 CIDR input (throws on IPv6), and
-"Add pool from CIDR" in `RoutesEditor` is the *only* UI path to create a pool. So there is
+"Add pool from CIDR" in `RoutesEditor` is the _only_ UI path to create a pool. So there is
 currently no way to create an IPv6 pool at all — meaning the "IPv6 from pools" checkbox has
 nothing to actually assign from. Separately, `validateRoutesAndPools()` in
 `lib/util/networkValidation.ts` runs every pool through IPv4-only parsing and would flag any

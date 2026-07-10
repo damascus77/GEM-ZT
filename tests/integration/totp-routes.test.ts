@@ -71,7 +71,7 @@ describe('POST /api/v1/auth/totp/enroll while already enabled', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', cookie: c },
         body: JSON.stringify({ code: totp(enrolled.secret) }),
-      }),
+      })
     );
     const res = await enrollPost(authReq('POST'));
     expect(res.status).toBe(409);
@@ -84,7 +84,7 @@ describe('POST /api/v1/auth/totp/enroll while already enabled', () => {
 describe('POST /api/v1/auth/totp/enable', () => {
   it('requires auth', async () => {
     const res = await enablePost(
-      req('http://x/api/v1/auth/totp/enable', 'POST', { code: '000000' }, false),
+      req('http://x/api/v1/auth/totp/enable', 'POST', { code: '000000' }, false)
     );
     expect(res.status).toBe(401);
   });
@@ -96,7 +96,7 @@ describe('POST /api/v1/auth/totp/enable', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', cookie: freshCookie },
         body: JSON.stringify({ code: '123456' }),
-      }),
+      })
     );
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -105,7 +105,9 @@ describe('POST /api/v1/auth/totp/enable', () => {
 
   it('rejects a wrong code with 400 and leaves totpEnabled false', async () => {
     await enrollPost(req('http://x/api/v1/auth/totp/enroll', 'POST'));
-    const res = await enablePost(req('http://x/api/v1/auth/totp/enable', 'POST', { code: '000000' }));
+    const res = await enablePost(
+      req('http://x/api/v1/auth/totp/enable', 'POST', { code: '000000' })
+    );
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error.code).toBe('INVALID_TOTP');

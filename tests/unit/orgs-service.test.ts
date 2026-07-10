@@ -2,14 +2,22 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
 import {
-  slugify, createOrg, getMembership, setMemberRole, removeMember,
-  addMembership, listMembersOfOrg, LastOwnerError,
+  slugify,
+  createOrg,
+  getMembership,
+  setMemberRole,
+  removeMember,
+  addMembership,
+  listMembersOfOrg,
+  LastOwnerError,
 } from '@/lib/services/orgs';
 
 beforeAll(() => {
   setupTestDb();
 });
-afterAll(async () => { await getDb().$disconnect(); });
+afterAll(async () => {
+  await getDb().$disconnect();
+});
 
 async function mkUser(name: string) {
   return getDb().user.create({ data: { username: name, passwordHash: 'x', role: 'user' } });
@@ -41,6 +49,6 @@ describe('orgs service', () => {
     await addMembership(org.id, second.id, 'owner');
     await setMemberRole(org.id, owner.id, 'admin'); // now allowed, 1 owner remains
     const members = await listMembersOfOrg(org.id);
-    expect(members.find((m) => m.userId === owner.id)?.role).toBe('admin');
+    expect(members.find(m => m.userId === owner.id)?.role).toBe('admin');
   });
 });

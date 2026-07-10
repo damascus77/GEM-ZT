@@ -140,7 +140,9 @@ describe('GET /api/v1/pending', () => {
       update: { orgId },
     });
     const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
-    const res = await pendingGet(new Request('http://x/api/v1/pending', { headers: { cookie: viewerCookie } }));
+    const res = await pendingGet(
+      new Request('http://x/api/v1/pending', { headers: { cookie: viewerCookie } })
+    );
     expect(res.status).toBe(200);
   });
 });

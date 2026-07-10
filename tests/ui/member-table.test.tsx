@@ -71,7 +71,7 @@ function stubFetch({
     if (String(url).includes('/controller/status')) {
       return new Response(
         JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
-        { status: 200 },
+        { status: 200 }
       );
     }
     if (String(url).includes('/rules')) {
@@ -168,13 +168,13 @@ describe('MemberTable', () => {
       if (init?.method === 'PATCH') {
         return new Response(
           JSON.stringify({ error: { code: 'CONTROLLER_UNREACHABLE', message: 'controller down' } }),
-          { status: 502 },
+          { status: 502 }
         );
       }
       if (String(url).includes('/controller/status')) {
         return new Response(
           JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       return new Response(JSON.stringify({ members }), { status: 200 });
@@ -195,13 +195,13 @@ describe('MemberTable', () => {
       if (init?.method === 'DELETE') {
         return new Response(
           JSON.stringify({ error: { code: 'CONTROLLER_UNREACHABLE', message: 'controller down' } }),
-          { status: 502 },
+          { status: 502 }
         );
       }
       if (String(url).includes('/controller/status')) {
         return new Response(
           JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       return new Response(JSON.stringify({ members }), { status: 200 });
@@ -223,7 +223,7 @@ describe('MemberTable', () => {
     await screen.findByText('deadbeef02');
     await userEvent.click(screen.getAllByRole('button', { name: /^remove$/i })[0]);
     // Give any (unexpected) request a chance to fire.
-    await new Promise((r) => setTimeout(r, 20));
+    await new Promise(r => setTimeout(r, 20));
     expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE')).toBeUndefined();
   });
 
@@ -244,7 +244,7 @@ describe('MemberTable', () => {
     await userEvent.click(screen.getByRole('button', { name: /^authorize selected$/i }));
     await waitFor(() => {
       const patch = fetchMock.mock.calls.find(
-        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH',
+        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH'
       );
       expect(patch).toBeDefined();
       expect(JSON.parse(patch![1]!.body as string)).toEqual({ authorized: true });
@@ -262,11 +262,11 @@ describe('MemberTable', () => {
         if (String(url).includes('/controller/status')) {
           return new Response(
             JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
-            { status: 200 },
+            { status: 200 }
           );
         }
         return new Response(JSON.stringify({ members: withOffline }), { status: 200 });
-      }),
+      })
     );
     renderWithQuery(<MemberTable nwid={NWID} />);
     await screen.findByText('deadbeef03');
@@ -283,7 +283,7 @@ describe('MemberTable', () => {
     await userEvent.click(screen.getByLabelText('Disable auto-assign IPs for deadbeef02'));
     await waitFor(() => {
       const patch = fetchMock.mock.calls.find(
-        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH',
+        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH'
       );
       expect(patch).toBeDefined();
       expect(JSON.parse(patch![1]!.body as string)).toEqual({ noAutoAssignIps: true });
@@ -313,7 +313,7 @@ describe('MemberTable', () => {
     await userEvent.click(uncheckedBox);
     await waitFor(() => {
       const patch = fetchMock.mock.calls.find(
-        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH',
+        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH'
       );
       expect(patch).toBeDefined();
       expect(JSON.parse(patch![1]!.body as string)).toEqual({ capabilities: [2000] });
@@ -336,7 +336,7 @@ describe('MemberTable', () => {
     await userEvent.tab();
     await waitFor(() => {
       const patch = fetchMock.mock.calls.find(
-        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH',
+        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH'
       );
       expect(patch).toBeDefined();
       expect(JSON.parse(patch![1]!.body as string)).toEqual({ tags: [[1000, 7]] });

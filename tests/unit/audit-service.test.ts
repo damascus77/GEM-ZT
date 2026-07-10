@@ -53,7 +53,7 @@ describe('audit service', () => {
     const b = await getDb().auditLog.create({
       data: { userId, action: 'b', targetType: 't', targetId: '2', detail: '{}', createdAt: ts },
     });
-    const ids = (await listAuditLog()).map((e) => e.id);
+    const ids = (await listAuditLog()).map(e => e.id);
     const [first, second] = [a.id, b.id].sort().reverse();
     expect(ids).toEqual([first, second]);
   });
@@ -83,7 +83,7 @@ describe('audit service', () => {
     const removed = await purgeAuditLogsOlderThan(new Date('2021-01-01T00:00:00.000Z'));
     expect(removed).toBe(1);
     const remaining = await listAuditLog();
-    expect(remaining.map((e) => e.action)).toEqual(['recent']);
+    expect(remaining.map(e => e.action)).toEqual(['recent']);
   });
 
   it('never throws when the write fails', async () => {
@@ -93,7 +93,7 @@ describe('audit service', () => {
         action: 'x',
         targetType: 'network',
         targetId: 'y',
-      }),
+      })
     ).resolves.toBeUndefined();
   });
 });

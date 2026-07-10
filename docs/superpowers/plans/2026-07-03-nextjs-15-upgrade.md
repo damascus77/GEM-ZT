@@ -21,9 +21,11 @@
 ### Task 1: Bump `next` and `eslint-config-next`
 
 **Files:**
+
 - Modify: `package.json`
 
 **Interfaces:**
+
 - Produces: nothing consumed by later tasks directly — this task only changes the installed dependency version. Later tasks assume `next@15.x` is installed and its route/page typing behavior (async `params`) is in effect at runtime.
 
 - [ ] **Step 1: Check the current installed version and latest available 15.x**
@@ -71,10 +73,12 @@ git commit -m "chore: bump next 14 -> 15 to clear CVEs (params/page fixes follow
 ### Task 2: Fix `apikeys/[id]/route.ts`
 
 **Files:**
+
 - Modify: `app/api/v1/apikeys/[id]/route.ts`
 - Test: `tests/integration/apikeys-routes.test.ts`
 
 **Interfaces:**
+
 - Consumes: `deleteApiKey(id: string, userId: string)` from `@/lib/services/apiKeys` (unchanged).
 - Produces: nothing new consumed elsewhere — this route has no other callers in the codebase besides its own test file.
 
@@ -83,25 +87,25 @@ git commit -m "chore: bump next 14 -> 15 to clear CVEs (params/page fixes follow
 In `tests/integration/apikeys-routes.test.ts`, the two call sites (currently identical) read:
 
 ```typescript
-    const ok = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE'), {
-      params: { id: apiKey.id },
-    });
-    expect(ok.status).toBe(204);
-    const gone = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE'), {
-      params: { id: apiKey.id },
-    });
+const ok = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE'), {
+  params: { id: apiKey.id },
+});
+expect(ok.status).toBe(204);
+const gone = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE'), {
+  params: { id: apiKey.id },
+});
 ```
 
 Change both `params: { id: apiKey.id }` to `params: Promise.resolve({ id: apiKey.id })`:
 
 ```typescript
-    const ok = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE'), {
-      params: Promise.resolve({ id: apiKey.id }),
-    });
-    expect(ok.status).toBe(204);
-    const gone = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE'), {
-      params: Promise.resolve({ id: apiKey.id }),
-    });
+const ok = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE'), {
+  params: Promise.resolve({ id: apiKey.id }),
+});
+expect(ok.status).toBe(204);
+const gone = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE'), {
+  params: Promise.resolve({ id: apiKey.id }),
+});
 ```
 
 - [ ] **Step 2: Run the test to see it fail on the type mismatch**
@@ -161,10 +165,12 @@ git commit -m "fix: await Promise-wrapped params in apikeys DELETE route (Next 1
 ### Task 3: Fix `templates/[id]/route.ts` and `templates/[id]/apply/route.ts`
 
 **Files:**
+
 - Modify: `app/api/v1/templates/[id]/route.ts`
 - Modify: `app/api/v1/templates/[id]/apply/route.ts`
 
 **Interfaces:**
+
 - Consumes: `deleteTemplate(id: string)` and `createNetworkFromTemplate(id: string)` from `@/lib/services/templates` (unchanged).
 - Produces: nothing new — neither route has a dedicated integration test that calls the handler directly (coverage for template behavior lives in `tests/unit/templates-service.test.ts` and `tests/ui/network-templates.test.tsx`, which don't touch this file's `params` signature). Typecheck is the verification for this task.
 
@@ -227,7 +233,10 @@ export async function POST(req: Request, { params }: Ctx) {
       targetId: result.data.nwid,
       detail: { template: id },
     });
-    return NextResponse.json({ network: result.data, metaWarning: result.metaWarning }, { status: 201 });
+    return NextResponse.json(
+      { network: result.data, metaWarning: result.metaWarning },
+      { status: 201 }
+    );
   } catch (e) {
     return handleRouteError(e);
   }
@@ -251,10 +260,12 @@ git commit -m "fix: await Promise-wrapped params in template routes (Next 15)"
 ### Task 4: Fix `networks/[nwid]/route.ts`
 
 **Files:**
+
 - Modify: `app/api/v1/networks/[nwid]/route.ts`
 - Test: `tests/integration/networks-routes.test.ts`
 
 **Interfaces:**
+
 - Consumes: `deleteNetwork`, `getNetwork`, `updateNetwork`, `updateNetworkSchema` from `@/lib/services/networks` (unchanged).
 - Produces: nothing new consumed elsewhere.
 
@@ -368,9 +379,11 @@ git commit -m "fix: await Promise-wrapped params in network detail route (Next 1
 ### Task 5: Fix `networks/[nwid]/clone/route.ts`
 
 **Files:**
+
 - Modify: `app/api/v1/networks/[nwid]/clone/route.ts`
 
 **Interfaces:**
+
 - Consumes: `cloneNetwork(nwid: string)` from `@/lib/services/networks` (unchanged).
 - Produces: nothing new — no dedicated integration test calls this handler directly (clone behavior is covered by `tests/unit/clone-network.test.ts` at the service layer).
 
@@ -401,7 +414,10 @@ export async function POST(req: Request, { params }: Ctx) {
       targetId: result.data.nwid,
       detail: { from: nwid },
     });
-    return NextResponse.json({ network: result.data, metaWarning: result.metaWarning }, { status: 201 });
+    return NextResponse.json(
+      { network: result.data, metaWarning: result.metaWarning },
+      { status: 201 }
+    );
   } catch (e) {
     return handleRouteError(e);
   }
@@ -425,11 +441,13 @@ git commit -m "fix: await Promise-wrapped params in network clone route (Next 15
 ### Task 6: Fix `networks/[nwid]/members/route.ts` and `members/[memberId]/route.ts`
 
 **Files:**
+
 - Modify: `app/api/v1/networks/[nwid]/members/route.ts`
 - Modify: `app/api/v1/networks/[nwid]/members/[memberId]/route.ts`
 - Test: `tests/integration/members-routes.test.ts`
 
 **Interfaces:**
+
 - Consumes: `listMembers(nwid: string)`, `getMember(nwid, memberId)`, `updateMember(nwid, memberId, body)`, `updateMemberSchema`, `deleteMember(nwid, memberId)` from `@/lib/services/members` (unchanged); `sampleNetworkPresence(nwid)` from `@/lib/services/presence` (unchanged); `notifyNewUnauthorizedMembers(nwid)` from `@/lib/services/webhooks` (unchanged).
 - Produces: nothing new consumed elsewhere.
 
@@ -523,12 +541,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api/auth';
 import { apiError, handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
-import {
-  deleteMember,
-  getMember,
-  updateMember,
-  updateMemberSchema,
-} from '@/lib/services/members';
+import { deleteMember, getMember, updateMember, updateMemberSchema } from '@/lib/services/members';
 
 type Ctx = { params: Promise<{ nwid: string; memberId: string }> };
 
@@ -602,10 +615,12 @@ git commit -m "fix: await Promise-wrapped params in member routes (Next 15)"
 ### Task 7: Fix `networks/[nwid]/presence/route.ts`
 
 **Files:**
+
 - Modify: `app/api/v1/networks/[nwid]/presence/route.ts`
 - Test: `tests/integration/presence-route.test.ts`
 
 **Interfaces:**
+
 - Consumes: `getNetworkPresence(nwid: string)` from `@/lib/services/presence` (unchanged).
 - Produces: nothing new consumed elsewhere.
 
@@ -666,10 +681,12 @@ git commit -m "fix: await Promise-wrapped params in presence route (Next 15)"
 ### Task 8: Fix `networks/[nwid]/rules/route.ts`
 
 **Files:**
+
 - Modify: `app/api/v1/networks/[nwid]/rules/route.ts`
 - Test: `tests/integration/rules-routes.test.ts`
 
 **Interfaces:**
+
 - Consumes: `getRules(nwid: string)`, `setRules(nwid, source)` from `@/lib/services/rules` (unchanged).
 - Produces: nothing new consumed elsewhere.
 
@@ -723,7 +740,7 @@ export async function PUT(req: Request, { params }: Ctx) {
     const { nwid } = await params;
     const body = putRulesSchema.parse(await req.json());
     const before = await getRules(nwid)
-      .then((r) => r.source)
+      .then(r => r.source)
       .catch(() => null);
     const { data, metaWarning } = await setRules(nwid, body.source);
     await logAudit({
@@ -757,10 +774,12 @@ git commit -m "fix: await Promise-wrapped params in rules route (Next 15)"
 ### Task 9: Fix the network detail and join pages
 
 **Files:**
+
 - Modify: `app/(ui)/networks/[nwid]/page.tsx`
 - Modify: `app/(ui)/networks/[nwid]/join/page.tsx`
 
 **Interfaces:**
+
 - Consumes: `NetworkSettings`, `MemberTable`, `RoutesEditor`, `DnsEditor`, `RulesEditor`, `NetworkActions` (all take a `nwid: string` prop, unchanged) from `@/components/networks/*` and `@/components/members/MemberTable`; `JoinInstructions` (`nwid: string` prop, unchanged) from `@/components/networks/JoinInstructions`.
 - Produces: nothing new — no test imports these page components directly (confirmed: no test file references `NetworkDetailPage` or `JoinNetworkPage`).
 
@@ -862,6 +881,7 @@ git commit -m "fix: await Promise-wrapped params in network detail/join pages (N
 ### Task 10: Full verification, audit confirmation, and TODO update
 
 **Files:**
+
 - Modify: `TODO.md`
 - Modify: `Completed_TODO.md`
 
@@ -880,6 +900,7 @@ Expected: exits 0. This is the strongest signal for this migration — Next's bu
 - [ ] **Step 3: Manual smoke test in the dev server**
 
 Run: `npm run dev` (in the background or a separate terminal)
+
 - Open `/networks/<a-real-nwid>` and confirm the page loads and shows the nwid, member table, routes editor, DNS editor, rules editor, and actions panel without errors.
 - Open `/networks/<a-real-nwid>/join` and confirm it loads and shows the nwid and join instructions.
 - Issue one API call directly, e.g. `curl -i http://localhost:3000/api/v1/networks/<a-real-nwid>` with a valid session cookie, and confirm it returns the network JSON (not a 404 from a broken `params.nwid` read).
@@ -900,10 +921,10 @@ In `TODO.md`, remove item 1 under "P1 — high value, do next" (the "Next 14 →
 Append to the end of the "Tooling / CI / deps" section (or create one near the top if the file's structure has changed) in `Completed_TODO.md`:
 
 ```markdown
-- ✅ **[DONE] [P1] Next.js 14 → 15 upgrade, clearing all `next`-related CVEs.** *(Fixed
+- ✅ **[DONE] [P1] Next.js 14 → 15 upgrade, clearing all `next`-related CVEs.** _(Fixed
   2026-07-03: bumped to the latest 15.5.x; the only breaking change hit was async
   `params`/page-props across 10 route/page files, all converted to
-  `Promise<{...}>` + `await`. See `docs/superpowers/specs/2026-07-03-nextjs-15-upgrade-design.md`.)*
+  `Promise<{...}>` + `await`. See `docs/superpowers/specs/2026-07-03-nextjs-15-upgrade-design.md`.)_
 ```
 
 - [ ] **Step 7: Commit**

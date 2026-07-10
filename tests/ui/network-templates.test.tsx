@@ -20,7 +20,9 @@ describe('NetworkTemplates', () => {
   it('lists templates and creates a network from one', async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === 'POST') {
-        return new Response(JSON.stringify({ network: { nwid: 'abcdef0199999999' } }), { status: 201 });
+        return new Response(JSON.stringify({ network: { nwid: 'abcdef0199999999' } }), {
+          status: 201,
+        });
       }
       return new Response(JSON.stringify({ templates }), { status: 200 });
     });
@@ -30,7 +32,7 @@ describe('NetworkTemplates', () => {
     await userEvent.click(screen.getByRole('button', { name: /create network/i }));
     await waitFor(() => {
       const call = fetchMock.mock.calls.find(
-        ([u, i]) => String(u) === '/api/v1/templates/t1/apply' && i?.method === 'POST',
+        ([u, i]) => String(u) === '/api/v1/templates/t1/apply' && i?.method === 'POST'
       );
       expect(call).toBeDefined();
       expect(push).toHaveBeenCalledWith('/networks/abcdef0199999999');

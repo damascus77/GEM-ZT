@@ -11,8 +11,7 @@ const putWebhookSchema = z
       .string()
       .url()
       .refine(isSafeWebhookUrl, {
-        message:
-          'must be an http(s) URL that is not a private, loopback, or link-local address',
+        message: 'must be an http(s) URL that is not a private, loopback, or link-local address',
       })
       .nullable(),
   })

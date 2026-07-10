@@ -48,7 +48,7 @@ function stubFetch() {
     if (String(url).includes('/controller/status')) {
       return new Response(
         JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
-        { status: 200 },
+        { status: 200 }
       );
     }
     return new Response(JSON.stringify(detail), { status: 200 });

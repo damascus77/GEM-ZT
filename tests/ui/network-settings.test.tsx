@@ -51,7 +51,7 @@ function stubFetch(patchResponse?: Response) {
     if (String(url).includes('/controller/status')) {
       return new Response(
         JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
-        { status: 200 },
+        { status: 200 }
       );
     }
     return new Response(JSON.stringify(detail), { status: 200 });
@@ -83,17 +83,19 @@ describe('NetworkSettings', () => {
       if (String(url).includes('/controller/status')) {
         return new Response(
           JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       return new Response(JSON.stringify(current), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock);
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchInterval: false } } });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchInterval: false } },
+    });
     render(
       <QueryClientProvider client={client}>
         <NetworkSettings nwid={NWID} />
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
     const mtu = await screen.findByLabelText(/mtu/i);
     expect(mtu).toHaveValue(2800);
@@ -111,17 +113,19 @@ describe('NetworkSettings', () => {
       if (String(url).includes('/controller/status')) {
         return new Response(
           JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
-          { status: 200 },
+          { status: 200 }
         );
       }
       return new Response(JSON.stringify(current), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock);
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchInterval: false } } });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchInterval: false } },
+    });
     render(
       <QueryClientProvider client={client}>
         <NetworkSettings nwid={NWID} />
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
     const mtu = await screen.findByLabelText(/mtu/i);
     await userEvent.clear(mtu);
@@ -137,9 +141,12 @@ describe('NetworkSettings', () => {
   it('surfaces metaWarning as a non-blocking notice', async () => {
     stubFetch(
       new Response(
-        JSON.stringify({ ...detail, metaWarning: 'The controller accepted the change, but saving GEM-ZT metadata failed.' }),
-        { status: 200 },
-      ),
+        JSON.stringify({
+          ...detail,
+          metaWarning: 'The controller accepted the change, but saving GEM-ZT metadata failed.',
+        }),
+        { status: 200 }
+      )
     );
     renderWithQuery(<NetworkSettings nwid={NWID} />);
     await screen.findByLabelText(/mtu/i);

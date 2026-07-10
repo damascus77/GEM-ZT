@@ -14,7 +14,7 @@ function stubFetch(isSuperAdmin: boolean) {
     if (url === '/api/v1/me') {
       return new Response(
         JSON.stringify({ user: { isSuperAdmin }, activeOrgId: null, memberships: [] }),
-        { status: 200 },
+        { status: 200 }
       );
     }
     return new Response(JSON.stringify({}), { status: 404 });

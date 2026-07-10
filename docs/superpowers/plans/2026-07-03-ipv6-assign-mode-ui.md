@@ -20,10 +20,12 @@
 ### Task 1: Extend `cidrToPool()` to accept IPv6 CIDRs
 
 **Files:**
+
 - Modify: `lib/util/cidr.ts`
 - Test: `tests/unit/cidr.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing new — reuses the existing `IPV4_RE`/`isIpv6` structural checks already in the file (via `isValidCidr`, unchanged).
 - Produces: `cidrToPool(cidr: string): { ipRangeStart: string; ipRangeEnd: string }` — same signature and return shape as before, now also accepting IPv6 input instead of throwing. This is consumed by `components/networks/RoutesEditor.tsx` (`RoutesEditor.tsx:94`, unchanged call site) and by `tests/unit/cidr.test.ts`.
 
@@ -32,35 +34,35 @@
 Replace the `throws on invalid or IPv6 input` test block in `tests/unit/cidr.test.ts` (currently the last block in the `describe('cidrToPool', ...)` section) with:
 
 ```typescript
-  it('throws on invalid input', () => {
-    expect(() => cidrToPool('nope')).toThrow('Invalid CIDR');
-    expect(() => cidrToPool('300.1.1.1/24')).toThrow('Invalid CIDR');
-  });
+it('throws on invalid input', () => {
+  expect(() => cidrToPool('nope')).toThrow('Invalid CIDR');
+  expect(() => cidrToPool('300.1.1.1/24')).toThrow('Invalid CIDR');
+});
 
-  it('converts an IPv6 /112 to a usable start/end range', () => {
-    expect(cidrToPool('fd00::/112')).toEqual({
-      ipRangeStart: 'fd00::',
-      ipRangeEnd: 'fd00::ffff',
-    });
+it('converts an IPv6 /112 to a usable start/end range', () => {
+  expect(cidrToPool('fd00::/112')).toEqual({
+    ipRangeStart: 'fd00::',
+    ipRangeEnd: 'fd00::ffff',
   });
+});
 
-  it('converts an IPv6 /32', () => {
-    expect(cidrToPool('2001:db8::/32')).toEqual({
-      ipRangeStart: '2001:db8::',
-      ipRangeEnd: '2001:db8:ffff:ffff:ffff:ffff:ffff:ffff',
-    });
+it('converts an IPv6 /32', () => {
+  expect(cidrToPool('2001:db8::/32')).toEqual({
+    ipRangeStart: '2001:db8::',
+    ipRangeEnd: '2001:db8:ffff:ffff:ffff:ffff:ffff:ffff',
   });
+});
 
-  it('handles IPv6 /127 and /128 without offsets (unlike IPv4, no address is excluded)', () => {
-    expect(cidrToPool('fd00::/127')).toEqual({
-      ipRangeStart: 'fd00::',
-      ipRangeEnd: 'fd00::1',
-    });
-    expect(cidrToPool('fd00::1/128')).toEqual({
-      ipRangeStart: 'fd00::1',
-      ipRangeEnd: 'fd00::1',
-    });
+it('handles IPv6 /127 and /128 without offsets (unlike IPv4, no address is excluded)', () => {
+  expect(cidrToPool('fd00::/127')).toEqual({
+    ipRangeStart: 'fd00::',
+    ipRangeEnd: 'fd00::1',
   });
+  expect(cidrToPool('fd00::1/128')).toEqual({
+    ipRangeStart: 'fd00::1',
+    ipRangeEnd: 'fd00::1',
+  });
+});
 ```
 
 The full `describe('cidrToPool', ...)` block should now read:
@@ -149,7 +151,7 @@ function isIpv6(addr: string): boolean {
   const parseGroups = (str: string): string[] | null => {
     if (str === '') return [];
     const groups = str.split(':');
-    return groups.every((g) => /^[0-9a-fA-F]{1,4}$/.test(g)) ? groups : null;
+    return groups.every(g => /^[0-9a-fA-F]{1,4}$/.test(g)) ? groups : null;
   };
   const parts = addr.split('::');
   if (parts.length > 2) return false; // more than one '::'
@@ -175,9 +177,7 @@ export function isValidCidr(cidr: string): boolean {
 }
 
 function ipv4ToInt(ip: string): number {
-  return ip
-    .split('.')
-    .reduce((acc, octet) => acc * 256 + Number(octet), 0);
+  return ip.split('.').reduce((acc, octet) => acc * 256 + Number(octet), 0);
 }
 
 const IPV4_ADDR_RE = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
@@ -200,7 +200,7 @@ export function ipv4CidrRange(cidr: string): [number, number] | null {
 }
 
 function intToIpv4(n: number): string {
-  return [24, 16, 8, 0].map((shift) => (n >>> shift) & 0xff).join('.');
+  return [24, 16, 8, 0].map(shift => (n >>> shift) & 0xff).join('.');
 }
 
 const IPV6_GROUP_COUNT = 8;
@@ -210,7 +210,7 @@ const IPV6_ALL_ONES = (1n << IPV6_BITS) - 1n;
 /** Expand a (possibly '::'-compressed) IPv6 address into its 8 groups as bigints. */
 function expandIpv6Groups(addr: string): bigint[] {
   const parseGroups = (s: string): bigint[] =>
-    s === '' ? [] : s.split(':').map((g) => BigInt(parseInt(g, 16)));
+    s === '' ? [] : s.split(':').map(g => BigInt(parseInt(g, 16)));
   const parts = addr.split('::');
   if (parts.length === 2) {
     const left = parseGroups(parts[0]);
@@ -311,10 +311,12 @@ git commit -m "feat: support IPv6 CIDRs in cidrToPool"
 ### Task 2: Stop `validateRoutesAndPools` from flagging IPv6 pools as malformed
 
 **Files:**
+
 - Modify: `lib/util/networkValidation.ts`
 - Test: `tests/unit/network-validation.test.ts`
 
 **Interfaces:**
+
 - Consumes: the existing module-private `looksLikeIpv6(s: string): boolean` function declared later in the same file (function declarations are hoisted, so this is safe to call earlier in the module) — no import changes needed.
 - Produces: `validateRoutesAndPools()` keeps its existing signature and return type (`string[]`); consumed by `components/networks/RoutesEditor.tsx:249` (unchanged call site).
 
@@ -323,21 +325,21 @@ git commit -m "feat: support IPv6 CIDRs in cidrToPool"
 In `tests/unit/network-validation.test.ts`, add these two cases inside the existing `describe('validateRoutesAndPools', ...)` block, after the `'returns no warnings for a clean, consistent config'` test:
 
 ```typescript
-  it('does not flag a well-formed IPv6 pool as malformed', () => {
-    const w = validateRoutesAndPools({
-      routes: [],
-      pools: [{ ipRangeStart: 'fd00::', ipRangeEnd: 'fd00::ffff' }],
-    });
-    expect(w.some((m) => /malformed/i.test(m))).toBe(false);
+it('does not flag a well-formed IPv6 pool as malformed', () => {
+  const w = validateRoutesAndPools({
+    routes: [],
+    pools: [{ ipRangeStart: 'fd00::', ipRangeEnd: 'fd00::ffff' }],
   });
+  expect(w.some(m => /malformed/i.test(m))).toBe(false);
+});
 
-  it('still flags a pool that is neither valid IPv4 nor IPv6-shaped', () => {
-    const w = validateRoutesAndPools({
-      routes: [],
-      pools: [{ ipRangeStart: 'not-an-address', ipRangeEnd: 'also-not-one' }],
-    });
-    expect(w.some((m) => /malformed/i.test(m))).toBe(true);
+it('still flags a pool that is neither valid IPv4 nor IPv6-shaped', () => {
+  const w = validateRoutesAndPools({
+    routes: [],
+    pools: [{ ipRangeStart: 'not-an-address', ipRangeEnd: 'also-not-one' }],
   });
+  expect(w.some(m => /malformed/i.test(m))).toBe(true);
+});
 ```
 
 - [ ] **Step 2: Run the tests to see the new ones fail**
@@ -350,29 +352,29 @@ Expected: FAIL on `'does not flag a well-formed IPv6 pool as malformed'` — the
 Replace the "Pools should fall within a managed route" block (the last `for (const p of pools)` loop in `validateRoutesAndPools`) with:
 
 ```typescript
-  // Pools should fall within a managed route. IPv6 pools are format-checked
-  // only (see file-level comment) — skip the IPv4 containment math for them
-  // rather than misreporting them as malformed.
-  for (const p of pools) {
-    const startIsV6 = looksLikeIpv6(p.ipRangeStart);
-    const endIsV6 = looksLikeIpv6(p.ipRangeEnd);
-    if (startIsV6 || endIsV6) {
-      if (!startIsV6 || !endIsV6) {
-        warnings.push(`Pool ${p.ipRangeStart}–${p.ipRangeEnd} mixes address families.`);
-      }
-      continue;
+// Pools should fall within a managed route. IPv6 pools are format-checked
+// only (see file-level comment) — skip the IPv4 containment math for them
+// rather than misreporting them as malformed.
+for (const p of pools) {
+  const startIsV6 = looksLikeIpv6(p.ipRangeStart);
+  const endIsV6 = looksLikeIpv6(p.ipRangeEnd);
+  if (startIsV6 || endIsV6) {
+    if (!startIsV6 || !endIsV6) {
+      warnings.push(`Pool ${p.ipRangeStart}–${p.ipRangeEnd} mixes address families.`);
     }
-    const start = ipv4ToIntChecked(p.ipRangeStart);
-    const end = ipv4ToIntChecked(p.ipRangeEnd);
-    if (start === null || end === null) {
-      warnings.push(`Pool ${p.ipRangeStart}–${p.ipRangeEnd} has a malformed address.`);
-      continue;
-    }
-    const covered = v4.some(({ range: [lo, hi] }) => start >= lo && end <= hi);
-    if (!covered) {
-      warnings.push(`Pool ${p.ipRangeStart}–${p.ipRangeEnd} is outside every managed route.`);
-    }
+    continue;
   }
+  const start = ipv4ToIntChecked(p.ipRangeStart);
+  const end = ipv4ToIntChecked(p.ipRangeEnd);
+  if (start === null || end === null) {
+    warnings.push(`Pool ${p.ipRangeStart}–${p.ipRangeEnd} has a malformed address.`);
+    continue;
+  }
+  const covered = v4.some(({ range: [lo, hi] }) => start >= lo && end <= hi);
+  if (!covered) {
+    warnings.push(`Pool ${p.ipRangeStart}–${p.ipRangeEnd} is outside every managed route.`);
+  }
+}
 ```
 
 This is a direct in-place replacement of the existing loop body — the surrounding function (`validateRoutesAndPools`), the `v4` route-range computation above it, and the `looksLikeIpv6`/`ipv4ToIntChecked` helpers elsewhere in the file are unchanged.
@@ -394,6 +396,7 @@ git commit -m "fix: stop flagging well-formed IPv6 pools as malformed"
 ### Task 3: Update the RoutesEditor hint text and manually verify end-to-end
 
 **Files:**
+
 - Modify: `components/networks/RoutesEditor.tsx`
 - Modify: `TODO.md`
 - Modify: `Completed_TODO.md`
@@ -442,6 +445,7 @@ Expected: both exit 0.
 - [ ] **Step 3: Manual smoke test in the dev server**
 
 Run: `npm run dev` (in the background or a separate terminal)
+
 - Open a network's detail page, scroll to "Routes & IP pools."
 - Check "IPv6 from pools" under "Auto-assign."
 - In the CIDR input, type `fd00::/112` and click "Add pool from CIDR" — confirm a new pool row appears showing `fd00::` / `fd00::ffff` (or equivalent compressed form) and no "malformed address" warning appears below.
@@ -459,12 +463,12 @@ Remove the "IPv4/IPv6 assign-mode toggles + full per-member controls" line from 
 Append to the "ZTNET-parity features" section in `Completed_TODO.md`:
 
 ```markdown
-- ✅ **[DONE] [P1] IPv4/IPv6 assign-mode UI — IPv6 pools.** *(Fixed 2026-07-03: the
+- ✅ **[DONE] [P1] IPv4/IPv6 assign-mode UI — IPv6 pools.** _(Fixed 2026-07-03: the
   `v4AssignMode`/`v6AssignMode` checkboxes and per-member `activeBridge`/`noAutoAssignIps`
   toggles were already shipped; this closed the remaining gap where "IPv6 from pools" had no
   way to actually create an IPv6 pool. `cidrToPool()` now supports IPv6 CIDRs, and
   `validateRoutesAndPools()` no longer misreports IPv6 pools as malformed. See
-  `docs/superpowers/specs/2026-07-03-ipv6-assign-mode-ui-design.md`.)*
+  `docs/superpowers/specs/2026-07-03-ipv6-assign-mode-ui-design.md`.)_
 ```
 
 - [ ] **Step 6: Commit**

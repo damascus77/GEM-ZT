@@ -25,7 +25,7 @@ function matchesSearch(m: FilterableMember, q: string): boolean {
   return (
     m.name.toLowerCase().includes(needle) ||
     m.memberId.toLowerCase().includes(needle) ||
-    m.ipAssignments.some((ip) => ip.toLowerCase().includes(needle))
+    m.ipAssignments.some(ip => ip.toLowerCase().includes(needle))
   );
 }
 
@@ -36,11 +36,11 @@ function matchesSearch(m: FilterableMember, q: string): boolean {
  */
 export function filterAndSortMembers<T extends FilterableMember>(
   members: T[],
-  opts: MemberFilterOptions = {},
+  opts: MemberFilterOptions = {}
 ): T[] {
   const { search = '', authorized = 'all', online = 'all', sort, dir = 'asc' } = opts;
 
-  let out = members.filter((m) => {
+  let out = members.filter(m => {
     if (!matchesSearch(m, search)) return false;
     if (authorized === 'authorized' && !m.authorized) return false;
     if (authorized === 'pending' && m.authorized) return false;

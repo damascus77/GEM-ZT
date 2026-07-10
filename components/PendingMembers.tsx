@@ -20,13 +20,7 @@ function PresencePill({ online }: { online: boolean | null }) {
   return <Pill className="text-ink-faint">Unknown</Pill>;
 }
 
-function PendingRow({
-  member,
-  onChanged,
-}: {
-  member: PendingMemberView;
-  onChanged: () => void;
-}) {
+function PendingRow({ member, onChanged }: { member: PendingMemberView; onChanged: () => void }) {
   const authorize = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/v1/networks/${member.nwid}/members/${member.memberId}`, {
@@ -70,11 +64,11 @@ function PendingRow({
           <PresencePill online={member.online} />
         </td>
         <td className="py-3 pr-4">
-          <div className="text-ink wght-540">{member.name || '—'}</div>
-          <div className="text-xs text-ink-mute font-mono">{member.memberId}</div>
+          <div className="wght-540 text-ink">{member.name || '—'}</div>
+          <div className="font-mono text-xs text-ink-mute">{member.memberId}</div>
         </td>
         <td className="py-3 pr-4 text-sm text-ink-mute">{member.networkName}</td>
-        <td className="py-3 pr-4 text-sm text-ink-mute whitespace-nowrap">
+        <td className="whitespace-nowrap py-3 pr-4 text-sm text-ink-mute">
           {member.lastAuthorizedTime > 0
             ? new Date(member.lastAuthorizedTime).toLocaleString()
             : 'never'}
@@ -131,7 +125,7 @@ export function PendingMembers() {
 
   return (
     <Card className="overflow-x-auto">
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Pending Members</h2>
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Pending Members</h2>
       {isLoading && <p className="text-ink-mute">Loading…</p>}
       {isError && !data && (
         <p role="alert" className="text-sm text-ink">
@@ -144,7 +138,7 @@ export function PendingMembers() {
       {pending.length > 0 && (
         <table className="w-full text-left">
           <thead>
-            <tr className="text-xs text-ink-faint uppercase">
+            <tr className="text-xs uppercase text-ink-faint">
               <th className="pb-2 pr-4">Status</th>
               <th className="pb-2 pr-4">Member</th>
               <th className="pb-2 pr-4">Network</th>
@@ -153,7 +147,7 @@ export function PendingMembers() {
             </tr>
           </thead>
           <tbody>
-            {pending.map((m) => (
+            {pending.map(m => (
               <PendingRow key={`${m.nwid}:${m.memberId}`} member={m} onChanged={onChanged} />
             ))}
           </tbody>

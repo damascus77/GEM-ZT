@@ -40,14 +40,16 @@ describe('apikeys routes', () => {
 
   it('POST creates an org-scoped key, returns the full ztk_ key exactly once, audits', async () => {
     const res = await keysPost(
-      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: 'ci', role: 'editor' }),
+      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: 'ci', role: 'editor' })
     );
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.fullKey).toMatch(/^ztk_[0-9a-f]{48}$/);
     expect(body.apiKey.name).toBe('ci');
     expect(body.apiKey).not.toHaveProperty('hashedKey');
-    const audit = await getDb().auditLog.findFirst({ where: { action: 'apikey.create', targetId: body.apiKey.id } });
+    const audit = await getDb().auditLog.findFirst({
+      where: { action: 'apikey.create', targetId: body.apiKey.id },
+    });
     expect(audit?.targetId).toBe(body.apiKey.id);
     expect(audit?.orgId).toBe(adminOrgId);
     const row = await getDb().apiKey.findUniqueOrThrow({ where: { id: body.apiKey.id } });
@@ -57,7 +59,7 @@ describe('apikeys routes', () => {
 
   it('POST validates name, expiresAt, and role', async () => {
     const noName = await keysPost(
-      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: '', role: 'viewer' }),
+      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: '', role: 'viewer' })
     );
     expect(noName.status).toBe(400);
     const badDate = await keysPost(
@@ -65,34 +67,34 @@ describe('apikeys routes', () => {
         name: 'x',
         role: 'viewer',
         expiresAt: 'tomorrow',
-      }),
+      })
     );
     expect(badDate.status).toBe(400);
     const badRole = await keysPost(
-      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: 'x', role: 'nope' }),
+      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: 'x', role: 'nope' })
     );
     expect(badRole.status).toBe(400);
   });
 
   it('role cap: admin cannot mint an owner-role key (403); owner can', async () => {
     const asAdmin = await keysPost(
-      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: 'too-powerful', role: 'owner' }),
+      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: 'too-powerful', role: 'owner' })
     );
     expect(asAdmin.status).toBe(403);
 
     const asOwner = await keysPost(
-      req('http://x/api/v1/apikeys', 'POST', ownerCookie, { name: 'owner-key', role: 'owner' }),
+      req('http://x/api/v1/apikeys', 'POST', ownerCookie, { name: 'owner-key', role: 'owner' })
     );
     expect(asOwner.status).toBe(201);
   });
 
   it('apikey:manage gate: editor/viewer are forbidden from create/list/delete', async () => {
     const editorCreate = await keysPost(
-      req('http://x/api/v1/apikeys', 'POST', editorCookie, { name: 'x', role: 'viewer' }),
+      req('http://x/api/v1/apikeys', 'POST', editorCookie, { name: 'x', role: 'viewer' })
     );
     expect(editorCreate.status).toBe(403);
     const viewerCreate = await keysPost(
-      req('http://x/api/v1/apikeys', 'POST', viewerCookie, { name: 'x', role: 'viewer' }),
+      req('http://x/api/v1/apikeys', 'POST', viewerCookie, { name: 'x', role: 'viewer' })
     );
     expect(viewerCreate.status).toBe(403);
 
@@ -103,7 +105,7 @@ describe('apikeys routes', () => {
 
     const editorDelete = await keyDelete(
       req('http://x/api/v1/apikeys/some-id', 'DELETE', editorCookie),
-      { params: Promise.resolve({ id: 'some-id' }) },
+      { params: Promise.resolve({ id: 'some-id' }) }
     );
     expect(editorDelete.status).toBe(403);
   });
@@ -126,29 +128,34 @@ describe('apikeys routes', () => {
 
   it('DELETE revokes a key (204), 404s for unknown ids, and cannot delete another org key', async () => {
     const created = await keysPost(
-      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: 'temp', role: 'viewer' }),
+      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: 'temp', role: 'viewer' })
     );
     const { apiKey } = await created.json();
     const ok = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE', adminCookie), {
       params: Promise.resolve({ id: apiKey.id }),
     });
     expect(ok.status).toBe(204);
-    const gone = await keyDelete(req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE', adminCookie), {
-      params: Promise.resolve({ id: apiKey.id }),
-    });
+    const gone = await keyDelete(
+      req(`http://x/api/v1/apikeys/${apiKey.id}`, 'DELETE', adminCookie),
+      {
+        params: Promise.resolve({ id: apiKey.id }),
+      }
+    );
     expect(gone.status).toBe(404);
-    const audit = await getDb().auditLog.findFirst({ where: { action: 'apikey.delete', targetId: apiKey.id } });
+    const audit = await getDb().auditLog.findFirst({
+      where: { action: 'apikey.delete', targetId: apiKey.id },
+    });
     expect(audit?.targetId).toBe(apiKey.id);
 
     // Another org's admin cannot delete this org's key (404, not found in their scope).
     const created2 = await keysPost(
-      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: 'org-a-key', role: 'viewer' }),
+      req('http://x/api/v1/apikeys', 'POST', adminCookie, { name: 'org-a-key', role: 'viewer' })
     );
     const { apiKey: apiKey2 } = await created2.json();
     const { cookie: otherAdminCookie } = await createTestUserAndSession({ role: 'admin' });
     const crossOrgDelete = await keyDelete(
       req(`http://x/api/v1/apikeys/${apiKey2.id}`, 'DELETE', otherAdminCookie),
-      { params: Promise.resolve({ id: apiKey2.id }) },
+      { params: Promise.resolve({ id: apiKey2.id }) }
     );
     expect(crossOrgDelete.status).toBe(404);
   });

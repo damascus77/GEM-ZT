@@ -70,7 +70,7 @@ export async function POST(req: Request, { params }: Ctx) {
         },
         token,
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (e) {
     return handleRouteError(e);

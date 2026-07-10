@@ -14,7 +14,7 @@ export function apiError(
   code: string,
   message: string,
   status: number,
-  extraHeaders?: Record<string, string>,
+  extraHeaders?: Record<string, string>
 ): Response {
   return new Response(JSON.stringify({ error: { code, message } }), {
     status,
@@ -24,9 +24,7 @@ export function apiError(
 
 export function handleRouteError(e: unknown): Response {
   if (e instanceof ZodError) {
-    const message = e.issues
-      .map((i) => `${i.path.join('.') || 'body'}: ${i.message}`)
-      .join('; ');
+    const message = e.issues.map(i => `${i.path.join('.') || 'body'}: ${i.message}`).join('; ');
     return apiError('VALIDATION_ERROR', message, 400);
   }
   if (e instanceof InvalidControllerIdError) {
@@ -60,7 +58,7 @@ export function handleRouteError(e: unknown): Response {
       'CONTROLLER_UNREACHABLE',
       'ZeroTier controller rejected our credentials — it may be misconfigured or its auth ' +
         'token may have changed. Check the controller and restart if needed.',
-      502,
+      502
     );
   }
   console.error('[gem-zt] unhandled route error:', e);

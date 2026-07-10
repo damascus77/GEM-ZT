@@ -25,7 +25,7 @@ export function useControllerStatus() {
         // unreachable) so the banner can say why rather than assuming a network fault.
         const reason = await res
           .json()
-          .then((b) => b?.error?.message as string | undefined)
+          .then(b => b?.error?.message as string | undefined)
           .catch(() => undefined);
         return { degraded: true, reason };
       }
@@ -41,11 +41,10 @@ export function DegradedBanner() {
   const { data } = useControllerStatus();
   if (!data?.degraded) return null;
   return (
-    <div role="alert" className="bg-teal-deep text-on-primary px-6 py-3 text-sm">
+    <div role="alert" className="bg-teal-deep px-6 py-3 text-sm text-on-primary">
       <span className="wght-600">Controller degraded</span> — the ZeroTier controller is
-      unreachable. Networks keep running, but changes are disabled until connectivity is
-      restored.
-      {data.reason && <span className="block opacity-90 mt-0.5">{data.reason}</span>}
+      unreachable. Networks keep running, but changes are disabled until connectivity is restored.
+      {data.reason && <span className="mt-0.5 block opacity-90">{data.reason}</span>}
     </div>
   );
 }

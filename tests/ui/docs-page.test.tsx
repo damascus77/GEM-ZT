@@ -13,7 +13,7 @@ describe('DocsPage', () => {
   it('renders endpoint groups from the fetched spec', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify(openApiSpec), { status: 200 })),
+      vi.fn(async () => new Response(JSON.stringify(openApiSpec), { status: 200 }))
     );
     renderWithQuery(<DocsPage />);
     expect(await screen.findByText('/networks/{nwid}/members/{memberId}')).toBeInTheDocument();

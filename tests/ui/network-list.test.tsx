@@ -32,7 +32,7 @@ describe('NetworkList', () => {
   it('renders networks from GET /api/v1/networks', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify({ networks }), { status: 200 })),
+      vi.fn(async () => new Response(JSON.stringify({ networks }), { status: 200 }))
     );
     renderWithQuery(<NetworkList />);
     expect(await screen.findByText('home-lan')).toBeInTheDocument();
@@ -46,7 +46,7 @@ describe('NetworkList', () => {
   it('filters the list by search text', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(JSON.stringify({ networks }), { status: 200 })),
+      vi.fn(async () => new Response(JSON.stringify({ networks }), { status: 200 }))
     );
     renderWithQuery(<NetworkList />);
     await screen.findByText('home-lan');
@@ -59,10 +59,9 @@ describe('NetworkList', () => {
   it('POSTs the create form to /api/v1/networks', async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === 'POST') {
-        return new Response(
-          JSON.stringify({ network: networks[0], metaWarning: null }),
-          { status: 201 },
-        );
+        return new Response(JSON.stringify({ network: networks[0], metaWarning: null }), {
+          status: 201,
+        });
       }
       return new Response(JSON.stringify({ networks }), { status: 200 });
     });

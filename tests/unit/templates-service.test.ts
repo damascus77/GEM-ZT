@@ -55,13 +55,19 @@ beforeEach(async () => {
   vi.clearAllMocks();
   (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
   mockClient.getNetwork.mockResolvedValue(sourceConfig);
-  mockClient.getStatus.mockResolvedValue({ address: 'abcdef0123', online: true, version: '1.14.2' });
-  mockClient.createNetwork.mockImplementation(async (_addr: string, cfg: Partial<ControllerNetwork>) => ({
-    ...sourceConfig,
-    ...cfg,
-    id: NEW,
-    nwid: NEW,
-  }));
+  mockClient.getStatus.mockResolvedValue({
+    address: 'abcdef0123',
+    online: true,
+    version: '1.14.2',
+  });
+  mockClient.createNetwork.mockImplementation(
+    async (_addr: string, cfg: Partial<ControllerNetwork>) => ({
+      ...sourceConfig,
+      ...cfg,
+      id: NEW,
+      nwid: NEW,
+    })
+  );
   await getDb().networkTemplate.deleteMany();
   await getDb().networkMeta.deleteMany();
 });
@@ -74,7 +80,7 @@ describe('templates service', () => {
     const saved = await saveTemplateFromNetwork(SRC, 'office-template');
     expect(saved?.name).toBe('office-template');
     const list = await listTemplates();
-    expect(list.map((t) => t.name)).toEqual(['office-template']);
+    expect(list.map(t => t.name)).toEqual(['office-template']);
   });
 
   it('returns null when saving from a nonexistent network', async () => {
@@ -117,7 +123,7 @@ describe('templates service', () => {
     await expect(saveTemplateFromNetwork(SRC, 'org-scoped', 'org-2')).resolves.not.toBeNull();
     // Same name, same org: rejected.
     await expect(saveTemplateFromNetwork(SRC, 'org-scoped', 'org-1')).rejects.toBeInstanceOf(
-      TemplateNameTakenError,
+      TemplateNameTakenError
     );
   });
 

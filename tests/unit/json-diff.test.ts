@@ -7,7 +7,7 @@ describe('diffJsonLines', () => {
     const after = { a: 1, b: [1, 2, 3] };
     const lines = diffJsonLines(before, after);
     expect(lines.length).toBeGreaterThan(0);
-    expect(lines.every((l) => l.type === 'unchanged')).toBe(true);
+    expect(lines.every(l => l.type === 'unchanged')).toBe(true);
     expect(hasChanges(before, after)).toBe(false);
   });
 
@@ -15,7 +15,7 @@ describe('diffJsonLines', () => {
     const before = { rules: [{ type: 'ACTION_ACCEPT' }] };
     const after = { rules: [{ type: 'ACTION_ACCEPT' }, { type: 'ACTION_DROP' }] };
     const lines = diffJsonLines(before, after);
-    expect(lines.some((l) => l.type === 'added')).toBe(true);
+    expect(lines.some(l => l.type === 'added')).toBe(true);
     expect(hasChanges(before, after)).toBe(true);
   });
 
@@ -23,7 +23,7 @@ describe('diffJsonLines', () => {
     const before = { a: 1, b: 2 };
     const after = { a: 1 };
     const lines = diffJsonLines(before, after);
-    expect(lines.some((l) => l.type === 'removed')).toBe(true);
+    expect(lines.some(l => l.type === 'removed')).toBe(true);
     expect(hasChanges(before, after)).toBe(true);
   });
 });

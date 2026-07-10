@@ -3,7 +3,12 @@ import { requireAuth } from '@/lib/api/auth';
 import { apiError, handleRouteError } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/client';
 import { logAudit } from '@/lib/services/audit';
-import { invalidateOtherSessions, SESSION_COOKIE, setPassword, verifyPassword } from '@/lib/services/auth';
+import {
+  invalidateOtherSessions,
+  SESSION_COOKIE,
+  setPassword,
+  verifyPassword,
+} from '@/lib/services/auth';
 
 const passwordSchema = z
   .object({

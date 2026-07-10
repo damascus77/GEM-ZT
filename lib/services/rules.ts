@@ -24,7 +24,7 @@ export async function getRules(nwid: string): Promise<{
   const network = await client.getNetwork(nwid);
   const meta = await getDb()
     .networkMeta.findUnique({ where: { nwid } })
-    .catch((e) => {
+    .catch(e => {
       // Don't let a DB failure masquerade as "no stored source" silently — that
       // would show the default template and risk overwriting live custom rules
       // on save. We still fall back (below) so the editor stays usable, but log
@@ -50,15 +50,11 @@ export async function getRules(nwid: string): Promise<{
 
 export async function setRules(
   nwid: string,
-  source: string,
+  source: string
 ): Promise<WriteResult<{ source: string; rules: unknown[] }>> {
   const compiled = compileRules(source);
   if (!compiled.ok) {
-    throw new RulesCompileError(
-      compiled.error.line,
-      compiled.error.col,
-      compiled.error.message,
-    );
+    throw new RulesCompileError(compiled.error.line, compiled.error.col, compiled.error.message);
   }
   const client = await getControllerClient();
   // GET-first: the controller upserts on POST, so a PUT of rules to a typo'd or

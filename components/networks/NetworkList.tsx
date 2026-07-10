@@ -51,7 +51,7 @@ export function NetworkList() {
         sort: sort === 'default' ? undefined : sort,
         dir: 'asc',
       }),
-    [data, search, visibility, sort],
+    [data, search, visibility, sort]
   );
 
   const create = useMutation({
@@ -77,11 +77,11 @@ export function NetworkList() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <h1 className="text-[28px] wght-540 tracking-[-0.63px]">Networks</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h1 className="wght-540 text-[28px] tracking-[-0.63px]">Networks</h1>
         <form
           className="flex gap-2"
-          onSubmit={(e) => {
+          onSubmit={e => {
             e.preventDefault();
             create.mutate();
           }}
@@ -89,7 +89,7 @@ export function NetworkList() {
           <Input
             placeholder="New network name (optional)"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={e => setName(e.target.value)}
             className="mt-0 w-56"
           />
           <Button type="submit" disabled={create.isPending}>
@@ -103,18 +103,18 @@ export function NetworkList() {
         </p>
       )}
       {data && data.length > 0 && (
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap items-center gap-2">
           <Input
             placeholder="Search name or network ID"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
             className="mt-0 w-64"
             aria-label="Search networks"
           />
           <select
             className={selectClass}
             value={visibility}
-            onChange={(e) => setVisibility(e.target.value as VisibilityFilter)}
+            onChange={e => setVisibility(e.target.value as VisibilityFilter)}
             aria-label="Filter by visibility"
           >
             <option value="all">All</option>
@@ -124,7 +124,7 @@ export function NetworkList() {
           <select
             className={selectClass}
             value={sort}
-            onChange={(e) => setSort(e.target.value as NetworkSort | 'default')}
+            onChange={e => setSort(e.target.value as NetworkSort | 'default')}
             aria-label="Sort networks"
           >
             <option value="default">Sort: Default</option>
@@ -140,20 +140,18 @@ export function NetworkList() {
         </p>
       )}
       <div className="grid gap-4">
-        {visible.map((n) => (
+        {visible.map(n => (
           <Link key={n.nwid} href={`/networks/${n.nwid}`}>
-            <Card className="p-6 hover:shadow-float transition-shadow">
+            <Card className="p-6 transition-shadow hover:shadow-float">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-[20px] wght-540 tracking-[-0.4px]">
-                    {n.name || n.nwid}
-                  </div>
-                  <div className="text-sm text-ink-mute font-mono">{n.nwid}</div>
+                  <div className="wght-540 text-[20px] tracking-[-0.4px]">{n.name || n.nwid}</div>
+                  <div className="font-mono text-sm text-ink-mute">{n.nwid}</div>
                   {n.description && (
-                    <div className="text-sm text-ink-mute mt-1">{n.description}</div>
+                    <div className="mt-1 text-sm text-ink-mute">{n.description}</div>
                   )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
                   <Pill>{n.private ? 'Private' : 'Public'}</Pill>
                   <Pill>{n.memberCount} members</Pill>
                 </div>

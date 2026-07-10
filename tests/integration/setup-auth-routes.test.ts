@@ -15,7 +15,12 @@ afterAll(async () => {
   await getDb().$disconnect();
 });
 
-function jsonReq(url: string, method: string, body?: unknown, headers: Record<string, string> = {}) {
+function jsonReq(
+  url: string,
+  method: string,
+  body?: unknown,
+  headers: Record<string, string> = {}
+) {
   return new Request(url, {
     method,
     headers: { 'Content-Type': 'application/json', ...headers },
@@ -50,16 +55,20 @@ describe('setup + auth routes', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: 'root', password: 'password12345' }),
-        }),
+        })
       );
       expect(res.status).toBe(201);
       const user = await getDb().user.findUnique({ where: { username: 'root' } });
       expect(user?.role).toBe('superadmin');
       const org = await getDb().organization.findUnique({ where: { slug: 'default' } });
       expect(org).not.toBeNull();
-      expect((await getDb().membership.findUnique({
-        where: { userId_orgId: { userId: user!.id, orgId: org!.id } },
-      }))?.role).toBe('owner');
+      expect(
+        (
+          await getDb().membership.findUnique({
+            where: { userId_orgId: { userId: user!.id, orgId: org!.id } },
+          })
+        )?.role
+      ).toBe('owner');
     } finally {
       await getDb().$disconnect();
       process.env.DATABASE_URL = sharedDbUrl;
@@ -69,7 +78,7 @@ describe('setup + auth routes', () => {
 
   it('creates the initial admin, sets a session cookie, then reports needsSetup=false', async () => {
     const res = await setupPost(
-      jsonReq('http://x/api/v1/setup', 'POST', { username: 'admin', password: 'password12345' }),
+      jsonReq('http://x/api/v1/setup', 'POST', { username: 'admin', password: 'password12345' })
     );
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -81,7 +90,7 @@ describe('setup + auth routes', () => {
 
   it('refuses setup once a user exists (409 SETUP_ALREADY_COMPLETE)', async () => {
     const res = await setupPost(
-      jsonReq('http://x/api/v1/setup', 'POST', { username: 'again', password: 'password12345' }),
+      jsonReq('http://x/api/v1/setup', 'POST', { username: 'again', password: 'password12345' })
     );
     expect(res.status).toBe(409);
     expect((await res.json()).error.code).toBe('SETUP_ALREADY_COMPLETE');
@@ -92,7 +101,7 @@ describe('setup + auth routes', () => {
       jsonReq('http://x/api/v1/auth/login', 'POST', {
         username: 'admin',
         password: 'password12345',
-      }),
+      })
     );
     expect(res.status).toBe(200);
     expect(res.headers.get('set-cookie')).toContain('gemzt_session=');
@@ -101,7 +110,7 @@ describe('setup + auth routes', () => {
 
   it('rejects bad credentials with 401', async () => {
     const res = await loginPost(
-      jsonReq('http://x/api/v1/auth/login', 'POST', { username: 'admin', password: 'wrong' }),
+      jsonReq('http://x/api/v1/auth/login', 'POST', { username: 'admin', password: 'wrong' })
     );
     expect(res.status).toBe(401);
     expect((await res.json()).error.code).toBe('UNAUTHORIZED');
@@ -112,7 +121,7 @@ describe('setup + auth routes', () => {
       jsonReq('http://x/api/v1/auth/login', 'POST', {
         username: 'admin',
         password: 'password12345',
-      }),
+      })
     );
     const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
     const ok = await meGet(new Request('http://x/api/v1/me', { headers: { cookie } }));
@@ -127,13 +136,15 @@ describe('setup + auth routes', () => {
       jsonReq('http://x/api/v1/auth/login', 'POST', {
         username: 'admin',
         password: 'password12345',
-      }),
+      })
     );
     const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
-    const res = await logoutPost(new Request('http://x/api/v1/auth/logout', {
-      method: 'POST',
-      headers: { cookie },
-    }));
+    const res = await logoutPost(
+      new Request('http://x/api/v1/auth/logout', {
+        method: 'POST',
+        headers: { cookie },
+      })
+    );
     expect(res.status).toBe(204);
     expect(res.headers.get('set-cookie')).toContain('Max-Age=0');
     const me = await meGet(new Request('http://x/api/v1/me', { headers: { cookie } }));

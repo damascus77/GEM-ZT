@@ -166,7 +166,7 @@ describe('auth service', () => {
     expect(await getSession(b.id)).toBeNull();
   });
 
-  it('invalidateOtherSessions never touches another user\'s sessions', async () => {
+  it("invalidateOtherSessions never touches another user's sessions", async () => {
     const userA = await createUser('session-owner-a', 'password12345');
     const userB = await createUser('session-owner-b', 'password12345');
     const sessionA = await createSession(userA.id);

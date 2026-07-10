@@ -18,7 +18,7 @@ describe('dateInputToEndOfDayIso', () => {
 
   it('returns a valid ISO 8601 string', () => {
     expect(dateInputToEndOfDayIso('2026-01-01')).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
     );
   });
 });

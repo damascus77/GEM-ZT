@@ -9,7 +9,9 @@ import { requireOrgRole, requireSuperAdmin } from '@/lib/api/authz';
 beforeAll(() => {
   setupTestDb();
 });
-afterAll(async () => { await getDb().$disconnect(); });
+afterAll(async () => {
+  await getDb().$disconnect();
+});
 
 function cookieReq(cookie: string) {
   return new Request('http://x', { headers: { cookie } });

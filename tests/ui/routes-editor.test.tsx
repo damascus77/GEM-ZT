@@ -27,15 +27,14 @@ function stubFetch(opts: { detailOk?: boolean } = {}) {
   const { detailOk = true } = opts;
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === 'PATCH') {
-      return new Response(
-        JSON.stringify({ network: seededNet.network, metaWarning: null }),
-        { status: 200 },
-      );
+      return new Response(JSON.stringify({ network: seededNet.network, metaWarning: null }), {
+        status: 200,
+      });
     }
     if (String(url).includes('/controller/status')) {
       return new Response(
         JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }),
-        { status: 200 },
+        { status: 200 }
       );
     }
     // Network detail (useNetworkDetail).

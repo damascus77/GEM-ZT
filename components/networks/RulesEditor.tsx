@@ -86,7 +86,7 @@ export function RulesEditor({ nwid }: { nwid: string }) {
   if (!seeded) {
     return (
       <Card>
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Flow rules</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Flow rules</h2>
         {isError ? (
           <p role="alert" className="text-sm text-ink">
             Could not load flow rules. Retrying…
@@ -100,8 +100,8 @@ export function RulesEditor({ nwid }: { nwid: string }) {
 
   return (
     <Card>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px]">Flow rules</h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="wght-540 text-[20px] tracking-[-0.4px]">Flow rules</h2>
         <div className="flex gap-2">
           <Button
             variant={tab === 'source' ? 'primary' : 'outline'}
@@ -123,20 +123,24 @@ export function RulesEditor({ nwid }: { nwid: string }) {
       {tab === 'source' && (
         <div className="flex flex-col gap-3">
           {data?.sourceIsDefault && (
-            <p role="alert" className="text-sm text-ink bg-canvas-soft border border-hairline rounded-sm p-3">
+            <p
+              role="alert"
+              className="rounded-sm border border-hairline bg-canvas-soft p-3 text-sm text-ink"
+            >
               <span className="wght-600">No saved rule source for this network.</span> The editor is
               showing the default template, which may not match the rules currently enforced on the
-              controller (check the Compiled JSON tab). “Compile &amp; save” will replace the live rules.
+              controller (check the Compiled JSON tab). “Compile &amp; save” will replace the live
+              rules.
             </p>
           )}
           <label className="text-sm text-ink-mute">
             Rules source
             <textarea
               value={source}
-              onChange={(e) => setSource(e.target.value)}
+              onChange={e => setSource(e.target.value)}
               rows={14}
               spellCheck={false}
-              className="mt-1 w-full bg-canvas text-ink text-sm rounded-sm border border-hairline px-3 py-2.5 font-mono focus:outline-none focus:border-hairline-dark"
+              className="mt-1 w-full rounded-sm border border-hairline bg-canvas px-3 py-2.5 font-mono text-sm text-ink focus:border-hairline-dark focus:outline-none"
             />
           </label>
           {save.isError && (
@@ -162,9 +166,9 @@ export function RulesEditor({ nwid }: { nwid: string }) {
 
           {previewLines && (
             <div>
-              <h3 className="text-sm wght-540 text-ink-mute mb-1">Preview: compiled rules diff</h3>
+              <h3 className="wght-540 mb-1 text-sm text-ink-mute">Preview: compiled rules diff</h3>
               {previewHasChanges ? (
-                <pre className="bg-canvas-soft border border-hairline rounded-sm p-4 text-xs font-mono overflow-x-auto">
+                <pre className="overflow-x-auto rounded-sm border border-hairline bg-canvas-soft p-4 font-mono text-xs">
                   {previewLines.map((line, i) => (
                     <div
                       key={i}
@@ -190,7 +194,7 @@ export function RulesEditor({ nwid }: { nwid: string }) {
       )}
 
       {tab === 'json' && (
-        <pre className="bg-canvas-soft border border-hairline rounded-sm p-4 text-xs font-mono overflow-x-auto">
+        <pre className="overflow-x-auto rounded-sm border border-hairline bg-canvas-soft p-4 font-mono text-xs">
           {JSON.stringify(data?.rules ?? [], null, 2)}
         </pre>
       )}

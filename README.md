@@ -24,7 +24,7 @@ admin account. The stack is two services:
 ## ⚠️ Backups — read this before you run anything important
 
 **The controller identity is irreplaceable.** The `controller_data` volume holds
-`identity.secret`, whose node ID is the first 10 hex digits of *every* network ID (nwid) you
+`identity.secret`, whose node ID is the first 10 hex digits of _every_ network ID (nwid) you
 create. If you lose it, you can never recreate those networks with the same IDs — every device
 that joined them is orphaned and must be re-provisioned onto brand-new networks.
 
@@ -36,10 +36,10 @@ containers but keeps the volumes.
 Two volumes hold all state (Docker prefixes them with the compose project name — the directory
 name, `zerotier`, by default; adjust if yours differs):
 
-| Volume | Contents | Losing it means |
-|---|---|---|
-| `zerotier_controller_data` | Controller `identity.secret` + `controller.d/` network defs | **Unrecoverable** — networks and their IDs are gone |
-| `zerotier_app_data` | SQLite DB: admin user, API keys, friendly names/notes, audit log, rules source | Recoverable-ish — networks keep working; you re-run setup and lose metadata |
+| Volume                     | Contents                                                                       | Losing it means                                                             |
+| -------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `zerotier_controller_data` | Controller `identity.secret` + `controller.d/` network defs                    | **Unrecoverable** — networks and their IDs are gone                         |
+| `zerotier_app_data`        | SQLite DB: admin user, API keys, friendly names/notes, audit log, rules source | Recoverable-ish — networks keep working; you re-run setup and lose metadata |
 
 ### Backing up
 
@@ -128,12 +128,12 @@ members, API keys, and templates belong to a single organization.
 
 Within each organization, users hold one of four roles:
 
-| Role | Capabilities |
-|---|---|
-| **Viewer** | Read networks, members, and audit logs (read-only) |
-| **Editor** | Create/edit networks, authorize members, write rules and templates |
-| **Admin** | Editor capabilities, plus manage organization members & roles, create invitations, manage webhooks, create org-scoped API keys |
-| **Owner** | Admin capabilities, plus rename/delete the organization and grant/revoke the owner role. Only owners and super-admins may assign the owner role. |
+| Role       | Capabilities                                                                                                                                     |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Viewer** | Read networks, members, and audit logs (read-only)                                                                                               |
+| **Editor** | Create/edit networks, authorize members, write rules and templates                                                                               |
+| **Admin**  | Editor capabilities, plus manage organization members & roles, create invitations, manage webhooks, create org-scoped API keys                   |
+| **Owner**  | Admin capabilities, plus rename/delete the organization and grant/revoke the owner role. Only owners and super-admins may assign the owner role. |
 
 ### Multi-organization membership
 
@@ -186,12 +186,12 @@ password-based accounts and permissions.
 
 Environment variables (see `.env.example`; compose sets sensible defaults):
 
-| Var | Default | Purpose |
-|---|---|---|
-| `DATABASE_URL` | `file:/data/gemzt.db` | SQLite location (the `app_data` volume) |
-| `ZT_CONTROLLER_URL` | `http://zerotier-controller:9993` | Controller local API |
-| `ZT_TOKEN_PATH` | `/controller/authtoken.secret` | Read-only-mounted controller auth token |
-| `ZT_AUTH_TOKEN` | *(unset)* | Overrides the token file if set |
+| Var                 | Default                           | Purpose                                 |
+| ------------------- | --------------------------------- | --------------------------------------- |
+| `DATABASE_URL`      | `file:/data/gemzt.db`             | SQLite location (the `app_data` volume) |
+| `ZT_CONTROLLER_URL` | `http://zerotier-controller:9993` | Controller local API                    |
+| `ZT_TOKEN_PATH`     | `/controller/authtoken.secret`    | Read-only-mounted controller auth token |
+| `ZT_AUTH_TOKEN`     | _(unset)_                         | Overrides the token file if set         |
 
 ## Development
 

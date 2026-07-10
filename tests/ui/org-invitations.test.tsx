@@ -13,13 +13,25 @@ afterEach(() => {
 const ORG_ID = 'org-1';
 
 const invitations = [
-  { id: 'inv-1', role: 'admin', email: 'alice@example.com', expiresAt: '2026-08-01T00:00:00.000Z', createdAt: '2026-07-01T00:00:00.000Z' },
-  { id: 'inv-2', role: 'viewer', email: null, expiresAt: '2026-08-05T00:00:00.000Z', createdAt: '2026-07-02T00:00:00.000Z' },
+  {
+    id: 'inv-1',
+    role: 'admin',
+    email: 'alice@example.com',
+    expiresAt: '2026-08-01T00:00:00.000Z',
+    createdAt: '2026-07-01T00:00:00.000Z',
+  },
+  {
+    id: 'inv-2',
+    role: 'viewer',
+    email: null,
+    expiresAt: '2026-08-05T00:00:00.000Z',
+    createdAt: '2026-07-02T00:00:00.000Z',
+  },
 ];
 
 function stubFetch(
   meRole: string,
-  opts: { createStatus?: number; createBody?: unknown; deleteStatus?: number } = {},
+  opts: { createStatus?: number; createBody?: unknown; deleteStatus?: number } = {}
 ) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url === '/api/v1/me') {
@@ -28,28 +40,33 @@ function stubFetch(
           user: { isSuperAdmin: meRole === 'superadmin' },
           memberships: [{ orgId: ORG_ID, role: meRole }],
         }),
-        { status: 200 },
+        { status: 200 }
       );
     }
     if (url === `/api/v1/orgs/${ORG_ID}/invitations` && init?.method === 'POST') {
       const status = opts.createStatus ?? 201;
-      const body =
-        opts.createBody ??
-        {
-          invitation: {
-            id: 'inv-new',
-            role: 'viewer',
-            email: null,
-            expiresAt: '2026-08-10T00:00:00.000Z',
-          },
-          token: 'plaintext-token-abc123',
-        };
+      const body = opts.createBody ?? {
+        invitation: {
+          id: 'inv-new',
+          role: 'viewer',
+          email: null,
+          expiresAt: '2026-08-10T00:00:00.000Z',
+        },
+        token: 'plaintext-token-abc123',
+      };
       return new Response(JSON.stringify(body), { status });
     }
-    if (typeof url === 'string' && url.startsWith(`/api/v1/orgs/${ORG_ID}/invitations/`) && init?.method === 'DELETE') {
+    if (
+      typeof url === 'string' &&
+      url.startsWith(`/api/v1/orgs/${ORG_ID}/invitations/`) &&
+      init?.method === 'DELETE'
+    ) {
       const status = opts.deleteStatus ?? 204;
       if (status === 204) return new Response(null, { status: 204 });
-      return new Response(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Invitation not found.' } }), { status });
+      return new Response(
+        JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Invitation not found.' } }),
+        { status }
+      );
     }
     if (url === `/api/v1/orgs/${ORG_ID}/invitations`) {
       return new Response(JSON.stringify({ invitations }), { status: 200 });
@@ -93,7 +110,7 @@ describe('OrgInvitations', () => {
 
     await waitFor(() => {
       const post = fetchMock.mock.calls.find(
-        ([url, init]) => url === `/api/v1/orgs/${ORG_ID}/invitations` && init?.method === 'POST',
+        ([url, init]) => url === `/api/v1/orgs/${ORG_ID}/invitations` && init?.method === 'POST'
       );
       expect(post).toBeDefined();
       expect(JSON.parse(post![1]!.body as string)).toEqual({ role: 'viewer' });
@@ -120,7 +137,9 @@ describe('OrgInvitations', () => {
   it('surfaces a 403 error when a non-owner tries to grant the owner role', async () => {
     stubFetch('admin', {
       createStatus: 403,
-      createBody: { error: { code: 'FORBIDDEN', message: 'Only an owner may grant the owner role.' } },
+      createBody: {
+        error: { code: 'FORBIDDEN', message: 'Only an owner may grant the owner role.' },
+      },
     });
     renderWithQuery(<OrgInvitations orgId={ORG_ID} />);
     await screen.findByText('alice@example.com');

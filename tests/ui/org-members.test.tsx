@@ -27,7 +27,7 @@ function stubFetch(meRole: string, opts: { mutationStatus?: number; mutationBody
           activeOrgId: ORG_ID,
           memberships: [{ orgId: ORG_ID, role: meRole }],
         }),
-        { status: 200 },
+        { status: 200 }
       );
     }
     if (init?.method === 'PATCH') {
@@ -42,7 +42,9 @@ function stubFetch(meRole: string, opts: { mutationStatus?: number; mutationBody
     }
     if (init?.method === 'POST') {
       const status = opts.mutationStatus ?? 201;
-      const body = opts.mutationBody ?? { member: { userId: 'u4', username: 'newbie', role: 'viewer' } };
+      const body = opts.mutationBody ?? {
+        member: { userId: 'u4', username: 'newbie', role: 'viewer' },
+      };
       return new Response(JSON.stringify(body), { status });
     }
     return new Response(JSON.stringify({ members }), { status: 200 });
@@ -141,7 +143,7 @@ describe('OrgMembers', () => {
     await screen.findByText('bob');
     const bobRow = screen.getByText('bob').closest('tr')!;
     await userEvent.click(bobRow.querySelector('button')!);
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 50));
     expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE')).toBeUndefined();
   });
 
@@ -181,7 +183,9 @@ describe('OrgMembers', () => {
   it('surfaces a 403 error from add-member', async () => {
     stubFetch('admin', {
       mutationStatus: 403,
-      mutationBody: { error: { code: 'FORBIDDEN', message: 'Only an owner may grant the owner role.' } },
+      mutationBody: {
+        error: { code: 'FORBIDDEN', message: 'Only an owner may grant the owner role.' },
+      },
     });
     renderWithQuery(<OrgMembers orgId={ORG_ID} />);
     await screen.findByText('alice');
@@ -195,7 +199,9 @@ describe('OrgMembers', () => {
   it('surfaces a 409 username-taken error from add-member', async () => {
     stubFetch('owner', {
       mutationStatus: 409,
-      mutationBody: { error: { code: 'USERNAME_TAKEN', message: 'That username is already in use.' } },
+      mutationBody: {
+        error: { code: 'USERNAME_TAKEN', message: 'That username is already in use.' },
+      },
     });
     renderWithQuery(<OrgMembers orgId={ORG_ID} />);
     await screen.findByText('alice');

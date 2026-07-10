@@ -32,11 +32,13 @@ beforeEach(async () => {
     nwid: NWID,
     rules: [{ type: 'ACTION_ACCEPT' }],
   });
-  mockClient.updateNetwork.mockImplementation(async (_nwid: string, config: { rules: unknown[] }) => ({
-    id: NWID,
-    nwid: NWID,
-    rules: config.rules,
-  }));
+  mockClient.updateNetwork.mockImplementation(
+    async (_nwid: string, config: { rules: unknown[] }) => ({
+      id: NWID,
+      nwid: NWID,
+      rules: config.rules,
+    })
+  );
   await getDb().networkMeta.deleteMany();
   // Seed NWID's meta as belonging to the caller's active org so org-scoped
   // gating (assertNetworkInOrg) finds it.
@@ -97,14 +99,16 @@ describe('rules routes', () => {
   });
 
   it('PUT compiles, pushes to the controller first, stores the source, audits', async () => {
-    const res = await rulesPut(req('PUT', { source: 'accept;' }), { params: Promise.resolve({ nwid: NWID }) });
+    const res = await rulesPut(req('PUT', { source: 'accept;' }), {
+      params: Promise.resolve({ nwid: NWID }),
+    });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.source).toBe('accept;');
     expect(body.rules).toEqual([{ type: 'ACTION_ACCEPT' }]);
     expect(mockClient.updateNetwork).toHaveBeenCalledWith(
       NWID,
-      expect.objectContaining({ rules: [expect.objectContaining({ type: 'ACTION_ACCEPT' })] }),
+      expect.objectContaining({ rules: [expect.objectContaining({ type: 'ACTION_ACCEPT' })] })
     );
     const meta = await getDb().networkMeta.findUnique({ where: { nwid: NWID } });
     expect(meta?.rulesSource).toBe('accept;');
@@ -113,7 +117,9 @@ describe('rules routes', () => {
   });
 
   it('PUT audits before/after source snapshots', async () => {
-    const res = await rulesPut(req('PUT', { source: 'accept;' }), { params: Promise.resolve({ nwid: NWID }) });
+    const res = await rulesPut(req('PUT', { source: 'accept;' }), {
+      params: Promise.resolve({ nwid: NWID }),
+    });
     expect(res.status).toBe(200);
     const audit = await getDb().auditLog.findFirst({
       where: { action: 'network.rules.update' },
@@ -134,7 +140,9 @@ describe('rules routes', () => {
   });
 
   it('PUT returns 422 RULES_COMPILE_ERROR with line info for bad source', async () => {
-    const res = await rulesPut(req('PUT', { source: 'acceptt;' }), { params: Promise.resolve({ nwid: NWID }) });
+    const res = await rulesPut(req('PUT', { source: 'acceptt;' }), {
+      params: Promise.resolve({ nwid: NWID }),
+    });
     expect(res.status).toBe(422);
     const body = await res.json();
     expect(body.error.code).toBe('RULES_COMPILE_ERROR');
@@ -153,7 +161,9 @@ describe('rules routes', () => {
   });
 
   it('PUT validates the body shape', async () => {
-    const res = await rulesPut(req('PUT', { nope: true }), { params: Promise.resolve({ nwid: NWID }) });
+    const res = await rulesPut(req('PUT', { nope: true }), {
+      params: Promise.resolve({ nwid: NWID }),
+    });
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
   });
@@ -166,7 +176,7 @@ describe('rules routes', () => {
         headers: { 'Content-Type': 'application/json', cookie: viewerCookie },
         body: JSON.stringify({ source: 'accept;' }),
       }),
-      { params: Promise.resolve({ nwid: NWID }) },
+      { params: Promise.resolve({ nwid: NWID }) }
     );
     expect(res.status).toBe(403);
   });
@@ -178,7 +188,7 @@ describe('rules routes', () => {
     });
     const res = await rulesGet(
       new Request(`http://x/api/v1/networks/${OTHER_NWID}/rules`, { headers: { cookie } }),
-      { params: Promise.resolve({ nwid: OTHER_NWID }) },
+      { params: Promise.resolve({ nwid: OTHER_NWID }) }
     );
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe('NOT_FOUND');

@@ -119,29 +119,39 @@ afterAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks();
   (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
-  mockClient.getStatus.mockResolvedValue({ address: 'abcdef0123', online: true, version: '1.14.2' });
+  mockClient.getStatus.mockResolvedValue({
+    address: 'abcdef0123',
+    online: true,
+    version: '1.14.2',
+  });
   mockClient.getNetwork.mockImplementation(async (nwid: string) => {
     if (nwid === MISSING_NWID) throw new ControllerApiError(404, 'gone');
     return controllerNetwork(nwid);
   });
-  mockClient.updateNetwork.mockImplementation(async (nwid: string, cfg: Partial<ControllerNetwork>) => ({
-    ...controllerNetwork(nwid),
-    ...cfg,
-  }));
-  mockClient.createNetwork.mockImplementation(async (_addr: string, cfg: Partial<ControllerNetwork>) => ({
-    ...controllerNetwork(NEW_NWID),
-    ...cfg,
-    id: NEW_NWID,
-    nwid: NEW_NWID,
-  }));
+  mockClient.updateNetwork.mockImplementation(
+    async (nwid: string, cfg: Partial<ControllerNetwork>) => ({
+      ...controllerNetwork(nwid),
+      ...cfg,
+    })
+  );
+  mockClient.createNetwork.mockImplementation(
+    async (_addr: string, cfg: Partial<ControllerNetwork>) => ({
+      ...controllerNetwork(NEW_NWID),
+      ...cfg,
+      id: NEW_NWID,
+      nwid: NEW_NWID,
+    })
+  );
   mockClient.getMember.mockImplementation(async (nwid: string, id: string) => {
     if (id === 'deadbeef02') throw new ControllerApiError(404, 'not joined');
     return controllerMember(id, nwid);
   });
-  mockClient.updateMember.mockImplementation(async (nwid: string, id: string, cfg: Partial<ControllerMember>) => ({
-    ...controllerMember(id, nwid),
-    ...cfg,
-  }));
+  mockClient.updateMember.mockImplementation(
+    async (nwid: string, id: string, cfg: Partial<ControllerMember>) => ({
+      ...controllerMember(id, nwid),
+      ...cfg,
+    })
+  );
   mockClient.listPeers.mockResolvedValue([]);
   await getDb().networkMeta.deleteMany();
   await getDb().memberMeta.deleteMany();
@@ -153,8 +163,8 @@ describe('restoreBackup', () => {
 
     expect(mockClient.updateNetwork).toHaveBeenCalled();
     // setRules compiles + calls updateNetwork with rules/capabilities/tags.
-    const rulesCall = mockClient.updateNetwork.mock.calls.find((c) =>
-      Object.prototype.hasOwnProperty.call(c[1], 'rules'),
+    const rulesCall = mockClient.updateNetwork.mock.calls.find(c =>
+      Object.prototype.hasOwnProperty.call(c[1], 'rules')
     );
     expect(rulesCall).toBeTruthy();
     expect(rulesCall![0]).toBe(EXISTING_NWID);
@@ -165,7 +175,7 @@ describe('restoreBackup', () => {
     expect(mockClient.updateMember).toHaveBeenCalledWith(
       EXISTING_NWID,
       'deadbeef01',
-      expect.objectContaining({ authorized: true }),
+      expect.objectContaining({ authorized: true })
     );
 
     expect(summary.networksUpdated).toBe(1);
@@ -197,7 +207,7 @@ describe('restoreBackup', () => {
     expect(mockClient.updateMember).toHaveBeenCalledWith(
       NEW_NWID,
       'deadbeef01',
-      expect.objectContaining({ authorized: true }),
+      expect.objectContaining({ authorized: true })
     );
 
     expect(summary.networksCreated).toBe(1);
@@ -224,8 +234,8 @@ describe('restoreBackup', () => {
     backup.networks[0].meta.rulesSource = '';
     backup.networks[0].members = [];
     await restoreBackup(backup);
-    const rulesCall = mockClient.updateNetwork.mock.calls.find((c) =>
-      Object.prototype.hasOwnProperty.call(c[1], 'rules'),
+    const rulesCall = mockClient.updateNetwork.mock.calls.find(c =>
+      Object.prototype.hasOwnProperty.call(c[1], 'rules')
     );
     expect(rulesCall).toBeTruthy();
     expect(rulesCall![0]).toBe(EXISTING_NWID);

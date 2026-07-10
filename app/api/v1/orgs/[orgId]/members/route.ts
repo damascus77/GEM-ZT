@@ -31,7 +31,7 @@ const createMemberSchema = z.object({
  */
 async function visibleMembers(orgId: string, auth: AuthContext): Promise<VisibleMember[]> {
   const memberships = await listMembersOfOrg(orgId);
-  const members: VisibleMember[] = memberships.map((m) => ({
+  const members: VisibleMember[] = memberships.map(m => ({
     userId: m.user.id,
     username: m.user.username,
     role: m.role as OrgRole,
@@ -40,7 +40,7 @@ async function visibleMembers(orgId: string, auth: AuthContext): Promise<Visible
   const canSeePhantoms = auth.isSuperAdmin || auth.role === 'owner' || auth.role === 'admin';
   if (!canSeePhantoms) return members;
 
-  const memberIds = new Set(members.map((m) => m.userId));
+  const memberIds = new Set(members.map(m => m.userId));
   const superAdmins = await getDb().user.findMany({ where: { role: 'superadmin' } });
   for (const sa of superAdmins) {
     if (memberIds.has(sa.id)) continue;
@@ -90,7 +90,7 @@ export async function POST(req: Request, { params }: Ctx) {
     });
     return NextResponse.json(
       { member: { userId: user.id, username: user.username, role: body.role } },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {

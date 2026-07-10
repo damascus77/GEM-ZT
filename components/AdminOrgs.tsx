@@ -100,36 +100,31 @@ export function AdminOrgs() {
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Create an organization</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Create an organization</h2>
         <form
-          className="flex gap-2 flex-wrap items-end"
-          onSubmit={(e) => {
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={e => {
             e.preventDefault();
             create.mutate();
           }}
         >
           <label className="text-sm text-ink-mute">
             Name
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="w-64"
-            />
+            <Input value={name} onChange={e => setName(e.target.value)} required className="w-64" />
           </label>
           <Button type="submit" disabled={create.isPending || name === ''}>
             Create organization
           </Button>
         </form>
         {create.isError && (
-          <p role="alert" className="text-sm text-ink mt-2">
+          <p role="alert" className="mt-2 text-sm text-ink">
             {(create.error as Error).message}
           </p>
         )}
       </Card>
 
       <Card className="overflow-x-auto">
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Organizations</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Organizations</h2>
         {orgsQuery.isLoading && <p className="text-ink-mute">Loading…</p>}
         {orgsQuery.isError && !orgsQuery.data && (
           <p role="alert" className="text-sm text-ink">
@@ -137,7 +132,7 @@ export function AdminOrgs() {
           </p>
         )}
         {remove.isError && (
-          <p role="alert" className="text-sm text-ink mb-2">
+          <p role="alert" className="mb-2 text-sm text-ink">
             {(remove.error as Error).message}
           </p>
         )}
@@ -147,16 +142,16 @@ export function AdminOrgs() {
         {orgsQuery.data && orgsQuery.data.orgs.length > 0 && (
           <table className="w-full text-left">
             <thead>
-              <tr className="text-xs text-ink-faint uppercase">
+              <tr className="text-xs uppercase text-ink-faint">
                 <th className="pb-2 pr-4">Name</th>
                 <th className="pb-2 pr-4">Slug</th>
                 <th className="pb-2">&nbsp;</th>
               </tr>
             </thead>
             <tbody>
-              {orgsQuery.data.orgs.map((org) => (
+              {orgsQuery.data.orgs.map(org => (
                 <tr key={org.id} className="border-t border-hairline">
-                  <td className="py-3 pr-4 wght-540">{org.name}</td>
+                  <td className="wght-540 py-3 pr-4">{org.name}</td>
                   <td className="py-3 pr-4 text-sm text-ink-mute">{org.slug}</td>
                   <td className="py-3">
                     <Button

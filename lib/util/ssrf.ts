@@ -22,7 +22,7 @@ function ipv4Octets(ip: string): number[] | null {
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip);
   if (!m) return null;
   const octets = m.slice(1, 5).map(Number);
-  return octets.some((o) => o > 255) ? null : octets;
+  return octets.some(o => o > 255) ? null : octets;
 }
 
 function isPrivateIpv4(ip: string): boolean {

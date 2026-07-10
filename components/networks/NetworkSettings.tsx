@@ -85,7 +85,7 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
   if (!seeded) {
     return (
       <Card>
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Settings</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Settings</h2>
         {isError ? (
           <p role="alert" className="text-sm text-ink">
             Could not load network settings. Retrying…
@@ -99,58 +99,58 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
 
   return (
     <Card>
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Settings</h2>
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Settings</h2>
       <form
         className="flex flex-col gap-4"
         onChange={() => setDirty(true)}
-        onSubmit={(e) => {
+        onSubmit={e => {
           e.preventDefault();
           save.mutate();
         }}
       >
         <label className="text-sm text-ink-mute">
           Name
-          <Input value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input value={name} onChange={e => setName(e.target.value)} required />
         </label>
         <label className="text-sm text-ink-mute">
           Description
-          <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+          <Input value={description} onChange={e => setDescription(e.target.value)} />
         </label>
-        <div className="flex gap-6 flex-wrap">
-          <label className="text-sm text-ink flex items-center gap-2">
+        <div className="flex flex-wrap gap-6">
+          <label className="flex items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"
               checked={isPrivate}
-              onChange={(e) => setIsPrivate(e.target.checked)}
+              onChange={e => setIsPrivate(e.target.checked)}
             />
             Private (members must be authorized)
           </label>
-          <label className="text-sm text-ink flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"
               checked={enableBroadcast}
-              onChange={(e) => setEnableBroadcast(e.target.checked)}
+              onChange={e => setEnableBroadcast(e.target.checked)}
             />
             Enable broadcast
           </label>
         </div>
         <div className="flex gap-4">
-          <label className="text-sm text-ink-mute flex-1">
+          <label className="flex-1 text-sm text-ink-mute">
             MTU
             <Input
               type="number"
               value={mtu}
-              onChange={(e) => setMtu(Number(e.target.value))}
+              onChange={e => setMtu(Number(e.target.value))}
               min={1280}
               max={10000}
             />
           </label>
-          <label className="text-sm text-ink-mute flex-1">
+          <label className="flex-1 text-sm text-ink-mute">
             Multicast limit
             <Input
               type="number"
               value={multicastLimit}
-              onChange={(e) => setMulticastLimit(Number(e.target.value))}
+              onChange={e => setMulticastLimit(Number(e.target.value))}
               min={0}
             />
           </label>

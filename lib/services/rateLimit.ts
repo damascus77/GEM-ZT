@@ -25,13 +25,17 @@ export interface RateLimiterOptions {
  * sustained password guessing against the admin account. Callers record a
  * failure per bad attempt and reset the key on success.
  */
-export function createRateLimiter({ limit, windowMs, now = Date.now }: RateLimiterOptions): RateLimiter {
+export function createRateLimiter({
+  limit,
+  windowMs,
+  now = Date.now,
+}: RateLimiterOptions): RateLimiter {
   const hits = new Map<string, number[]>();
   let lastSweep = now();
 
   function recent(key: string): number[] {
     const cutoff = now() - windowMs;
-    const kept = (hits.get(key) ?? []).filter((t) => t > cutoff);
+    const kept = (hits.get(key) ?? []).filter(t => t > cutoff);
     if (kept.length > 0) hits.set(key, kept);
     else hits.delete(key);
     return kept;
@@ -47,7 +51,7 @@ export function createRateLimiter({ limit, windowMs, now = Date.now }: RateLimit
     lastSweep = t;
     const cutoff = t - windowMs;
     for (const [key, times] of hits) {
-      const kept = times.filter((x) => x > cutoff);
+      const kept = times.filter(x => x > cutoff);
       if (kept.length > 0) hits.set(key, kept);
       else hits.delete(key);
     }

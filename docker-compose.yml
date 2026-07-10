@@ -11,11 +11,11 @@ services:
     volumes:
       - controller_data:/var/lib/zerotier-one
     ports:
-      - "9993:9993/udp"
+      - '9993:9993/udp'
     # Ready once the controller has generated its authtoken.secret — the app
     # needs that file to talk to the local API, so gate startup on it.
     healthcheck:
-      test: ["CMD-SHELL", "test -s /var/lib/zerotier-one/authtoken.secret"]
+      test: ['CMD-SHELL', 'test -s /var/lib/zerotier-one/authtoken.secret']
       interval: 5s
       timeout: 3s
       retries: 12
@@ -35,13 +35,13 @@ services:
       - app_data:/data
       - controller_data:/controller:ro
     ports:
-      - "3000:3000"
+      - '3000:3000'
     # Liveness on the unauthenticated setup-status endpoint (Node 20 global fetch,
     # so no extra tooling in the image).
     healthcheck:
       test:
-        - "CMD-SHELL"
-        - "node -e \"fetch('http://localhost:3000/api/v1/setup/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+        - 'CMD-SHELL'
+        - 'node -e "fetch(''http://localhost:3000/api/v1/setup/status'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"'
       interval: 15s
       timeout: 5s
       retries: 5

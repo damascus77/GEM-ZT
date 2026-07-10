@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: Ctx) {
       return apiError(
         'ORG_SWITCH_UNSUPPORTED',
         'API keys are bound to one org; the active-org switch is session-only.',
-        400,
+        400
       );
     }
 

@@ -78,7 +78,7 @@ describe('GET /api/v1/backup', () => {
 
   it('rejects a non-super-admin with 403', async () => {
     const res = await backupGet(
-      new Request('http://x/api/v1/backup', { headers: { cookie: nonAdminCookie } }),
+      new Request('http://x/api/v1/backup', { headers: { cookie: nonAdminCookie } })
     );
     expect(res.status).toBe(403);
   });
@@ -86,9 +86,7 @@ describe('GET /api/v1/backup', () => {
   it('returns the backup JSON with a download filename header', async () => {
     const res = await backupGet(new Request('http://x/api/v1/backup', { headers: { cookie } }));
     expect(res.status).toBe(200);
-    expect(res.headers.get('Content-Disposition')).toBe(
-      'attachment; filename="gemzt-backup.json"',
-    );
+    expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="gemzt-backup.json"');
     const body = await res.json();
     expect(body.version).toBe(1);
     expect(body.networks).toHaveLength(1);

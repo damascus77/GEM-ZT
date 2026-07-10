@@ -17,7 +17,7 @@ describe('getEnv', () => {
 
   it('throws when unset and no fallback', () => {
     expect(() => getEnv('GEMZT_TEST_VAR')).toThrow(
-      'Missing required environment variable: GEMZT_TEST_VAR',
+      'Missing required environment variable: GEMZT_TEST_VAR'
     );
   });
 });

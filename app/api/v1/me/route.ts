@@ -8,8 +8,9 @@ export async function GET(req: Request) {
   if (!auth) return apiError('UNAUTHORIZED', 'Authentication required.', 401);
   try {
     const { user } = auth;
-    const activeOrgId = auth.via === 'session' ? (auth.session.activeOrgId ?? null) : (auth.apiKey.orgId ?? null);
-    const memberships = (await listMembershipsForUser(user.id)).map((m) => ({
+    const activeOrgId =
+      auth.via === 'session' ? (auth.session.activeOrgId ?? null) : (auth.apiKey.orgId ?? null);
+    const memberships = (await listMembershipsForUser(user.id)).map(m => ({
       orgId: m.orgId,
       orgName: m.org.name,
       orgSlug: m.org.slug,

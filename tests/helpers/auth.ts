@@ -7,7 +7,7 @@ import type { OrgRole } from '@/lib/authz/roles';
 let counter = 0;
 
 export async function createTestUserAndSession(
-  opts: { role?: OrgRole; superadmin?: boolean } = {},
+  opts: { role?: OrgRole; superadmin?: boolean } = {}
 ): Promise<{ user: User; cookie: string; orgId: string }> {
   counter += 1;
   const user = await createUser(`admin${Date.now()}_${counter}`, 'password12345');

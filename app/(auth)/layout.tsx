@@ -3,14 +3,14 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <main
-      className="min-h-screen flex flex-col items-center justify-center bg-primary p-6 gap-8"
+      className="flex min-h-screen flex-col items-center justify-center gap-8 bg-primary p-6"
       style={{
         backgroundImage:
           'radial-gradient(80% 60% at 70% 20%, rgba(201,180,250,0.35), transparent 70%)',
       }}
     >
-      <ThemeToggle className="absolute top-4 right-4 text-sm text-on-dark-faint hover:text-on-primary" />
-      <div className="text-on-primary text-[28px] wght-540 tracking-[-0.63px]">GEM-ZT</div>
+      <ThemeToggle className="absolute right-4 top-4 text-sm text-on-dark-faint hover:text-on-primary" />
+      <div className="wght-540 text-[28px] tracking-[-0.63px] text-on-primary">GEM-ZT</div>
       {children}
     </main>
   );

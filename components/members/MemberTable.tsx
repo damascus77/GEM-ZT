@@ -61,10 +61,10 @@ function TagInput({
   return (
     <input
       type="number"
-      className="w-16 bg-canvas text-ink text-xs rounded-sm border border-hairline px-1 py-0.5"
+      className="w-16 rounded-sm border border-hairline bg-canvas px-1 py-0.5 text-xs text-ink"
       value={text}
       disabled={disabled}
-      onChange={(e) => setText(e.target.value)}
+      onChange={e => setText(e.target.value)}
       onBlur={() => onCommit(text)}
       aria-label={label}
     />
@@ -83,7 +83,7 @@ function PresenceSparkline({ memberId, samples }: { memberId: string; samples: b
       {samples.map((online, i) => (
         <div
           key={i}
-          className={`w-1 h-3 rounded-[1px] ${online ? 'bg-teal-mid' : 'bg-ink-faint/30'}`}
+          className={`h-3 w-1 rounded-[1px] ${online ? 'bg-teal-mid' : 'bg-ink-faint/30'}`}
         />
       ))}
     </div>
@@ -99,8 +99,8 @@ function MemberPresenceInfo({
 }) {
   if (!presence) return null;
   return (
-    <div className="flex flex-col gap-1 mt-1">
-      <span className="text-xs text-ink-faint whitespace-nowrap">
+    <div className="mt-1 flex flex-col gap-1">
+      <span className="whitespace-nowrap text-xs text-ink-faint">
         Last seen: {timeAgo(presence.lastSeen)}
       </span>
       {presence.samples.length > 0 && (
@@ -158,17 +158,17 @@ export function MemberRow({
     // state rather than stale props and doesn't clobber the first change.
     onMutate: (body: Record<string, unknown>) => {
       const prev = queryClient.getQueryData<MembersData>(['members', nwid]);
-      queryClient.setQueryData<MembersData>(['members', nwid], (old) =>
+      queryClient.setQueryData<MembersData>(['members', nwid], old =>
         old
           ? {
               ...old,
-              members: old.members.map((m) =>
+              members: old.members.map(m =>
                 m.memberId === member.memberId
                   ? { ...m, ...(body as Partial<MemberViewClient>) }
-                  : m,
+                  : m
               ),
             }
-          : old,
+          : old
       );
       return { prev };
     },
@@ -185,7 +185,7 @@ export function MemberRow({
     return (
       queryClient
         .getQueryData<MembersData>(['members', nwid])
-        ?.members.find((m) => m.memberId === member.memberId) ?? member
+        ?.members.find(m => m.memberId === member.memberId) ?? member
     );
   }
 
@@ -217,7 +217,7 @@ export function MemberRow({
 
   function toggleCapability(id: number, checked: boolean) {
     const caps = currentMember().capabilities;
-    const next = checked ? [...caps, id] : caps.filter((c) => c !== id);
+    const next = checked ? [...caps, id] : caps.filter(c => c !== id);
     patch.mutate({ capabilities: next });
   }
 
@@ -247,8 +247,8 @@ export function MemberRow({
           <MemberPresenceInfo memberId={member.memberId} presence={presence} />
         </td>
         <td className="py-3 pr-4">
-          <div className="text-ink wght-540">{member.name || '—'}</div>
-          <div className="text-xs text-ink-mute font-mono">{member.memberId}</div>
+          <div className="wght-540 text-ink">{member.name || '—'}</div>
+          <div className="font-mono text-xs text-ink-mute">{member.memberId}</div>
         </td>
         <td className="py-3 pr-4">
           <Button
@@ -259,13 +259,13 @@ export function MemberRow({
           >
             {member.authorized ? 'Deauthorize' : 'Authorize'}
           </Button>
-          <div className="flex flex-col gap-1 mt-2 text-xs text-ink-mute">
+          <div className="mt-2 flex flex-col gap-1 text-xs text-ink-mute">
             <label className="flex items-center gap-1">
               <input
                 type="checkbox"
                 checked={member.activeBridge}
                 disabled={degraded || patch.isPending}
-                onChange={(e) => patch.mutate({ activeBridge: e.target.checked })}
+                onChange={e => patch.mutate({ activeBridge: e.target.checked })}
                 aria-label={`Active bridge for ${member.memberId}`}
               />
               Bridge
@@ -275,21 +275,21 @@ export function MemberRow({
                 type="checkbox"
                 checked={member.noAutoAssignIps}
                 disabled={degraded || patch.isPending}
-                onChange={(e) => patch.mutate({ noAutoAssignIps: e.target.checked })}
+                onChange={e => patch.mutate({ noAutoAssignIps: e.target.checked })}
                 aria-label={`Disable auto-assign IPs for ${member.memberId}`}
               />
               No auto IP
             </label>
           </div>
           {hasCapabilities && (
-            <div className="flex flex-col gap-1 mt-2 text-xs text-ink-mute">
+            <div className="mt-2 flex flex-col gap-1 text-xs text-ink-mute">
               {Object.entries(capabilitiesMap).map(([name, id]) => (
                 <label key={id} className="flex items-center gap-1">
                   <input
                     type="checkbox"
                     checked={member.capabilities.includes(id)}
                     disabled={degraded || patch.isPending}
-                    onChange={(e) => toggleCapability(id, e.target.checked)}
+                    onChange={e => toggleCapability(id, e.target.checked)}
                     aria-label={`Capability ${name} for ${member.memberId}`}
                   />
                   {name}
@@ -298,7 +298,7 @@ export function MemberRow({
             </div>
           )}
           {hasTags && (
-            <div className="flex flex-col gap-1 mt-2 text-xs text-ink-mute">
+            <div className="mt-2 flex flex-col gap-1 text-xs text-ink-mute">
               {Object.entries(tagsMap).map(([name, id]) => {
                 const pair = member.tags.find(([tagId]) => tagId === id);
                 return (
@@ -307,7 +307,7 @@ export function MemberRow({
                       label={`Tag ${name} for ${member.memberId}`}
                       value={pair ? String(pair[1]) : ''}
                       disabled={degraded || patch.isPending}
-                      onCommit={(value) => setTag(id, value)}
+                      onCommit={value => setTag(id, value)}
                     />
                     {name}
                   </label>
@@ -316,11 +316,11 @@ export function MemberRow({
             </div>
           )}
         </td>
-        <td className="py-3 pr-4 min-w-52">
+        <td className="min-w-52 py-3 pr-4">
           <div className="flex gap-2">
             <Input
               value={ips}
-              onChange={(e) => {
+              onChange={e => {
                 setIps(e.target.value);
                 setIpsDirty(true);
               }}
@@ -329,19 +329,19 @@ export function MemberRow({
             />
             <Button
               variant="outline"
-              className="px-3 py-2 text-sm shrink-0"
+              className="shrink-0 px-3 py-2 text-sm"
               disabled={degraded || patch.isPending}
               onClick={() =>
                 patch.mutate(
                   {
                     ipAssignments: ips
                       .split(',')
-                      .map((s) => s.trim())
-                      .filter((s) => s !== ''),
+                      .map(s => s.trim())
+                      .filter(s => s !== ''),
                   },
                   // Clear the dirty flag so the input re-syncs to the server's
                   // canonical list once the write lands.
-                  { onSuccess: () => setIpsDirty(false) },
+                  { onSuccess: () => setIpsDirty(false) }
                 )
               }
             >
@@ -349,13 +349,13 @@ export function MemberRow({
             </Button>
           </div>
         </td>
-        <td className="py-3 pr-4 text-sm text-ink-mute whitespace-nowrap">
+        <td className="whitespace-nowrap py-3 pr-4 text-sm text-ink-mute">
           {member.latency !== null ? `${member.latency} ms` : '— ms'}
         </td>
-        <td className="py-3 pr-4 text-sm text-ink-mute font-mono">
+        <td className="py-3 pr-4 font-mono text-sm text-ink-mute">
           {member.physicalAddress ?? 'unknown'}
         </td>
-        <td className="py-3 pr-4 text-sm text-ink-mute whitespace-nowrap">
+        <td className="whitespace-nowrap py-3 pr-4 text-sm text-ink-mute">
           {member.lastAuthorizedTime > 0
             ? new Date(member.lastAuthorizedTime).toLocaleString()
             : 'never'}
@@ -444,11 +444,11 @@ export function MemberTable({ nwid }: { nwid: string }) {
         sort: sort === 'default' ? undefined : sort,
         dir: 'asc',
       }),
-    [data, search, authFilter, onlineFilter, sort],
+    [data, search, authFilter, onlineFilter, sort]
   );
 
   function toggleSelect(memberId: string) {
-    setSelected((prev) => {
+    setSelected(prev => {
       const next = new Set(prev);
       if (next.has(memberId)) next.delete(memberId);
       else next.add(memberId);
@@ -492,25 +492,25 @@ export function MemberTable({ nwid }: { nwid: string }) {
     bulk.mutate(action);
   }
 
-  const allVisibleSelected = visible.length > 0 && visible.every((m) => selected.has(m.memberId));
+  const allVisibleSelected = visible.length > 0 && visible.every(m => selected.has(m.memberId));
 
   return (
     <Card className="overflow-x-auto">
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Members</h2>
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Members</h2>
 
       {data && data.members.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4 items-center">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <Input
             placeholder="Search name, ID, or IP"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
             className="mt-0 w-56"
             aria-label="Search members"
           />
           <select
             className={selectClass}
             value={authFilter}
-            onChange={(e) => setAuthFilter(e.target.value as AuthorizedFilter)}
+            onChange={e => setAuthFilter(e.target.value as AuthorizedFilter)}
             aria-label="Filter by authorization"
           >
             <option value="all">All</option>
@@ -520,7 +520,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
           <select
             className={selectClass}
             value={onlineFilter}
-            onChange={(e) => setOnlineFilter(e.target.value as OnlineFilter)}
+            onChange={e => setOnlineFilter(e.target.value as OnlineFilter)}
             aria-label="Filter by presence"
           >
             <option value="all">Any status</option>
@@ -530,7 +530,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
           <select
             className={selectClass}
             value={sort}
-            onChange={(e) => setSort(e.target.value as MemberSort | 'default')}
+            onChange={e => setSort(e.target.value as MemberSort | 'default')}
             aria-label="Sort members"
           >
             <option value="default">Sort: Default</option>
@@ -543,7 +543,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
             variant="outline"
             className="px-3 py-2 text-sm"
             onClick={() =>
-              setSelected(new Set(visible.filter((m) => m.online === false).map((m) => m.memberId)))
+              setSelected(new Set(visible.filter(m => m.online === false).map(m => m.memberId)))
             }
           >
             Select offline
@@ -552,7 +552,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
       )}
 
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-canvas-soft rounded-sm border border-hairline">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-sm border border-hairline bg-canvas-soft p-3">
           <span className="text-sm text-ink-mute">{selected.size} selected</span>
           <Button
             className="px-3 py-2 text-sm"
@@ -577,13 +577,17 @@ export function MemberTable({ nwid }: { nwid: string }) {
           >
             Delete selected
           </Button>
-          <Button variant="outline" className="px-3 py-2 text-sm" onClick={() => setSelected(new Set())}>
+          <Button
+            variant="outline"
+            className="px-3 py-2 text-sm"
+            onClick={() => setSelected(new Set())}
+          >
             Clear
           </Button>
         </div>
       )}
       {bulk.isError && (
-        <p role="alert" className="text-sm text-ink mb-2">
+        <p role="alert" className="mb-2 text-sm text-ink">
           {(bulk.error as Error).message}
         </p>
       )}
@@ -605,13 +609,15 @@ export function MemberTable({ nwid }: { nwid: string }) {
       {visible.length > 0 && (
         <table className="w-full text-left">
           <thead>
-            <tr className="text-xs text-ink-faint uppercase">
+            <tr className="text-xs uppercase text-ink-faint">
               <th className="pb-2 pr-2">
                 <input
                   type="checkbox"
                   checked={allVisibleSelected}
-                  onChange={(e) =>
-                    setSelected(e.target.checked ? new Set(visible.map((m) => m.memberId)) : new Set())
+                  onChange={e =>
+                    setSelected(
+                      e.target.checked ? new Set(visible.map(m => m.memberId)) : new Set()
+                    )
                   }
                   aria-label="Select all members"
                 />
@@ -627,7 +633,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
             </tr>
           </thead>
           <tbody>
-            {visible.map((m) => (
+            {visible.map(m => (
               <MemberRow
                 key={m.memberId}
                 member={m}

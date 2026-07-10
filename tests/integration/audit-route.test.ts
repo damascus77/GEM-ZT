@@ -54,14 +54,14 @@ describe('GET /api/v1/audit', () => {
 
   it('honors ?limit=', async () => {
     const res = await auditGet(
-      new Request('http://x/api/v1/audit?limit=1', { headers: { cookie } }),
+      new Request('http://x/api/v1/audit?limit=1', { headers: { cookie } })
     );
     expect((await res.json()).entries).toHaveLength(1);
   });
 
   it('clamps ?limit=0 to the service floor of 1 (not the default of 100)', async () => {
     const res = await auditGet(
-      new Request('http://x/api/v1/audit?limit=0', { headers: { cookie } }),
+      new Request('http://x/api/v1/audit?limit=0', { headers: { cookie } })
     );
     expect(res.status).toBe(200);
     expect((await res.json()).entries).toHaveLength(1);
@@ -69,7 +69,7 @@ describe('GET /api/v1/audit', () => {
 
   it('clamps a huge ?limit= to the service ceiling without erroring', async () => {
     const res = await auditGet(
-      new Request('http://x/api/v1/audit?limit=9999', { headers: { cookie } }),
+      new Request('http://x/api/v1/audit?limit=9999', { headers: { cookie } })
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -78,7 +78,9 @@ describe('GET /api/v1/audit', () => {
 
   it('a viewer (lowest org role) can read audit log (org:read requires only viewer)', async () => {
     const { cookie: viewerCookie } = await createTestUserAndSession({ role: 'viewer' });
-    const res = await auditGet(new Request('http://x/api/v1/audit', { headers: { cookie: viewerCookie } }));
+    const res = await auditGet(
+      new Request('http://x/api/v1/audit', { headers: { cookie: viewerCookie } })
+    );
     expect(res.status).toBe(200);
   });
 
@@ -92,7 +94,9 @@ describe('GET /api/v1/audit', () => {
       detail: {},
       orgId: 'some-other-org-id',
     });
-    const res = await auditGet(new Request('http://x/api/v1/audit', { headers: { cookie: otherCookie } }));
+    const res = await auditGet(
+      new Request('http://x/api/v1/audit', { headers: { cookie: otherCookie } })
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.entries.every((e: any) => e.targetId !== 'other-org-only')).toBe(true);

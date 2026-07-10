@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     if (user.role === 'superadmin') {
       const allOrgs = await getDb().organization.findMany({ orderBy: { createdAt: 'asc' } });
       const orgs = await Promise.all(
-        allOrgs.map(async (org) => {
+        allOrgs.map(async org => {
           const membership = await getMembership(user.id, org.id);
           return {
             id: org.id,
@@ -27,13 +27,13 @@ export async function GET(req: Request) {
             slug: org.slug,
             role: membership?.role ?? null,
           };
-        }),
+        })
       );
       return NextResponse.json({ orgs });
     }
 
     const memberships = await listMembershipsForUser(user.id);
-    const orgs = memberships.map((m) => ({
+    const orgs = memberships.map(m => ({
       id: m.org.id,
       name: m.org.name,
       slug: m.org.slug,

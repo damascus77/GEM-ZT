@@ -99,10 +99,9 @@ describe('members routes', () => {
 
   it('GET single member 404s when unknown', async () => {
     mockClient.getMember.mockRejectedValueOnce(new ControllerApiError(404, 'gone'));
-    const res = await memberGet(
-      req(`http://x/api/v1/networks/${NWID}/members/ffffffffff`, 'GET'),
-      { params: Promise.resolve({ nwid: NWID, memberId: 'ffffffffff' }) },
-    );
+    const res = await memberGet(req(`http://x/api/v1/networks/${NWID}/members/ffffffffff`, 'GET'), {
+      params: Promise.resolve({ nwid: NWID, memberId: 'ffffffffff' }),
+    });
     expect(res.status).toBe(404);
   });
 
@@ -113,7 +112,7 @@ describe('members routes', () => {
         ipAssignments: ['10.147.17.10'],
         name: 'laptop',
       }),
-      { params: Promise.resolve({ nwid: NWID, memberId: MID }) },
+      { params: Promise.resolve({ nwid: NWID, memberId: MID }) }
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -131,7 +130,7 @@ describe('members routes', () => {
       req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'PATCH', {
         authorized: true,
       }),
-      { params: Promise.resolve({ nwid: NWID, memberId: MID }) },
+      { params: Promise.resolve({ nwid: NWID, memberId: MID }) }
     );
     expect(res.status).toBe(200);
     const audit = await getDb().auditLog.findFirst({
@@ -148,7 +147,7 @@ describe('members routes', () => {
       req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'PATCH', {
         ipAssignments: ['not-an-ip'],
       }),
-      { params: Promise.resolve({ nwid: NWID, memberId: MID }) },
+      { params: Promise.resolve({ nwid: NWID, memberId: MID }) }
     );
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
@@ -157,7 +156,7 @@ describe('members routes', () => {
   it('DELETE removes the member and audits', async () => {
     const res = await memberDelete(
       req(`http://x/api/v1/networks/${NWID}/members/${MID}`, 'DELETE'),
-      { params: Promise.resolve({ nwid: NWID, memberId: MID }) },
+      { params: Promise.resolve({ nwid: NWID, memberId: MID }) }
     );
     expect(res.status).toBe(204);
     const audit = await getDb().auditLog.findFirst({ where: { action: 'member.delete' } });
@@ -172,7 +171,7 @@ describe('members routes', () => {
         headers: { 'Content-Type': 'application/json', cookie: viewerCookie },
         body: JSON.stringify({ authorized: true }),
       }),
-      { params: Promise.resolve({ nwid: NWID, memberId: MID }) },
+      { params: Promise.resolve({ nwid: NWID, memberId: MID }) }
     );
     expect(res.status).toBe(403);
   });
@@ -197,7 +196,7 @@ describe('members routes', () => {
     });
     const res = await memberGet(
       req(`http://x/api/v1/networks/${OTHER_NWID}/members/${MID}`, 'GET'),
-      { params: Promise.resolve({ nwid: OTHER_NWID, memberId: MID }) },
+      { params: Promise.resolve({ nwid: OTHER_NWID, memberId: MID }) }
     );
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe('NOT_FOUND');

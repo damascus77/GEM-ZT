@@ -17,17 +17,17 @@ export default function AccountPage() {
 
   useEffect(() => {
     fetch('/api/v1/me')
-      .then((r) => r.json())
-      .then((d) => setMe(d.user))
+      .then(r => r.json())
+      .then(d => setMe(d.user))
       .catch(() => {});
   }, []);
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-[28px] wght-540 tracking-[-0.63px]">Account</h1>
+      <h1 className="wght-540 text-[28px] tracking-[-0.63px]">Account</h1>
 
       <Card>
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Profile</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Profile</h2>
         {me ? (
           <dl className="text-sm">
             <div className="flex gap-2">

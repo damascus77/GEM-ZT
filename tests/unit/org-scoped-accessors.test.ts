@@ -59,7 +59,7 @@ it('lists only the org’s networks and blocks cross-org fetch', async () => {
   await getDb().networkMeta.create({ data: { nwid: 'bbbb000000000002', orgId: 'orgB' } });
 
   const listed = await listNetworksForOrg('orgA');
-  expect(listed.map((n) => n.nwid)).toEqual(['aaaa000000000001']);
+  expect(listed.map(n => n.nwid)).toEqual(['aaaa000000000001']);
 
   expect(await getNetworkForOrg('aaaa000000000001', 'orgA')).not.toBeNull();
   expect(await getNetworkForOrg('aaaa000000000001', 'orgB')).toBeNull(); // cross-org denied
@@ -71,7 +71,7 @@ it('lists unassigned (orphan) networks for the super-admin view', async () => {
   // bbbb... has no NetworkMeta row at all -> orphan.
 
   const orphans = await listUnassignedNetworks();
-  expect(orphans.map((n) => n.nwid)).toEqual(['bbbb000000000002']);
+  expect(orphans.map(n => n.nwid)).toEqual(['bbbb000000000002']);
   expect(orphans[0]).toMatchObject({
     nwid: 'bbbb000000000002',
     // No NetworkMeta row for this nwid, so the summary falls back to the
@@ -89,5 +89,5 @@ it('treats a NetworkMeta row with a null orgId as unassigned too', async () => {
   await getDb().networkMeta.create({ data: { nwid: 'bbbb000000000002', orgId: null } });
 
   const orphans = await listUnassignedNetworks();
-  expect(orphans.map((n) => n.nwid)).toEqual(['bbbb000000000002']);
+  expect(orphans.map(n => n.nwid)).toEqual(['bbbb000000000002']);
 });

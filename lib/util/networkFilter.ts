@@ -18,13 +18,17 @@ export interface NetworkFilterOptions {
 /** Client-side search + filter + sort for the networks list. Pure, non-mutating. */
 export function filterAndSortNetworks<T extends FilterableNetwork>(
   networks: T[],
-  opts: NetworkFilterOptions = {},
+  opts: NetworkFilterOptions = {}
 ): T[] {
   const { search = '', visibility = 'all', sort, dir = 'asc' } = opts;
   const needle = search.trim().toLowerCase();
 
-  let out = networks.filter((netw) => {
-    if (needle !== '' && !netw.name.toLowerCase().includes(needle) && !netw.nwid.toLowerCase().includes(needle)) {
+  let out = networks.filter(netw => {
+    if (
+      needle !== '' &&
+      !netw.name.toLowerCase().includes(needle) &&
+      !netw.nwid.toLowerCase().includes(needle)
+    ) {
       return false;
     }
     if (visibility === 'private' && !netw.private) return false;

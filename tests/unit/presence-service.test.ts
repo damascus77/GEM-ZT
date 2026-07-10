@@ -83,12 +83,12 @@ describe('presence service', () => {
     const samples = await getRecentSamples(NWID, 'deadbeef01', 3);
     expect(samples).toHaveLength(3);
     // Should be the 3 most recent (i=2,3,4), returned oldest -> newest.
-    expect(samples.map((s) => s.sampledAt.getTime())).toEqual([
+    expect(samples.map(s => s.sampledAt.getTime())).toEqual([
       base + 2000,
       base + 3000,
       base + 4000,
     ]);
-    expect(samples.map((s) => s.online)).toEqual([true, false, true]);
+    expect(samples.map(s => s.online)).toEqual([true, false, true]);
   });
 
   it('getRecentSamples defaults limit to 48', async () => {
@@ -112,7 +112,12 @@ describe('presence service', () => {
         { nwid: NWID, memberId: 'deadbeef01', online: true, sampledAt: new Date(base) },
         { nwid: NWID, memberId: 'deadbeef01', online: false, sampledAt: new Date(base + 1000) },
         { nwid: NWID, memberId: 'deadbeef02', online: false, sampledAt: new Date(base) },
-        { nwid: 'otherotherother1', memberId: 'deadbeef03', online: true, sampledAt: new Date(base) },
+        {
+          nwid: 'otherotherother1',
+          memberId: 'deadbeef03',
+          online: true,
+          sampledAt: new Date(base),
+        },
       ],
     });
     const presence = await getNetworkPresence(NWID);
@@ -150,7 +155,7 @@ describe('presence service', () => {
       await sampleNetworkPresence(NWID);
       const rows = await getDb().memberPresence.findMany({ where: { nwid: NWID } });
       expect(rows).toHaveLength(2);
-      expect(rows.map((r) => r.memberId).sort()).toEqual(['deadbeef01', 'deadbeef02']);
+      expect(rows.map(r => r.memberId).sort()).toEqual(['deadbeef01', 'deadbeef02']);
     });
 
     it('never throws, even when listMembers fails', async () => {

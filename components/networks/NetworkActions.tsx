@@ -22,7 +22,7 @@ export function NetworkActions({ nwid }: { nwid: string }) {
       }
       return res.json() as Promise<{ network: { nwid: string } }>;
     },
-    onSuccess: (body) => {
+    onSuccess: body => {
       queryClient.invalidateQueries({ queryKey: ['networks'] });
       router.push(`/networks/${body.network.nwid}`);
     },
@@ -64,7 +64,7 @@ export function NetworkActions({ nwid }: { nwid: string }) {
 
   return (
     <Card>
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Actions</h2>
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Actions</h2>
 
       <Link href={`/networks/${nwid}/join`}>
         <Button variant="outline">Join instructions</Button>
@@ -74,15 +74,15 @@ export function NetworkActions({ nwid }: { nwid: string }) {
         Clone network
       </Button>
       {clone.isError && (
-        <p role="alert" className="text-sm text-ink mt-2">
+        <p role="alert" className="mt-2 text-sm text-ink">
           {(clone.error as Error).message}
         </p>
       )}
 
-      <div className="mt-4 flex gap-2 items-center flex-wrap">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <Input
           value={templateName}
-          onChange={(e) => setTemplateName(e.target.value)}
+          onChange={e => setTemplateName(e.target.value)}
           className="mt-0 w-56"
           placeholder="Template name"
           aria-label="Template name"
@@ -97,28 +97,28 @@ export function NetworkActions({ nwid }: { nwid: string }) {
         </Button>
       </div>
       {saveTemplate.isError && (
-        <p role="alert" className="text-sm text-ink mt-2">
+        <p role="alert" className="mt-2 text-sm text-ink">
           {(saveTemplate.error as Error).message}
         </p>
       )}
       {saveTemplate.isSuccess && (
-        <p role="status" className="text-sm text-ink-mute mt-2">
+        <p role="status" className="mt-2 text-sm text-ink-mute">
           Saved as template.
         </p>
       )}
 
-      <div className="mt-6 pt-6 border-t border-hairline">
-        <h3 className="text-sm wght-600 text-ink mb-1">Danger zone</h3>
-        <p className="text-sm text-ink-mute mb-2">
+      <div className="mt-6 border-t border-hairline pt-6">
+        <h3 className="wght-600 mb-1 text-sm text-ink">Danger zone</h3>
+        <p className="mb-2 text-sm text-ink-mute">
           Deleting a network removes it from the controller and orphans every joined device. This
-          cannot be undone. Type the network ID{' '}
-          <code className="font-mono text-ink">{nwid}</code> to confirm.
+          cannot be undone. Type the network ID <code className="font-mono text-ink">{nwid}</code>{' '}
+          to confirm.
         </p>
-        <div className="flex gap-2 items-center">
+        <div className="flex items-center gap-2">
           <Input
             value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            className="mt-0 font-mono w-56"
+            onChange={e => setConfirmText(e.target.value)}
+            className="mt-0 w-56 font-mono"
             aria-label="Confirm network id to delete"
             placeholder={nwid}
           />
@@ -132,7 +132,7 @@ export function NetworkActions({ nwid }: { nwid: string }) {
           </Button>
         </div>
         {remove.isError && (
-          <p role="alert" className="text-sm text-ink mt-2">
+          <p role="alert" className="mt-2 text-sm text-ink">
             {(remove.error as Error).message}
           </p>
         )}

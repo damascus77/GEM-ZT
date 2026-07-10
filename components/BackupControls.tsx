@@ -78,19 +78,24 @@ export function BackupControls() {
 
   return (
     <Card>
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Backup</h2>
-      <p className="text-sm text-ink-mute mb-4">
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Backup</h2>
+      <p className="mb-4 text-sm text-ink-mute">
         Download a JSON snapshot of every network, its rules, members, and GEM-ZT metadata.
       </p>
-      <Button variant="outline" className="px-3 py-2 text-sm" disabled={downloading} onClick={handleDownload}>
+      <Button
+        variant="outline"
+        className="px-3 py-2 text-sm"
+        disabled={downloading}
+        onClick={handleDownload}
+      >
         Download backup
       </Button>
 
-      <div className="mt-6 pt-6 border-t border-hairline">
-        <h3 className="text-sm font-bold mb-2">Restore</h3>
-        <p className="text-sm text-ink-mute mb-4">
-          Replay a backup file against the live controller. Existing networks are updated in
-          place; missing ones are re-created with a new network id.
+      <div className="mt-6 border-t border-hairline pt-6">
+        <h3 className="mb-2 text-sm font-bold">Restore</h3>
+        <p className="mb-4 text-sm text-ink-mute">
+          Replay a backup file against the live controller. Existing networks are updated in place;
+          missing ones are re-created with a new network id.
         </p>
         <div className="flex items-center gap-3">
           <label className="text-sm" htmlFor="restore-file-input">
@@ -101,7 +106,7 @@ export function BackupControls() {
             aria-label="Restore file"
             type="file"
             accept=".json,application/json"
-            onChange={(e) => setRestoreFile(e.target.files?.[0] ?? null)}
+            onChange={e => setRestoreFile(e.target.files?.[0] ?? null)}
           />
           <Button
             variant="outline"
@@ -115,19 +120,19 @@ export function BackupControls() {
       </div>
 
       {error && (
-        <p role="alert" className="text-sm text-ink mt-2">
+        <p role="alert" className="mt-2 text-sm text-ink">
           {error}
         </p>
       )}
       {summary && (
-        <div role="status" className="text-sm text-ink mt-2">
+        <div role="status" className="mt-2 text-sm text-ink">
           <p>
             {summary.networksCreated} network(s) created, {summary.networksUpdated} network(s)
             updated, {summary.membersRestored} member(s) restored, {summary.membersSkipped}{' '}
             member(s) skipped.
           </p>
           {summary.warnings.length > 0 && (
-            <ul className="list-disc list-inside text-ink-mute mt-1">
+            <ul className="mt-1 list-inside list-disc text-ink-mute">
               {summary.warnings.map((w, i) => (
                 <li key={i}>{w}</li>
               ))}

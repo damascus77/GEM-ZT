@@ -35,7 +35,7 @@ export function getDb(): PrismaClient {
       : new PrismaClient();
     // Best-effort: apply pragmas on the (single) connection. Fire-and-forget so
     // getDb() stays synchronous; queries queue behind these on the one connection.
-    void applySqlitePragmas(client).catch((e) => {
+    void applySqlitePragmas(client).catch(e => {
       console.error('[gem-zt] failed to apply SQLite pragmas:', e);
     });
   }

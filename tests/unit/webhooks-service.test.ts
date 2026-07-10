@@ -95,7 +95,7 @@ describe('dispatchWebhook', () => {
         method: 'POST',
         headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ hello: 'world' }),
-      }),
+      })
     );
     vi.unstubAllGlobals();
   });
@@ -226,7 +226,7 @@ describe('notifyNewUnauthorizedMembers', () => {
     vi.unstubAllGlobals();
   });
 
-  it('does not dispatch to another org\'s webhook config', async () => {
+  it("does not dispatch to another org's webhook config", async () => {
     const orgA = await seedOrg('org-a');
     const orgB = await seedOrg('org-b');
     await seedNetwork(orgA);

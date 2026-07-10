@@ -66,12 +66,12 @@ describe('updateNetworkSchema power fields', () => {
   it('rejects invalid route targets and dns servers', () => {
     expect(() => updateNetworkSchema.parse({ routes: [{ target: 'banana' }] })).toThrow();
     expect(() =>
-      updateNetworkSchema.parse({ dns: { domain: 'x', servers: ['not-an-ip'] } }),
+      updateNetworkSchema.parse({ dns: { domain: 'x', servers: ['not-an-ip'] } })
     ).toThrow();
     expect(() =>
       updateNetworkSchema.parse({
         ipAssignmentPools: [{ ipRangeStart: 'nope', ipRangeEnd: '10.0.0.2' }],
-      }),
+      })
     ).toThrow();
   });
 });

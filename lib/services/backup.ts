@@ -56,7 +56,7 @@ const portableConfigSchema = z
             target: z.string().refine(isValidCidr, { message: 'must be a valid CIDR' }),
             via: z.string().ip().nullable().optional(),
           })
-          .strict(),
+          .strict()
       )
       .max(128),
     ipAssignmentPools: z
@@ -128,7 +128,7 @@ export async function exportBackup(): Promise<BackupData> {
   const nwids = await client.listNetworkIds();
 
   const networks = await Promise.all(
-    nwids.map(async (nwid) => {
+    nwids.map(async nwid => {
       const [config, memberIds, networkMeta] = await Promise.all([
         client.getNetwork(nwid),
         client.listMemberIds(nwid),
@@ -139,14 +139,14 @@ export async function exportBackup(): Promise<BackupData> {
 
       const memberIdList = Object.keys(memberIds);
       const [members, memberMetas] = await Promise.all([
-        mapWithConcurrency(memberIdList, MEMBER_FETCH_CONCURRENCY, (memberId) =>
-          client.getMember(nwid, memberId),
+        mapWithConcurrency(memberIdList, MEMBER_FETCH_CONCURRENCY, memberId =>
+          client.getMember(nwid, memberId)
         ),
         getDb()
           .memberMeta.findMany({ where: { nwid } })
           .catch(() => []),
       ]);
-      const memberMetaMap = new Map(memberMetas.map((m) => [m.memberId, m]));
+      const memberMetaMap = new Map(memberMetas.map(m => [m.memberId, m]));
 
       return {
         nwid,
@@ -157,7 +157,7 @@ export async function exportBackup(): Promise<BackupData> {
           tags: networkMeta ? (JSON.parse(networkMeta.tags) as string[]) : [],
           rulesSource: networkMeta?.rulesSource ?? '',
         },
-        members: members.map((m) => {
+        members: members.map(m => {
           const meta = memberMetaMap.get(m.id);
           return {
             memberId: m.id,
@@ -176,7 +176,7 @@ export async function exportBackup(): Promise<BackupData> {
           };
         }),
       };
-    }),
+    })
   );
 
   return { version: 1, networks };
@@ -256,7 +256,7 @@ export async function restoreBackup(data: BackupData): Promise<RestoreSummary> {
         if (e instanceof ControllerApiError && e.status === 404) {
           summary.membersSkipped += 1;
           summary.warnings.push(
-            `member ${member.memberId} on network ${targetNwid} not joined yet — config skipped`,
+            `member ${member.memberId} on network ${targetNwid} not joined yet — config skipped`
           );
           continue;
         }

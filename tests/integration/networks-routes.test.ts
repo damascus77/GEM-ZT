@@ -58,7 +58,11 @@ beforeAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks();
   (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
-  mockClient.getStatus.mockResolvedValue({ address: 'abcdef0123', online: true, version: '1.14.2' });
+  mockClient.getStatus.mockResolvedValue({
+    address: 'abcdef0123',
+    online: true,
+    version: '1.14.2',
+  });
   mockClient.listNetworkIds.mockResolvedValue([NWID]);
   mockClient.getNetwork.mockResolvedValue(fakeNet);
   mockClient.createNetwork.mockResolvedValue(fakeNet);
@@ -105,7 +109,7 @@ describe('networks routes', () => {
     // name is optional now (blank => named after the nwid), so use an over-long
     // name to exercise validation.
     const res = await createPost(
-      req('http://x/api/v1/networks', 'POST', { name: 'x'.repeat(101) }),
+      req('http://x/api/v1/networks', 'POST', { name: 'x'.repeat(101) })
     );
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
@@ -145,7 +149,7 @@ describe('networks routes', () => {
   it('PATCH /networks/{nwid} updates and audits', async () => {
     const res = await detailPatch(
       req(`http://x/api/v1/networks/${NWID}`, 'PATCH', { mtu: 1400, description: 'd' }),
-      { params: Promise.resolve({ nwid: NWID }) },
+      { params: Promise.resolve({ nwid: NWID }) }
     );
     expect(res.status).toBe(200);
     expect(mockClient.updateNetwork).toHaveBeenCalledWith(NWID, { mtu: 1400 });
@@ -154,10 +158,9 @@ describe('networks routes', () => {
   });
 
   it('PATCH audits before/after snapshots', async () => {
-    const res = await detailPatch(
-      req(`http://x/api/v1/networks/${NWID}`, 'PATCH', { mtu: 1400 }),
-      { params: Promise.resolve({ nwid: NWID }) },
-    );
+    const res = await detailPatch(req(`http://x/api/v1/networks/${NWID}`, 'PATCH', { mtu: 1400 }), {
+      params: Promise.resolve({ nwid: NWID }),
+    });
     expect(res.status).toBe(200);
     const audit = await getDb().auditLog.findFirst({
       where: { action: 'network.update' },
@@ -174,7 +177,7 @@ describe('networks routes', () => {
     mockClient.getNetwork.mockRejectedValue(new ControllerApiError(404, 'gone'));
     const res = await detailPatch(
       req('http://x/api/v1/networks/0000000000000000', 'PATCH', { private: false }),
-      { params: Promise.resolve({ nwid: '0000000000000000' }) },
+      { params: Promise.resolve({ nwid: '0000000000000000' }) }
     );
     expect(res.status).toBe(404);
     expect((await res.json()).error.code).toBe('NOT_FOUND');
@@ -184,7 +187,7 @@ describe('networks routes', () => {
   it('PATCH rejects unknown fields (strict schema)', async () => {
     const res = await detailPatch(
       req(`http://x/api/v1/networks/${NWID}`, 'PATCH', { nope: true }),
-      { params: Promise.resolve({ nwid: NWID }) },
+      { params: Promise.resolve({ nwid: NWID }) }
     );
     expect(res.status).toBe(400);
   });
@@ -212,7 +215,7 @@ describe('networks routes', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', cookie: viewerCookie },
         body: '{}',
-      }),
+      })
     );
     expect(res.status).toBe(403);
   });
@@ -249,7 +252,11 @@ describe('networks routes', () => {
     const CLONE_NWID = 'cccc000011112222';
 
     beforeEach(() => {
-      mockClient.createNetwork.mockResolvedValue({ ...fakeNet, id: CLONE_NWID, name: 'lan (copy)' });
+      mockClient.createNetwork.mockResolvedValue({
+        ...fakeNet,
+        id: CLONE_NWID,
+        name: 'lan (copy)',
+      });
     });
 
     it('clones into the caller’s org and audits', async () => {
@@ -274,7 +281,7 @@ describe('networks routes', () => {
           method: 'POST',
           headers: { cookie: viewerCookie },
         }),
-        { params: Promise.resolve({ nwid: NWID }) },
+        { params: Promise.resolve({ nwid: NWID }) }
       );
       expect(res.status).toBe(403);
     });

@@ -72,14 +72,14 @@ export function TotpSettings({ initialEnabled }: { initialEnabled: boolean }) {
 
   return (
     <Card>
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Two-Factor Authentication</h2>
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Two-Factor Authentication</h2>
       {error && (
-        <p role="alert" className="text-sm text-ink mb-4">
+        <p role="alert" className="mb-4 text-sm text-ink">
           {error}
         </p>
       )}
       {enabled && !secret && (
-        <div className="flex flex-col gap-4 max-w-sm">
+        <div className="flex max-w-sm flex-col gap-4">
           <p className="text-sm text-ink-mute">Two-factor authentication is enabled.</p>
           <form onSubmit={disable} className="flex flex-col gap-4">
             <label className="text-sm text-ink-mute">
@@ -87,7 +87,7 @@ export function TotpSettings({ initialEnabled }: { initialEnabled: boolean }) {
               <Input
                 type="password"
                 value={disablePassword}
-                onChange={(e) => setDisablePassword(e.target.value)}
+                onChange={e => setDisablePassword(e.target.value)}
                 required
               />
             </label>
@@ -99,23 +99,23 @@ export function TotpSettings({ initialEnabled }: { initialEnabled: boolean }) {
       )}
       {!enabled && !secret && (
         <div>
-          <p className="text-sm text-ink-mute mb-4">Two-factor authentication is not enabled.</p>
+          <p className="mb-4 text-sm text-ink-mute">Two-factor authentication is not enabled.</p>
           <Button onClick={startEnroll} disabled={busy}>
             Set up 2FA
           </Button>
         </div>
       )}
       {!enabled && secret && (
-        <div className="flex flex-col gap-4 max-w-sm">
+        <div className="flex max-w-sm flex-col gap-4">
           <p className="text-sm text-ink-mute">
             Scan this code with your authenticator app, or enter the key manually.
           </p>
           {qrDataUrl && <img src={qrDataUrl} alt="2FA QR code" width={200} height={200} />}
-          <code className="font-mono text-sm break-all">{secret}</code>
+          <code className="break-all font-mono text-sm">{secret}</code>
           <form onSubmit={confirmEnroll} className="flex flex-col gap-4">
             <label className="text-sm text-ink-mute">
               6-digit code
-              <Input value={code} onChange={(e) => setCode(e.target.value)} maxLength={6} required />
+              <Input value={code} onChange={e => setCode(e.target.value)} maxLength={6} required />
             </label>
             <Button type="submit" disabled={busy}>
               Confirm and enable

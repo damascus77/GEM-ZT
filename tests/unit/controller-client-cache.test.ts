@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import {
-  getControllerClient,
-  invalidateControllerClient,
-} from '@/lib/controller';
+import { getControllerClient, invalidateControllerClient } from '@/lib/controller';
 
 const savedToken = process.env.ZT_AUTH_TOKEN;
 

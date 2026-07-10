@@ -34,7 +34,7 @@ export async function PUT(req: Request, { params }: Ctx) {
       return apiError('NOT_FOUND', `Network ${nwid} not found.`, 404);
     }
     const before = await getRules(nwid)
-      .then((r) => r.source)
+      .then(r => r.source)
       .catch(() => null);
     const { data, metaWarning } = await setRules(nwid, body.source);
     await logAudit({

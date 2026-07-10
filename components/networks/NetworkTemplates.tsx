@@ -32,7 +32,7 @@ export function NetworkTemplates() {
       }
       return res.json() as Promise<{ network: { nwid: string } }>;
     },
-    onSuccess: (body) => {
+    onSuccess: body => {
       queryClient.invalidateQueries({ queryKey: ['networks'] });
       router.push(`/networks/${body.network.nwid}`);
     },
@@ -50,12 +50,12 @@ export function NetworkTemplates() {
 
   return (
     <Card>
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Templates</h2>
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Templates</h2>
       <ul className="flex flex-col gap-2">
-        {data.templates.map((t) => (
+        {data.templates.map(t => (
           <li key={t.id} className="flex items-center justify-between gap-4">
             <span className="wght-540">{t.name}</span>
-            <div className="flex gap-2 shrink-0">
+            <div className="flex shrink-0 gap-2">
               <Button
                 className="px-3 py-2 text-sm"
                 disabled={apply.isPending}
@@ -76,7 +76,7 @@ export function NetworkTemplates() {
         ))}
       </ul>
       {apply.isError && (
-        <p role="alert" className="text-sm text-ink mt-2">
+        <p role="alert" className="mt-2 text-sm text-ink">
           {(apply.error as Error).message}
         </p>
       )}

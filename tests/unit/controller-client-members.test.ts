@@ -2,11 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { ControllerClient, InvalidControllerIdError } from '@/lib/controller/client';
 
 function jsonFetch(body: unknown) {
-  return vi.fn(async () =>
-    new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }),
+  return vi.fn(
+    async () =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
   ) as unknown as typeof globalThis.fetch;
 }
 
@@ -32,7 +33,7 @@ describe('ControllerClient member/peer methods', () => {
     const m = await client.getMember(NWID, 'deadbeef01');
     expect(m.id).toBe('deadbeef01');
     expect(lastCall(fetchFn)[0]).toBe(
-      `http://zt:9993/controller/network/${NWID}/member/deadbeef01`,
+      `http://zt:9993/controller/network/${NWID}/member/deadbeef01`
     );
   });
 
@@ -65,10 +66,10 @@ describe('ControllerClient member/peer methods', () => {
     const fetchFn = jsonFetch(memberBody);
     const client = new ControllerClient({ baseUrl: 'http://zt:9993', token: 't', fetchFn });
     await expect(client.getMember(NWID, '../../status')).rejects.toBeInstanceOf(
-      InvalidControllerIdError,
+      InvalidControllerIdError
     );
     await expect(client.updateMember(NWID, 'NOTHEX', {})).rejects.toBeInstanceOf(
-      InvalidControllerIdError,
+      InvalidControllerIdError
     );
     expect((fetchFn as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
   });

@@ -31,7 +31,7 @@ export function validateRoutesAndPools(input: {
 
   // Overlapping IPv4 route targets.
   const v4 = routes
-    .map((r) => ({ target: r.target, range: ipv4CidrRange(r.target) }))
+    .map(r => ({ target: r.target, range: ipv4CidrRange(r.target) }))
     .filter((r): r is { target: string; range: [number, number] } => r.range !== null);
   for (let i = 0; i < v4.length; i++) {
     for (let j = i + 1; j < v4.length; j++) {
@@ -95,7 +95,7 @@ function looksLikeIpv6(s: string): boolean {
 /** Warn about malformed DNS server addresses (IPv4 or IPv6). */
 export function validateDnsServers(servers: string[]): string[] {
   return servers
-    .filter((s) => s.trim() !== '')
-    .filter((s) => !IPV4_ADDR_RE.test(s) && !looksLikeIpv6(s))
-    .map((s) => `DNS server "${s}" is not a valid IP address.`);
+    .filter(s => s.trim() !== '')
+    .filter(s => !IPV4_ADDR_RE.test(s) && !looksLikeIpv6(s))
+    .map(s => `DNS server "${s}" is not a valid IP address.`);
 }

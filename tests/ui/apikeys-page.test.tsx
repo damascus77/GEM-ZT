@@ -29,7 +29,7 @@ function stubFetch() {
           apiKey: { ...keys[0], id: 'k2', name: 'new-key' },
           fullKey: `ztk_${'a'.repeat(48)}`,
         }),
-        { status: 201 },
+        { status: 201 }
       );
     }
     if (init?.method === 'DELETE') {
@@ -81,7 +81,7 @@ describe('ApiKeysPage', () => {
     await screen.findByText('ci');
     await userEvent.click(screen.getByRole('button', { name: /revoke/i }));
     // Give any (erroneous) request a chance to fire, then assert none did.
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 50));
     expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE')).toBeUndefined();
   });
 });

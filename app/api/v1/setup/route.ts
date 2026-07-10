@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     const session = await createSession(user.id);
     const res = NextResponse.json(
       { user: { id: user.id, username: user.username, role: user.role } },
-      { status: 201 },
+      { status: 201 }
     );
     res.cookies.set(SESSION_COOKIE, session.id, sessionCookieOptions());
     return res;

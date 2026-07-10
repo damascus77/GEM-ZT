@@ -2,11 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireOrgRole } from '@/lib/api/authz';
 import { handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
-import {
-  createNetwork,
-  createNetworkSchema,
-  listNetworksForOrg,
-} from '@/lib/services/networks';
+import { createNetwork, createNetworkSchema, listNetworksForOrg } from '@/lib/services/networks';
 
 export async function GET(req: Request) {
   const auth = await requireOrgRole(req, 'network:read');

@@ -12,7 +12,7 @@ describe('compileRules', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.rules.length).toBeGreaterThan(0);
-      const types = result.rules.map((r) => (r as { type: string }).type);
+      const types = result.rules.map(r => (r as { type: string }).type);
       expect(types).toContain('ACTION_ACCEPT');
     }
   });

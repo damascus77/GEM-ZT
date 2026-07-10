@@ -28,10 +28,7 @@ export default function DocsPage() {
 
   if (!data) return <p className="text-ink-mute">Loading…</p>;
 
-  const groups = new Map<
-    string,
-    Array<{ methods: string[]; path: string; summary: string }>
-  >();
+  const groups = new Map<string, Array<{ methods: string[]; path: string; summary: string }>>();
   for (const [path, ops] of Object.entries(data.paths)) {
     const byTag = new Map<string, { methods: string[]; summary: string }>();
     for (const method of METHOD_ORDER) {
@@ -51,13 +48,13 @@ export default function DocsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-[28px] wght-540 tracking-[-0.63px]">
+        <h1 className="wght-540 text-[28px] tracking-[-0.63px]">
           {data.info.title} <span className="text-ink-faint">v{data.info.version}</span>
         </h1>
         {data.info.description && (
-          <p className="text-sm text-ink-mute mt-2 max-w-2xl">{data.info.description}</p>
+          <p className="mt-2 max-w-2xl text-sm text-ink-mute">{data.info.description}</p>
         )}
-        <p className="text-sm text-ink-mute mt-2">
+        <p className="mt-2 text-sm text-ink-mute">
           Raw spec:{' '}
           <a href="/api/v1/openapi.json" className="underline">
             /api/v1/openapi.json
@@ -66,13 +63,13 @@ export default function DocsPage() {
       </div>
       {[...groups.entries()].map(([tag, ops]) => (
         <Card key={tag}>
-          <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4 capitalize">{tag}</h2>
+          <h2 className="wght-540 mb-4 text-[20px] capitalize tracking-[-0.4px]">{tag}</h2>
           <div className="flex flex-col gap-3">
-            {ops.map((op) => (
+            {ops.map(op => (
               <div key={op.path} className="flex items-start gap-3">
-                <div className="flex flex-wrap gap-1 w-32 shrink-0">
-                  {op.methods.map((method) => (
-                    <Pill key={method} className="justify-center wght-600">
+                <div className="flex w-32 shrink-0 flex-wrap gap-1">
+                  {op.methods.map(method => (
+                    <Pill key={method} className="wght-600 justify-center">
                       {method.toUpperCase()}
                     </Pill>
                   ))}

@@ -58,7 +58,11 @@ beforeAll(() => {
 beforeEach(async () => {
   vi.clearAllMocks();
   (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
-  mockClient.getStatus.mockResolvedValue({ address: 'abcdef0123', online: true, version: '1.14.2' });
+  mockClient.getStatus.mockResolvedValue({
+    address: 'abcdef0123',
+    online: true,
+    version: '1.14.2',
+  });
   mockClient.listNetworkIds.mockResolvedValue([NWID]);
   mockClient.getNetwork.mockResolvedValue(fakeNet());
   mockClient.createNetwork.mockResolvedValue(fakeNet());
@@ -99,9 +103,7 @@ describe('networks service', () => {
 
   it('createNetwork returns metaWarning (not an error) when the meta upsert fails', async () => {
     await getDb().$disconnect();
-    const spy = vi
-      .spyOn(getDb().networkMeta, 'upsert')
-      .mockRejectedValueOnce(new Error('db gone'));
+    const spy = vi.spyOn(getDb().networkMeta, 'upsert').mockRejectedValueOnce(new Error('db gone'));
     const { data, metaWarning } = await createNetwork({ name: 'still-works' });
     expect(data.nwid).toBe(NWID);
     expect(metaWarning).toContain('metadata');

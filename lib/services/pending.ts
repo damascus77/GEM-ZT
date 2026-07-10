@@ -12,21 +12,19 @@ export interface PendingMember {
 
 async function collectPending(networks: NetworkSummary[]): Promise<PendingMember[]> {
   const perNetwork = await Promise.all(
-    networks.map(async (network) => {
+    networks.map(async network => {
       const members = await listMembers(network.nwid);
       return members
-        .filter((m) => m.authorized === false)
-        .map(
-          (m): PendingMember => ({
-            nwid: network.nwid,
-            networkName: network.name,
-            memberId: m.memberId,
-            name: m.name,
-            online: m.online,
-            lastAuthorizedTime: m.lastAuthorizedTime,
-          }),
-        );
-    }),
+        .filter(m => m.authorized === false)
+        .map((m): PendingMember => ({
+          nwid: network.nwid,
+          networkName: network.name,
+          memberId: m.memberId,
+          name: m.name,
+          online: m.online,
+          lastAuthorizedTime: m.lastAuthorizedTime,
+        }));
+    })
   );
   return perNetwork.flat();
 }

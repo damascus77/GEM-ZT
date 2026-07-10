@@ -27,7 +27,9 @@ describe('SignOutButton', () => {
     render(<SignOutButton />);
     await userEvent.click(screen.getByRole('button', { name: /sign out/i }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/logout', { method: 'POST' }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/v1/auth/logout', { method: 'POST' })
+    );
     await waitFor(() => expect(push).toHaveBeenCalledWith('/login'));
   });
 

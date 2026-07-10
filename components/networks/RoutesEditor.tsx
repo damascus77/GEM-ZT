@@ -54,7 +54,7 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
       const c = data.network.config;
       // The live controller may omit or partially populate these on a fresh
       // network, so default every field rather than dereferencing blindly.
-      setRoutes((c.routes ?? []).map((r) => ({ target: r.target, via: r.via ?? null })));
+      setRoutes((c.routes ?? []).map(r => ({ target: r.target, via: r.via ?? null })));
       setPools(c.ipAssignmentPools ?? []);
       setV4zt(c.v4AssignMode?.zt ?? false);
       setV6zt(c.v6AssignMode?.zt ?? false);
@@ -92,9 +92,9 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
     setError(null);
     try {
       const pool = cidrToPool(cidr.trim());
-      setPools((p) => [...p, pool]);
-      if (!routes.some((r) => r.target === cidr.trim())) {
-        setRoutes((r) => [...r, { target: cidr.trim(), via: null }]);
+      setPools(p => [...p, pool]);
+      if (!routes.some(r => r.target === cidr.trim())) {
+        setRoutes(r => [...r, { target: cidr.trim(), via: null }]);
       }
       setCidr('');
       setDirty(true);
@@ -110,7 +110,7 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
   if (!seeded) {
     return (
       <Card>
-        <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Routes & IP pools</h2>
+        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Routes & IP pools</h2>
         {isError ? (
           <p role="alert" className="text-sm text-ink">
             Could not load routes. Retrying…
@@ -124,17 +124,19 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
 
   return (
     <Card onChange={() => setDirty(true)}>
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Routes & IP pools</h2>
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Routes & IP pools</h2>
 
-      <h3 className="text-sm wght-600 text-ink-mute mb-2">Managed routes</h3>
-      <div className="flex flex-col gap-2 mb-4">
+      <h3 className="wght-600 mb-2 text-sm text-ink-mute">Managed routes</h3>
+      <div className="mb-4 flex flex-col gap-2">
         {routes.map((r, i) => (
-          <div key={`route-${i}`} className="flex gap-2 items-center">
+          <div key={`route-${i}`} className="flex items-center gap-2">
             <Input
               aria-label={`Route target ${i + 1}`}
               value={r.target}
-              onChange={(e) =>
-                setRoutes(routes.map((row, j) => (j === i ? { ...row, target: e.target.value } : row)))
+              onChange={e =>
+                setRoutes(
+                  routes.map((row, j) => (j === i ? { ...row, target: e.target.value } : row))
+                )
               }
               className="mt-0 font-mono"
             />
@@ -142,18 +144,18 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
               aria-label={`Route via ${i + 1}`}
               placeholder="via (LAN gateway, optional)"
               value={r.via ?? ''}
-              onChange={(e) =>
+              onChange={e =>
                 setRoutes(
                   routes.map((row, j) =>
-                    j === i ? { ...row, via: e.target.value === '' ? null : e.target.value } : row,
-                  ),
+                    j === i ? { ...row, via: e.target.value === '' ? null : e.target.value } : row
+                  )
                 )
               }
               className="mt-0 font-mono"
             />
             <Button
               variant="outline"
-              className="px-3 py-2 text-sm shrink-0"
+              className="shrink-0 px-3 py-2 text-sm"
               onClick={() => {
                 setRoutes(routes.filter((_, j) => j !== i));
                 setDirty(true);
@@ -175,29 +177,33 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
         </Button>
       </div>
 
-      <h3 className="text-sm wght-600 text-ink-mute mb-2">IP assignment pools</h3>
-      <div className="flex flex-col gap-2 mb-4">
+      <h3 className="wght-600 mb-2 text-sm text-ink-mute">IP assignment pools</h3>
+      <div className="mb-4 flex flex-col gap-2">
         {pools.map((p, i) => (
-          <div key={`pool-${i}`} className="flex gap-2 items-center">
+          <div key={`pool-${i}`} className="flex items-center gap-2">
             <Input
               aria-label={`Pool start ${i + 1}`}
               value={p.ipRangeStart}
-              onChange={(e) =>
-                setPools(pools.map((row, j) => (j === i ? { ...row, ipRangeStart: e.target.value } : row)))
+              onChange={e =>
+                setPools(
+                  pools.map((row, j) => (j === i ? { ...row, ipRangeStart: e.target.value } : row))
+                )
               }
               className="mt-0 font-mono"
             />
             <Input
               aria-label={`Pool end ${i + 1}`}
               value={p.ipRangeEnd}
-              onChange={(e) =>
-                setPools(pools.map((row, j) => (j === i ? { ...row, ipRangeEnd: e.target.value } : row)))
+              onChange={e =>
+                setPools(
+                  pools.map((row, j) => (j === i ? { ...row, ipRangeEnd: e.target.value } : row))
+                )
               }
               className="mt-0 font-mono"
             />
             <Button
               variant="outline"
-              className="px-3 py-2 text-sm shrink-0"
+              className="shrink-0 px-3 py-2 text-sm"
               onClick={() => {
                 setPools(pools.filter((_, j) => j !== i));
                 setDirty(true);
@@ -207,12 +213,12 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
             </Button>
           </div>
         ))}
-        <div className="flex gap-2 items-center">
+        <div className="flex items-center gap-2">
           <Input
             placeholder="10.10.0.0/16 or fd00::/112"
             value={cidr}
-            onChange={(e) => setCidr(e.target.value)}
-            className="mt-0 font-mono w-64"
+            onChange={e => setCidr(e.target.value)}
+            className="mt-0 w-64 font-mono"
           />
           <Button variant="outline" className="px-3 py-2 text-sm" onClick={addFromCidr}>
             Add pool from CIDR
@@ -225,22 +231,22 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
         )}
       </div>
 
-      <h3 className="text-sm wght-600 text-ink-mute mb-2">Auto-assign</h3>
-      <div className="flex gap-6 flex-wrap mb-4 text-sm text-ink">
+      <h3 className="wght-600 mb-2 text-sm text-ink-mute">Auto-assign</h3>
+      <div className="mb-4 flex flex-wrap gap-6 text-sm text-ink">
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={v4zt} onChange={(e) => setV4zt(e.target.checked)} />
+          <input type="checkbox" checked={v4zt} onChange={e => setV4zt(e.target.checked)} />
           IPv4 from pools
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={v6zt} onChange={(e) => setV6zt(e.target.checked)} />
+          <input type="checkbox" checked={v6zt} onChange={e => setV6zt(e.target.checked)} />
           IPv6 from pools
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={v6plane} onChange={(e) => setV6plane(e.target.checked)} />
+          <input type="checkbox" checked={v6plane} onChange={e => setV6plane(e.target.checked)} />
           6PLANE
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={v6rfc} onChange={(e) => setV6rfc(e.target.checked)} />
+          <input type="checkbox" checked={v6rfc} onChange={e => setV6rfc(e.target.checked)} />
           RFC4193
         </label>
       </div>
@@ -248,7 +254,7 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
       {(() => {
         const warnings = validateRoutesAndPools({ routes, pools });
         return warnings.length > 0 ? (
-          <ul className="mb-3 text-sm text-ink-mute list-disc pl-5">
+          <ul className="mb-3 list-disc pl-5 text-sm text-ink-mute">
             {warnings.map((w, i) => (
               <li key={i} role="status">
                 ⚠ {w}
@@ -258,7 +264,7 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
         ) : null;
       })()}
       {save.isError && (
-        <p role="alert" className="text-sm text-ink mb-2">
+        <p role="alert" className="mb-2 text-sm text-ink">
           {(save.error as Error).message}
         </p>
       )}

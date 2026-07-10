@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       return apiError(
         'TOTP_ALREADY_ENABLED',
         'Two-factor authentication is already enabled. Disable it before re-enrolling.',
-        409,
+        409
       );
     }
     // Overwrites any prior un-confirmed secret; totpEnabled stays false until

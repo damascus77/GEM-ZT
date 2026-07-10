@@ -13,8 +13,7 @@ export interface InvitationSummary {
 }
 
 export type AcceptInvitationResult =
-  | { user: User; session: Session }
-  | { error: 'EXPIRED' | 'USED' | 'INVALID' | 'USERNAME_TAKEN' };
+  { user: User; session: Session } | { error: 'EXPIRED' | 'USED' | 'INVALID' | 'USERNAME_TAKEN' };
 
 export function generateInvitationToken(): { token: string; hashedToken: string } {
   const token = `inv_${randomBytes(24).toString('hex')}`;
@@ -48,7 +47,7 @@ export async function createInvitation(input: {
  * second query.
  */
 export async function getInvitationRowByToken(
-  token: string,
+  token: string
 ): Promise<(Invitation & { org: { name: string } }) | null> {
   const hashedToken = createHash('sha256').update(token).digest('hex');
   return getDb().invitation.findUnique({
@@ -67,7 +66,7 @@ export async function listInvitations(orgId: string): Promise<InvitationSummary[
     select: { id: true, role: true, email: true, expiresAt: true, createdAt: true },
     orderBy: { createdAt: 'desc' },
   });
-  return rows.map((r) => ({ ...r, role: r.role as OrgRole }));
+  return rows.map(r => ({ ...r, role: r.role as OrgRole }));
 }
 
 export async function revokeInvitation(id: string, orgId: string): Promise<boolean> {
@@ -100,7 +99,7 @@ export async function acceptInvitation(input: {
   // failed accept never burns the single-use invite.
   let user: User;
   try {
-    user = await getDb().$transaction(async (tx) => {
+    user = await getDb().$transaction(async tx => {
       // Gate the accept on acceptedAt still being null in the same update, so
       // two concurrent accepts of the same token can't both succeed
       // (single-use).

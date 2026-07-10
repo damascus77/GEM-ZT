@@ -22,7 +22,9 @@ function loginReq(username: string, password: string, code?: string) {
   return new Request('http://x/api/v1/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(code === undefined ? { username, password } : { username, password, totp: code }),
+    body: JSON.stringify(
+      code === undefined ? { username, password } : { username, password, totp: code }
+    ),
   });
 }
 

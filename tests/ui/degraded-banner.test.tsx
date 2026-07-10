@@ -12,12 +12,13 @@ describe('DegradedBanner', () => {
   it('shows a persistent alert when the controller is unreachable (502)', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
-          JSON.stringify({ error: { code: 'CONTROLLER_UNREACHABLE', message: 'down' } }),
-          { status: 502 },
-        ),
-      ),
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ error: { code: 'CONTROLLER_UNREACHABLE', message: 'down' } }),
+            { status: 502 }
+          )
+      )
     );
     renderWithQuery(<DegradedBanner />);
     const alert = await screen.findByRole('alert');
@@ -30,7 +31,7 @@ describe('DegradedBanner', () => {
       'fetch',
       vi.fn(async () => {
         throw new TypeError('Failed to fetch');
-      }),
+      })
     );
     renderWithQuery(<DegradedBanner />);
     const alert = await screen.findByRole('alert');
@@ -40,14 +41,15 @@ describe('DegradedBanner', () => {
   it('renders nothing when the controller is healthy', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }), {
-          status: 200,
-        }),
-      ),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ address: 'abcdef0123', online: true, version: '1.14.2' }), {
+            status: 200,
+          })
+      )
     );
     renderWithQuery(<DegradedBanner />);
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 50));
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });

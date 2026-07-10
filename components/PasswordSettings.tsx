@@ -41,14 +41,14 @@ export function PasswordSettings() {
 
   return (
     <Card>
-      <h2 className="text-[20px] wght-540 tracking-[-0.4px] mb-4">Password</h2>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4 max-w-sm">
+      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Password</h2>
+      <form onSubmit={onSubmit} className="flex max-w-sm flex-col gap-4">
         <label className="text-sm text-ink-mute">
           Current password
           <Input
             type="password"
             value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
+            onChange={e => setCurrentPassword(e.target.value)}
             required
           />
         </label>
@@ -57,7 +57,7 @@ export function PasswordSettings() {
           <Input
             type="password"
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={e => setNewPassword(e.target.value)}
             minLength={10}
             required
           />
@@ -67,7 +67,7 @@ export function PasswordSettings() {
           <Input
             type="password"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={e => setConfirm(e.target.value)}
             required
           />
         </label>

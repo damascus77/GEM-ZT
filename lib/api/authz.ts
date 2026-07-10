@@ -14,7 +14,7 @@ export interface AuthContext {
 
 async function resolveActiveOrg(
   auth: Awaited<ReturnType<typeof resolveAuth>>,
-  requestedOrgId?: string,
+  requestedOrgId?: string
 ): Promise<{ orgId: string | null; role: OrgRole | null }> {
   if (!auth) return { orgId: null, role: null };
   if (auth.via === 'apikey') {
@@ -35,7 +35,7 @@ async function resolveActiveOrg(
 export async function requireOrgRole(
   req: Request,
   action: Action,
-  opts?: { orgId?: string },
+  opts?: { orgId?: string }
 ): Promise<AuthContext | Response> {
   const auth = await resolveAuth(req);
   if (!auth) return apiError('UNAUTHORIZED', 'Authentication required.', 401);
@@ -68,6 +68,11 @@ export async function requireSuperAdmin(req: Request): Promise<AuthContext | Res
   return ctx(auth.user, true, null, null);
 }
 
-function ctx(user: User, isSuperAdmin: boolean, orgId: string | null, role: OrgRole | null): AuthContext {
+function ctx(
+  user: User,
+  isSuperAdmin: boolean,
+  orgId: string | null,
+  role: OrgRole | null
+): AuthContext {
   return { user, isSuperAdmin, orgId, role };
 }

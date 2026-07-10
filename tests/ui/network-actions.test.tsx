@@ -18,21 +18,26 @@ afterEach(() => {
 
 describe('NetworkActions', () => {
   it('clones the network and navigates to the new one', async () => {
-    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
-      new Response(JSON.stringify({ network: { nwid: 'abcdef0199999999' } }), { status: 201 }),
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response(JSON.stringify({ network: { nwid: 'abcdef0199999999' } }), { status: 201 })
     );
     vi.stubGlobal('fetch', fetchMock);
     renderWithQuery(<NetworkActions nwid={NWID} />);
     await userEvent.click(screen.getByRole('button', { name: /clone network/i }));
     await waitFor(() => {
-      const call = fetchMock.mock.calls.find(([u, i]) => String(u).endsWith('/clone') && i?.method === 'POST');
+      const call = fetchMock.mock.calls.find(
+        ([u, i]) => String(u).endsWith('/clone') && i?.method === 'POST'
+      );
       expect(call).toBeDefined();
       expect(push).toHaveBeenCalledWith('/networks/abcdef0199999999');
     });
   });
 
   it('requires typing the network id before delete is enabled, then DELETEs and navigates home', async () => {
-    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 }));
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 })
+    );
     vi.stubGlobal('fetch', fetchMock);
     renderWithQuery(<NetworkActions nwid={NWID} />);
 
