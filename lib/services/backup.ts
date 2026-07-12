@@ -23,7 +23,13 @@ export interface BackupData {
   networks: Array<{
     nwid: string;
     config: PortableNetworkConfig;
-    meta: { name: string; description: string; tags: string[]; rulesSource: string };
+    meta: {
+      name: string;
+      description: string;
+      tags: string[];
+      rulesSource: string;
+      orgId?: string | null;
+    };
     members: Array<{
       memberId: string;
       config: {
@@ -102,6 +108,7 @@ const backupNetworkSchema = z
         description: z.string().max(500),
         tags: z.array(z.string().max(32)).max(20),
         rulesSource: z.string().max(65536),
+        orgId: z.string().max(64).nullable().optional(),
       })
       .strict(),
     members: z.array(backupMemberSchema).max(100000),
@@ -156,6 +163,7 @@ export async function exportBackup(): Promise<BackupData> {
           description: networkMeta?.description ?? '',
           tags: networkMeta ? (JSON.parse(networkMeta.tags) as string[]) : [],
           rulesSource: networkMeta?.rulesSource ?? '',
+          orgId: networkMeta?.orgId ?? null,
         },
         members: members.map(m => {
           const meta = memberMetaMap.get(m.id);
@@ -234,6 +242,7 @@ export async function restoreBackup(data: BackupData): Promise<RestoreSummary> {
         description: net.meta.description,
         tags: JSON.stringify(net.meta.tags),
         rulesSource: net.meta.rulesSource,
+        orgId: net.meta.orgId ?? undefined,
       });
       targetNwid = created.data.nwid;
       summary.networksCreated += 1;

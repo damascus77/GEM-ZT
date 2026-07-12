@@ -246,6 +246,43 @@ describe('restoreBackup', () => {
     });
   });
 
+  it('preserves orgId on the created network when restoring onto a new nwid (P2 regression)', async () => {
+    const backup = makeBackup({
+      networks: [
+        {
+          ...makeBackup().networks[0],
+          nwid: MISSING_NWID,
+          meta: { ...makeBackup().networks[0].meta, orgId: 'org-restore-create' },
+        },
+      ],
+    });
+
+    await restoreBackup(backup);
+
+    const meta = await getDb().networkMeta.findUnique({ where: { nwid: NEW_NWID } });
+    expect(meta?.orgId).toBe('org-restore-create');
+  });
+
+  it('preserves orgId on an existing network being updated by restore (P2 regression)', async () => {
+    await getDb().networkMeta.create({
+      data: { nwid: EXISTING_NWID, name: 'lan', orgId: 'org-restore-update' },
+    });
+
+    const backup = makeBackup({
+      networks: [
+        {
+          ...makeBackup().networks[0],
+          meta: { ...makeBackup().networks[0].meta, orgId: 'org-restore-update' },
+        },
+      ],
+    });
+
+    await restoreBackup(backup);
+
+    const meta = await getDb().networkMeta.findUnique({ where: { nwid: EXISTING_NWID } });
+    expect(meta?.orgId).toBe('org-restore-update');
+  });
+
   it('handles an empty backup', async () => {
     const summary = await restoreBackup({ version: 1, networks: [] });
     expect(summary).toEqual({

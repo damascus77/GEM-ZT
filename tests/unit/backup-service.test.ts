@@ -102,6 +102,7 @@ describe('exportBackup', () => {
       description: 'home network',
       tags: ['a', 'b'],
       rulesSource: 'accept;',
+      orgId: null,
     });
     expect(net.config).toEqual({
       private: networkConfig.private,
@@ -141,8 +142,27 @@ describe('exportBackup', () => {
     const backup = await exportBackup();
     expect(backup.networks).toHaveLength(1);
     const net = backup.networks[0];
-    expect(net.meta).toEqual({ name: '', description: '', tags: [], rulesSource: '' });
+    expect(net.meta).toEqual({ name: '', description: '', tags: [], rulesSource: '', orgId: null });
     expect(net.members.every(m => m.meta.name === '' && m.meta.notes === '')).toBe(true);
+  });
+
+  it('includes orgId in meta, defaulting to null when the network has no org (P2 regression)', async () => {
+    await getDb().networkMeta.create({
+      data: {
+        nwid: NWID,
+        name: 'lan',
+        description: '',
+        tags: '[]',
+        rulesSource: '',
+        orgId: 'org-abc',
+      },
+    });
+    const withOrg = await exportBackup();
+    expect(withOrg.networks[0].meta.orgId).toBe('org-abc');
+
+    await getDb().networkMeta.update({ where: { nwid: NWID }, data: { orgId: null } });
+    const withoutOrg = await exportBackup();
+    expect(withoutOrg.networks[0].meta.orgId).toBeNull();
   });
 
   it('returns an empty networks array when the controller has no networks', async () => {
