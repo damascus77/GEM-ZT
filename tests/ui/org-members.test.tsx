@@ -274,7 +274,7 @@ describe('OrgMembers', () => {
       expect(post).toBeDefined();
       expect(post![0]).toBe('/api/v1/orgs/org-2/members');
     });
-    expect(await screen.findByText(/globex/i)).toBeInTheDocument();
+    expect(await screen.findByText(/created and added to globex/i)).toBeInTheDocument();
   });
 
   it('falls back to the current org when GET /api/v1/orgs fails', async () => {
