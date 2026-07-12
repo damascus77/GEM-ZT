@@ -90,4 +90,55 @@ describe('requireOrgRole', () => {
     const read = await requireOrgRole(req, 'network:read');
     expect(read).not.toBeInstanceOf(Response);
   });
+
+  it('a super-admin-owned viewer API key cannot perform an owner-only action in its own org (P0 regression)', async () => {
+    const su = await createUser(`suk_${Date.now()}`, 'password12345');
+    await getDb().user.update({ where: { id: su.id }, data: { role: 'superadmin' } });
+    const org = await createOrg({ name: 'SK', createdById: su.id });
+    const { fullKey } = await createApiKey(su.id, 'k', undefined, {
+      orgId: org.id,
+      role: 'viewer',
+    });
+    const req = new Request('http://x', { headers: { authorization: `Bearer ${fullKey}` } });
+
+    const del = await requireOrgRole(req, 'org:delete');
+    expect(del instanceof Response && del.status).toBe(403);
+
+    const read = await requireOrgRole(req, 'network:read');
+    expect(read).not.toBeInstanceOf(Response);
+    if (!(read instanceof Response)) {
+      expect(read.orgId).toBe(org.id);
+      expect(read.role).toBe('viewer');
+      // isSuperAdmin must never leak through for API-key auth: several routes
+      // treat it as an independent bypass of role-rank checks.
+      expect(read.isSuperAdmin).toBe(false);
+    }
+  });
+
+  it('a super-admin-owned API key cannot cross into a different org via opts.orgId (P0 regression)', async () => {
+    const su = await createUser(`suk2_${Date.now()}`, 'password12345');
+    await getDb().user.update({ where: { id: su.id }, data: { role: 'superadmin' } });
+    const orgA = await createOrg({ name: 'SK-A', createdById: su.id });
+    const other = await createUser(`suk2b_${Date.now()}`, 'password12345');
+    const orgB = await createOrg({ name: 'SK-B', createdById: other.id });
+    const { fullKey } = await createApiKey(su.id, 'k', undefined, {
+      orgId: orgA.id,
+      role: 'admin',
+    });
+    const req = new Request('http://x', { headers: { authorization: `Bearer ${fullKey}` } });
+
+    const res = await requireOrgRole(req, 'network:read', { orgId: orgB.id });
+    expect(res instanceof Response && res.status).toBe(403);
+  });
+
+  it('requireSuperAdmin rejects a super-admin-owned API key (P0 regression)', async () => {
+    const su = await createUser(`suk3_${Date.now()}`, 'password12345');
+    await getDb().user.update({ where: { id: su.id }, data: { role: 'superadmin' } });
+    const org = await createOrg({ name: 'SK3', createdById: su.id });
+    const { fullKey } = await createApiKey(su.id, 'k', undefined, { orgId: org.id, role: 'owner' });
+    const req = new Request('http://x', { headers: { authorization: `Bearer ${fullKey}` } });
+
+    const res = await requireSuperAdmin(req);
+    expect(res instanceof Response && res.status).toBe(403);
+  });
 });

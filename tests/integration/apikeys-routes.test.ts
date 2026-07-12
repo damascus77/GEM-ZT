@@ -88,6 +88,25 @@ describe('apikeys routes', () => {
     expect(asOwner.status).toBe(201);
   });
 
+  it('role cap applies to API-key auth too: a super-admin-owned admin-scoped key cannot mint an owner-role key (P0 regression)', async () => {
+    const { user: su, orgId: suOrgId } = await createTestUserAndSession({
+      role: 'admin',
+      superadmin: true,
+    });
+    const { fullKey } = await createApiKey(su.id, 'su-admin-key', undefined, {
+      orgId: suOrgId,
+      role: 'admin',
+    });
+    const res = await keysPost(
+      new Request('http://x/api/v1/apikeys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', authorization: `Bearer ${fullKey}` },
+        body: JSON.stringify({ name: 'too-powerful', role: 'owner' }),
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+
   it('apikey:manage gate: editor/viewer are forbidden from create/list/delete', async () => {
     const editorCreate = await keysPost(
       req('http://x/api/v1/apikeys', 'POST', editorCookie, { name: 'x', role: 'viewer' })
