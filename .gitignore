@@ -5,6 +5,8 @@ node_modules/
 !.env.example
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
 next-env.d.ts
 *.log
 tsconfig.tsbuildinfo
@@ -17,3 +19,7 @@ coverage/
 
 # Superpowers session artifacts
 .superpowers/
+
+# Design-tool bundled exports (one-off prototype artifacts, not source of truth)
+*.dc.html
+*standalone*.html

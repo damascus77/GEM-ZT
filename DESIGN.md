@@ -270,19 +270,19 @@ For substitution use **Inter Variable** (open-source) at weight 460 / 540 / 600 
 ### Hierarchy
 
 | Token                      | Size    | Weight | Line Height | Letter Spacing | Use                              |
-| -------------------------- | ------- | ------ | ----------- | -------------- | -------------------------------- |
+| -------------------------- | ------- | ------ | ----------- | -------------- | --------------------------------- |
 | `{typography.display-xxl}` | 64px    | 540    | 0.96        | 0              | Hero headline                    |
 | `{typography.display-xl}`  | 48px    | 460    | 0.96        | -1.32px        | Section opener on light surfaces |
 | `{typography.display-lg}`  | 28px    | 540    | 1.14        | -0.63px        | Sub-section / feature title      |
 | `{typography.display-md}`  | 22px    | 460    | 1.1         | -0.315px       | Card title                       |
-| `{typography.heading-lg}`  | 20px    | 460    | 1.2         | -0.4px         | Compact card title               |
-| `{typography.body-lg}`     | 18px    | 540    | 1.5         | -0.135px       | Marketing body lead              |
-| `{typography.body-md}`     | 16px    | 460    | 1.5         | 0              | Default UI body                  |
-| `{typography.body-strong}` | 18.72px | 700    | 1.5         | 0              | Emphasized body                  |
-| `{typography.button-md}`   | 16px    | 700    | 1.0         | 0              | Rounded-rectangle button label   |
-| `{typography.button-cap}`  | 14px    | 600    | 1.0         | 0              | Compact button label             |
-| `{typography.caption}`     | 14px    | 460    | 1.4         | 0              | Helper, footnote                 |
-| `{typography.micro}`       | 12px    | 540    | 1.4         | 0              | Pill label, fine print           |
+| `{typography.heading-lg}`  | 20px    | 460    | 1.2         | -0.4px         | Compact card title                |
+| `{typography.body-lg}`     | 18px    | 540    | 1.5         | -0.135px       | Marketing body lead               |
+| `{typography.body-md}`     | 16px    | 460    | 1.5         | 0              | Default UI body                   |
+| `{typography.body-strong}` | 18.72px | 700    | 1.5         | 0              | Emphasized body                   |
+| `{typography.button-md}`   | 16px    | 700    | 1.0         | 0              | Rounded-rectangle button label     |
+| `{typography.button-cap}`  | 14px    | 600    | 1.0         | 0              | Compact button label               |
+| `{typography.caption}`     | 14px    | 460    | 1.4         | 0              | Helper, footnote                   |
+| `{typography.micro}`       | 12px    | 540    | 1.4         | 0              | Pill label, fine print, nav section label |
 
 ### Principles
 
@@ -300,8 +300,8 @@ For substitution use **Inter Variable** (open-source) at weight 460 / 540 / 600 
 
 - **Base unit**: 8px (with 2 / 4 / 12 sub-tokens for fine work).
 - **Tokens**: `{spacing.xxs}` 2px · `{spacing.xs}` 4px · `{spacing.sm}` 8px · `{spacing.md}` 12px · `{spacing.lg}` 16px · `{spacing.xl}` 24px · `{spacing.xxl}` 32px · `{spacing.huge}` 64px.
-- **Section padding**: 64–96px on most sections; closing teal band uses 96–128px for editorial weight.
-- **Card internal padding**: 32px on pricing cards; 24px on alternating feature rows.
+- **Section padding**: 64–96px on most marketing sections; closing teal band uses 96–128px for editorial weight.
+- **Card internal padding**: 32px on pricing/app cards; 24px on alternating feature rows.
 
 ### Grid & Container
 
@@ -316,11 +316,11 @@ The brand uses generous editorial whitespace on both polarities — dark hero an
 ## Elevation & Depth
 
 | Level | Treatment                                     | Use                     |
-| ----- | --------------------------------------------- | ----------------------- |
-| 0     | Flat                                          | Default surface         |
-| 1     | `box-shadow: 0 1px 3px rgba(0,0,0,0.08)`      | Subtle card lift        |
-| 2     | `box-shadow: 0 8px 24px rgba(0,0,0,0.12)`     | Floating panels, modals |
-| 3     | Atmospheric backdrop (violet-sky over indigo) | The hero's depth medium |
+| ----- | ---------------------------------------------- | ------------------------ |
+| 0     | Flat                                           | Default surface          |
+| 1     | `box-shadow: 0 1px 3px rgba(0,0,0,0.08)`       | Subtle card lift          |
+| 2     | `box-shadow: 0 8px 24px rgba(0,0,0,0.12)`      | Floating panels, modals   |
+| 3     | Atmospheric backdrop (violet-sky over indigo)  | The hero's depth medium   |
 
 ### Decorative Depth
 
@@ -331,13 +331,13 @@ The hero's depth is the **violet-sky atmospheric backdrop** — a soft indigo-to
 ### Border Radius Scale
 
 | Token            | Value  | Use                                                                          |
-| ---------------- | ------ | ---------------------------------------------------------------------------- |
-| `{rounded.xs}`   | 4px    | Hairline tags                                                                |
-| `{rounded.sm}`   | 6px    | Form inputs                                                                  |
-| `{rounded.md}`   | 8px    | Buttons (the brand's signature button shape — rounded rectangle, never pill) |
-| `{rounded.lg}`   | 12px   | Pricing cards, feature cards                                                 |
-| `{rounded.xl}`   | 16px   | Modal dialogs, large feature cards                                           |
-| `{rounded.full}` | 9999px | Pill tabs in feature row, hero CTA                                           |
+| ---------------- | ------ | ------------------------------------------------------------------------------ |
+| `{rounded.xs}`   | 4px    | Hairline tags                                                                   |
+| `{rounded.sm}`   | 6px    | Form inputs                                                                     |
+| `{rounded.md}`   | 8px    | Buttons (the brand's signature button shape — rounded rectangle, never pill)    |
+| `{rounded.lg}`   | 12px   | Pricing cards, feature cards, app cards                                         |
+| `{rounded.xl}`   | 16px   | Modal dialogs, large feature cards                                             |
+| `{rounded.full}` | 9999px | Pill tabs in feature row, hero CTA, nav badge counts                            |
 
 ### Photography Geometry
 
@@ -378,7 +378,7 @@ The hero uses **half-bleed portrait subjects** — a person photographed at twil
 
 - Background `{colors.primary}`, text `{colors.on-primary}`, otherwise identical to `card-pricing`.
 
-**`card-teal-band`** — the closing CTA band on every page.
+**`card-teal-band`** — the closing CTA band on every marketing page.
 
 - Background `{colors.surface-teal-deep}`, text `{colors.on-primary}`, padding `{spacing.huge}` 64px, rounded `{rounded.lg}` 12px (often radius-less in practice when full-bleed). Holds a single closing headline in `{typography.display-lg}` and a `button-on-teal`.
 
@@ -412,7 +412,7 @@ The hero uses **half-bleed portrait subjects** — a person photographed at twil
 
 **Half-Bleed Portrait Hero** — a person photographed at twilight, occupying the right half of the indigo hero with violet-sky atmospheric backdrop behind. Type and CTA sit on the left side. The portrait is the brand's recurring visual signature.
 
-**Closing Teal Band** — every page closes with a `card-teal-band` containing a `{typography.display-lg}` closing headline and a single `button-on-teal`. The teal is the page's resolving chord.
+**Closing Teal Band** — every marketing page closes with a `card-teal-band` containing a `{typography.display-lg}` closing headline and a single `button-on-teal`. The teal is the page's resolving chord.
 
 **`link-on-light`** — inline links on body.
 
@@ -446,11 +446,11 @@ The hero uses **half-bleed portrait subjects** — a person photographed at twil
 ### Breakpoints
 
 | Name    | Width       | Key Changes                                             |
-| ------- | ----------- | ------------------------------------------------------- |
-| Wide    | ≥ 1440px    | Half-bleed portrait at full scale; teal band 128px tall |
-| Desktop | 1024–1440px | Default content max-width; pricing 3-up                 |
-| Tablet  | 768–1023px  | Pricing 2-up; portrait crops tighter                    |
-| Mobile  | < 768px     | Pricing 1-up; hamburger nav; display drops 64 → 36px    |
+| ------- | ----------- | --------------------------------------------------------- |
+| Wide    | ≥ 1440px    | Half-bleed portrait at full scale; teal band 128px tall   |
+| Desktop | 1024–1440px | Default content max-width; pricing 3-up                   |
+| Tablet  | 768–1023px  | Pricing 2-up; portrait crops tighter                       |
+| Mobile  | < 768px     | Pricing 1-up; hamburger nav; display drops 64 → 36px       |
 
 ### Touch Targets
 
@@ -469,6 +469,107 @@ The hero uses **half-bleed portrait subjects** — a person photographed at twil
 
 Hero portrait uses `srcset` with desktop / mobile crops — desktop favors the full half-bleed composition; mobile crops to head-and-shoulders.
 
+---
+
+# Application Shell (GEM-ZT web app)
+
+This section governs the logged-in product UI (`app/(ui)/**`) — distinct from the marketing
+system above, but built from the same token set (`lib/design/tokens.ts`). The app runs in
+**dark mode by default**; light mode swaps only the neutral surface/text tokens
+(`canvas`, `canvas-soft`, `ink`, `ink-mute`, `ink-faint`, `hairline` — see `semanticColorsLight`
+vs `semanticColorsDark` in tokens.ts). The fixed brand accents (`primary`, `primary-deep`,
+`on-primary`, `violet-soft`, `teal-deep`, `teal-mid`, `hairline-dark`, `on-dark-mute`,
+`on-dark-faint`) never change between modes.
+
+### Dark-mode surface values (default app theme)
+
+| Token          | Value               | Use                                   |
+| -------------- | -------------------- | -------------------------------------- |
+| `canvas`       | `#1c1a2e`            | Card / input surface                   |
+| `canvas-soft`  | `#100e1c`            | Page background (behind cards)         |
+| `ink`          | `#e9e7f1`            | Primary text (near-white, never pure)  |
+| `ink-mute`     | `#a5a2b8`            | Secondary text, descriptions           |
+| `ink-faint`    | `#78758f`            | Tertiary / metadata text               |
+| `hairline`     | `#302b44`            | Card borders, dividers                 |
+| `primary`      | `#1b1938`            | Sidebar background (fixed)             |
+| `primary-deep` | `#0e0c1f`            | Sidebar active/hover row, pressed state |
+| `hairline-dark`| `#3f3a52`            | Borders on dark surfaces (inputs, sidebar footer) |
+| `on-dark-mute` | `#bcbac9`            | Sidebar link default text              |
+| `on-dark-faint`| `#5a5772`            | Sidebar section labels, footer text    |
+
+### Sidebar & navigation
+
+**Structure.** The sidebar (`272px` fixed width, `{colors.primary}` background) is a single
+column split into three stacked, clearly labeled groups plus a persistent footer — never a
+flat link list. Each group has an uppercase `{typography.micro}` label
+(`{colors.on-dark-faint}` for Workspace/Organization, `#5bd6c4` teal-tinted for Instance Admin)
+with an `1px solid #2a2745` divider above it.
+
+1. **Workspace** (always visible, every authenticated org member): Networks, API Keys, Audit
+   Log, API Docs, Account. This is the "where do I go" group — read/write day-to-day tools,
+   no role gating.
+2. **Organization** (always visible — holds the org switcher `<select>` directly under the
+   group label so switching orgs lives with organization concerns, not in the footer). Below
+   the switcher, **Members** (with an **Invitations** tree-child) is gated to org role
+   `admin` or `owner` — hidden entirely for `viewer`/`editor`.
+3. **Instance Admin** (gated to `isSuperAdmin` only): Status, Organizations. This group gets a
+   distinct visual treatment so a super-admin can find it at a glance and a regular admin never
+   sees it: `2px solid {colors.surface-teal-mid}` left border, `rgba(14,48,48,0.16)` tinted
+   background wash, `8px` radius on the right corners only, and the teal-tinted `#5bd6c4` label
+   color. This is the only place teal appears in the app shell — reserved exclusively to mark
+   instance-level admin surfaces, echoing the marketing system's teal-as-signal-color rule.
+
+**Tree / hierarchy convention.** A nav item that has a sub-page (e.g. Networks → Pending,
+Members → Invitations) renders its child indented `19px` with `12px` of left padding, connected
+by a `1px solid #39355a` vertical line (running the height of the gap) joined to a `12px`
+horizontal tick at the child's vertical center — a plain CSS-border tree, not decorative icons.
+Child rows use `13.5px` type (vs `14px` for top-level) to reinforce depth.
+
+**Row states.** Default row: `{colors.on-dark-mute}` text, transparent background,
+`7px` border radius. Active row: white text, `{colors.primary-deep}` background, `600` weight.
+Hover (not yet in the static mock, implement to match): `{colors.primary-deep}` background at
+reduced opacity.
+
+**Badges.** Counts (e.g. pending join requests) render as a small pill:
+`{colors.hairline-dark}` background, `{colors.ink}`-equivalent light text, `99px` radius,
+`11px` type, `1px 6px` padding — right-aligned in the row.
+
+**Footer.** Bottom of the sidebar, above the `1px solid #2a2745` top border: theme toggle and
+sign-out link only, `{colors.on-dark-mute}` text at `13px`. The organization switcher does
+**not** live here — it belongs in the Organization nav group (see above).
+
+### Logo & favicon
+
+The GEM-ZT mark is a **wireframe diamond** (a square rotated 45°, drawn as an outlined
+polygon — not a filled shape) containing the letters **"ZT"** centered inside, both stroked in
+`{colors.surface-violet-soft}` (`#c9b4fa`) against the indigo sidebar. Construction (24×24
+viewBox): diamond polygon points `12,2.5 21.5,12 12,21.5 2.5,12`, `1.4px` stroke, `round` line
+join; label text centered with `text-anchor="middle"` and `dominant-baseline="central"` at
+`7.5px` / `700` weight. Used both as the sidebar wordmark icon (next to "GEM-ZT" in
+`{typography.heading-lg}`-equivalent weight 600) and as the site favicon (same mark, with an
+opaque `{colors.primary}` `24×24` background square behind it so it reads on any browser tab
+background).
+
+### Content surfaces
+
+App content cards reuse `card-feature-light`'s shape at dark values: `{colors.canvas}`
+background, `1px solid {colors.hairline}` border, `{rounded.lg}` (12px) radius, `24–32px`
+padding. Section headings are `{typography.heading-lg}`-equivalent (20px / 600) in white;
+supporting copy is `14px` in `{colors.ink-mute}`. Primary actions use `button-primary-dark`;
+secondary/destructive-adjacent actions (Download, Restore) use `button-secondary-outline`.
+
+### Role-visibility model (drives every gate above)
+
+| Surface                          | Viewer | Editor | Admin | Owner | Super-admin |
+| --------------------------------- | :----: | :----: | :---: | :---: | :---------: |
+| Networks, API Keys, Audit Log, API Docs, Account | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Organization switcher             | ✓      | ✓      | ✓     | ✓     | ✓            |
+| Members & Invitations             |        |        | ✓     | ✓     | ✓            |
+| Status, Organizations (Instance Admin) |   |        |       |       | ✓            |
+
+Reference implementation: `App Shell.dc.html` (Design Components prototype) — its `role` /
+`isSuperAdmin` tweak props exist specifically to preview every row of this table live.
+
 ## Iteration Guide
 
 1. Focus on ONE component at a time.
@@ -477,3 +578,7 @@ Hero portrait uses `srcset` with desktop / mobile crops — desktop favors the f
 4. Default body to `{typography.body-md}`; reserve `{typography.body-lg}` for marketing leads.
 5. Keep the three-canvas rhythm (indigo / white / teal) — adding a fourth canvas color breaks the system.
 6. The closing teal band is non-negotiable — every marketing page resolves there.
+7. In the app shell, keep teal reserved to the Instance Admin group — introducing it elsewhere
+   dilutes it as an admin-only signal.
+8. Any new sidebar item must join an existing group (Workspace / Organization / Instance
+   Admin) and follow the role-visibility table above — don't add ungated top-level links.

@@ -3,3 +3,7 @@ node_modules
 .git
 *.db
 .env
+
+# Design-tool bundled exports (one-off prototype artifacts, not source of truth)
+*.dc.html
+*standalone*.html
