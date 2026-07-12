@@ -18,7 +18,23 @@ const members = [
   { userId: 'u3', username: 'root-admin', role: 'superadmin' },
 ];
 
-function stubFetch(meRole: string, opts: { mutationStatus?: number; mutationBody?: unknown } = {}) {
+interface StubOrg {
+  id: string;
+  name: string;
+  slug: string;
+  role: string | null;
+}
+
+function stubFetch(
+  meRole: string,
+  opts: {
+    mutationStatus?: number;
+    mutationBody?: unknown;
+    orgs?: StubOrg[];
+    orgsStatus?: number;
+  } = {}
+) {
+  const orgs = opts.orgs ?? [{ id: ORG_ID, name: 'Acme', slug: 'acme', role: meRole }];
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url === '/api/v1/me') {
       return new Response(
@@ -29,6 +45,9 @@ function stubFetch(meRole: string, opts: { mutationStatus?: number; mutationBody
         }),
         { status: 200 }
       );
+    }
+    if (url === '/api/v1/orgs') {
+      return new Response(JSON.stringify({ orgs }), { status: opts.orgsStatus ?? 200 });
     }
     if (init?.method === 'PATCH') {
       const status = opts.mutationStatus ?? 200;
@@ -67,36 +86,35 @@ describe('OrgMembers', () => {
     renderWithQuery(<OrgMembers orgId={ORG_ID} />);
     await screen.findByText('root-admin');
     expect(screen.getByText(/super-admin/i)).toBeInTheDocument();
-    // No select or remove button should exist in the root-admin row.
     const row = screen.getByText('root-admin').closest('tr')!;
     expect(row.querySelector('select')).toBeNull();
     expect(row.querySelector('button')).toBeNull();
   });
 
-  it('owner caller sees editable role selects, remove buttons, and the add-member form', async () => {
+  it('owner caller sees editable role selects, remove buttons, and the create-user form', async () => {
     stubFetch('owner');
     renderWithQuery(<OrgMembers orgId={ORG_ID} />);
     await screen.findByText('alice');
     expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /remove/i }).length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /add member/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create user/i })).toBeInTheDocument();
   });
 
-  it('admin caller also sees editable controls and the add-member form', async () => {
+  it('admin caller also sees editable controls and the create-user form', async () => {
     stubFetch('admin');
     renderWithQuery(<OrgMembers orgId={ORG_ID} />);
     await screen.findByText('alice');
     expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /add member/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create user/i })).toBeInTheDocument();
   });
 
-  it('viewer caller sees read-only roles with no controls and no add-member form', async () => {
+  it('viewer caller sees read-only roles with no controls and no create-user form', async () => {
     stubFetch('viewer');
     renderWithQuery(<OrgMembers orgId={ORG_ID} />);
     await screen.findByText('alice');
     expect(screen.queryAllByRole('combobox')).toHaveLength(0);
     expect(screen.queryByRole('button', { name: /remove/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /add member/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /create user/i })).toBeNull();
   });
 
   it('editor caller sees read-only roles with no controls', async () => {
@@ -147,13 +165,13 @@ describe('OrgMembers', () => {
     expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'DELETE')).toBeUndefined();
   });
 
-  it('adds a member via POST with username/password/role', async () => {
+  it('creates a user via POST with username/password/role in the current org', async () => {
     const fetchMock = stubFetch('owner');
     renderWithQuery(<OrgMembers orgId={ORG_ID} />);
     await screen.findByText('alice');
     await userEvent.type(screen.getByLabelText(/username/i), 'newbie');
     await userEvent.type(screen.getByLabelText(/password/i), 'supersecretpw');
-    await userEvent.click(screen.getByRole('button', { name: /add member/i }));
+    await userEvent.click(screen.getByRole('button', { name: /create user/i }));
     await waitFor(() => {
       const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
       expect(post).toBeDefined();
@@ -180,23 +198,7 @@ describe('OrgMembers', () => {
     expect(fetchMock).toHaveBeenCalled();
   });
 
-  it('surfaces a 403 error from add-member', async () => {
-    stubFetch('admin', {
-      mutationStatus: 403,
-      mutationBody: {
-        error: { code: 'FORBIDDEN', message: 'Only an owner may grant the owner role.' },
-      },
-    });
-    renderWithQuery(<OrgMembers orgId={ORG_ID} />);
-    await screen.findByText('alice');
-    await userEvent.type(screen.getByLabelText(/username/i), 'newowner');
-    await userEvent.type(screen.getByLabelText(/password/i), 'supersecretpw');
-    await userEvent.selectOptions(screen.getByLabelText(/^role$/i), 'owner');
-    await userEvent.click(screen.getByRole('button', { name: /add member/i }));
-    expect(await screen.findByText(/only an owner may grant the owner role/i)).toBeInTheDocument();
-  });
-
-  it('surfaces a 409 username-taken error from add-member', async () => {
+  it('surfaces a server error from create-user', async () => {
     stubFetch('owner', {
       mutationStatus: 409,
       mutationBody: {
@@ -207,7 +209,85 @@ describe('OrgMembers', () => {
     await screen.findByText('alice');
     await userEvent.type(screen.getByLabelText(/username/i), 'alice');
     await userEvent.type(screen.getByLabelText(/password/i), 'supersecretpw');
-    await userEvent.click(screen.getByRole('button', { name: /add member/i }));
+    await userEvent.click(screen.getByRole('button', { name: /create user/i }));
     expect(await screen.findByText(/already in use/i)).toBeInTheDocument();
+  });
+
+  it("role options exclude ranks at or above an admin caller's own rank", async () => {
+    stubFetch('admin');
+    renderWithQuery(<OrgMembers orgId={ORG_ID} />);
+    await screen.findByText('alice');
+    const roleSelect = (await screen.findByLabelText(/^role$/i)) as HTMLSelectElement;
+    const optionValues = Array.from(roleSelect.options).map(o => o.value);
+    expect(optionValues).toEqual(['editor', 'viewer']);
+  });
+
+  it('owner caller sees all four role options', async () => {
+    stubFetch('owner');
+    renderWithQuery(<OrgMembers orgId={ORG_ID} />);
+    await screen.findByText('alice');
+    const roleSelect = (await screen.findByLabelText(/^role$/i)) as HTMLSelectElement;
+    const optionValues = Array.from(roleSelect.options).map(o => o.value);
+    expect(optionValues).toEqual(['owner', 'admin', 'editor', 'viewer']);
+  });
+
+  it('a single manageable org renders a read-only label, not a select', async () => {
+    stubFetch('owner');
+    renderWithQuery(<OrgMembers orgId={ORG_ID} />);
+    await screen.findByText('alice');
+    expect(screen.queryByLabelText(/^organization$/i)).toBeNull();
+    expect(await screen.findByText('Acme')).toBeInTheDocument();
+  });
+
+  it('multiple manageable orgs render an organization select defaulting to the current org', async () => {
+    stubFetch('owner', {
+      orgs: [
+        { id: ORG_ID, name: 'Acme', slug: 'acme', role: 'owner' },
+        { id: 'org-2', name: 'Globex', slug: 'globex', role: 'owner' },
+      ],
+    });
+    renderWithQuery(<OrgMembers orgId={ORG_ID} />);
+    await screen.findByText('alice');
+    const orgSelect = (await screen.findByLabelText(/^organization$/i)) as HTMLSelectElement;
+    expect(orgSelect.value).toBe(ORG_ID);
+    const optionLabels = Array.from(orgSelect.options).map(o => o.textContent);
+    expect(optionLabels).toEqual(['Acme', 'Globex']);
+  });
+
+  it('creating a user in a different org posts to that org and shows a cross-org success message', async () => {
+    const fetchMock = stubFetch('owner', {
+      orgs: [
+        { id: ORG_ID, name: 'Acme', slug: 'acme', role: 'owner' },
+        { id: 'org-2', name: 'Globex', slug: 'globex', role: 'owner' },
+      ],
+      mutationBody: { member: { userId: 'u5', username: 'crossorg', role: 'viewer' } },
+    });
+    renderWithQuery(<OrgMembers orgId={ORG_ID} />);
+    await screen.findByText('alice');
+    const orgSelect = await screen.findByLabelText(/^organization$/i);
+    await userEvent.selectOptions(orgSelect, 'org-2');
+    await userEvent.type(screen.getByLabelText(/username/i), 'crossorg');
+    await userEvent.type(screen.getByLabelText(/password/i), 'supersecretpw');
+    await userEvent.click(screen.getByRole('button', { name: /create user/i }));
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+      expect(post).toBeDefined();
+      expect(post![0]).toBe('/api/v1/orgs/org-2/members');
+    });
+    expect(await screen.findByText(/globex/i)).toBeInTheDocument();
+  });
+
+  it('falls back to the current org when GET /api/v1/orgs fails', async () => {
+    const fetchMock = stubFetch('owner', { orgsStatus: 500 });
+    renderWithQuery(<OrgMembers orgId={ORG_ID} />);
+    await screen.findByText('alice');
+    await userEvent.type(screen.getByLabelText(/username/i), 'newbie');
+    await userEvent.type(screen.getByLabelText(/password/i), 'supersecretpw');
+    await userEvent.click(screen.getByRole('button', { name: /create user/i }));
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+      expect(post).toBeDefined();
+      expect(post![0]).toBe(`/api/v1/orgs/${ORG_ID}/members`);
+    });
   });
 });

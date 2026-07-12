@@ -1,15 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Pill } from '@/components/ui/Pill';
-
-const ORG_ROLES = ['owner', 'admin', 'editor', 'viewer'] as const;
-type OrgRole = (typeof ORG_ROLES)[number];
+import { ORG_ROLES, ROLE_RANK, type OrgRole } from '@/lib/authz/roles';
 
 interface Member {
   userId: string;
@@ -20,6 +18,13 @@ interface Member {
 interface MeResponse {
   user: { isSuperAdmin: boolean };
   memberships: { orgId: string; role: string }[];
+}
+
+interface OrgOption {
+  id: string;
+  name: string;
+  slug: string;
+  role: OrgRole | null;
 }
 
 export function OrgMembers({ orgId }: { orgId: string }) {
@@ -43,9 +48,42 @@ export function OrgMembers({ orgId }: { orgId: string }) {
     },
   });
 
+  const me = meQuery.data;
+  const myRole = me?.memberships.find(m => m.orgId === orgId)?.role;
+  const isSuperAdmin = Boolean(me?.user.isSuperAdmin);
+  const canManage = Boolean(isSuperAdmin || myRole === 'owner' || myRole === 'admin');
+
+  const orgsQuery = useQuery<{ orgs: OrgOption[] }>({
+    queryKey: ['orgs'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/orgs');
+      if (!res.ok) throw new Error('Failed to load organizations.');
+      return res.json();
+    },
+    enabled: canManage,
+  });
+
+  const manageableOrgs = useMemo(() => {
+    const orgs = orgsQuery.data?.orgs ?? [];
+    if (isSuperAdmin) return orgs;
+    return orgs.filter(o => o.role === 'admin' || o.role === 'owner');
+  }, [orgsQuery.data, isSuperAdmin]);
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<OrgRole>('viewer');
+  const [targetOrgId, setTargetOrgId] = useState(orgId);
+  const [createdMessage, setCreatedMessage] = useState<string | null>(null);
+
+  const targetOrgRole = manageableOrgs.find(o => o.id === targetOrgId)?.role ?? null;
+  const grantableRoles = useMemo(() => {
+    if (isSuperAdmin || !targetOrgRole || targetOrgRole === 'owner') return ORG_ROLES;
+    return ORG_ROLES.filter(r => ROLE_RANK[r] < ROLE_RANK[targetOrgRole as OrgRole]);
+  }, [isSuperAdmin, targetOrgRole]);
+
+  useEffect(() => {
+    if (!grantableRoles.includes(role)) setRole('viewer');
+  }, [grantableRoles, role]);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ['org-members', orgId] });
@@ -80,7 +118,8 @@ export function OrgMembers({ orgId }: { orgId: string }) {
 
   const addMember = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/v1/orgs/${orgId}/members`, {
+      setCreatedMessage(null);
+      const res = await fetch(`/api/v1/orgs/${targetOrgId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password, role }),
@@ -92,16 +131,20 @@ export function OrgMembers({ orgId }: { orgId: string }) {
       return res.json();
     },
     onSuccess: () => {
+      if (targetOrgId === orgId) {
+        invalidate();
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['org-members', targetOrgId] });
+        const org = manageableOrgs.find(o => o.id === targetOrgId);
+        setCreatedMessage(
+          `${username} created and added to ${org?.name ?? 'the selected organization'}.`
+        );
+      }
       setUsername('');
       setPassword('');
       setRole('viewer');
-      invalidate();
     },
   });
-
-  const me = meQuery.data;
-  const myRole = me?.memberships.find(m => m.orgId === orgId)?.role;
-  const canManage = Boolean(me?.user.isSuperAdmin || myRole === 'owner' || myRole === 'admin');
 
   function confirmRemove(member: Member) {
     if (window.confirm(`Remove "${member.username}" from this organization?`)) {
@@ -200,7 +243,7 @@ export function OrgMembers({ orgId }: { orgId: string }) {
 
       {canManage && (
         <Card>
-          <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Add member</h2>
+          <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Create user</h2>
           <form
             className="flex flex-wrap items-end gap-2"
             onSubmit={e => {
@@ -228,6 +271,29 @@ export function OrgMembers({ orgId }: { orgId: string }) {
                 className="w-48"
               />
             </label>
+            {manageableOrgs.length > 1 ? (
+              <label className="text-sm text-ink-mute">
+                Organization
+                <select
+                  value={targetOrgId}
+                  onChange={e => setTargetOrgId(e.target.value)}
+                  className="mt-1 block rounded-sm border border-hairline bg-canvas px-3 py-2.5 text-base text-ink focus:border-hairline-dark focus:outline-none"
+                >
+                  {manageableOrgs.map(o => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <div className="text-sm text-ink-mute">
+                Organization
+                <div className="mt-1 text-ink">
+                  {manageableOrgs[0]?.name ?? 'this organization'}
+                </div>
+              </div>
+            )}
             <label className="text-sm text-ink-mute">
               Role
               <select
@@ -235,7 +301,7 @@ export function OrgMembers({ orgId }: { orgId: string }) {
                 onChange={e => setRole(e.target.value as OrgRole)}
                 className="mt-1 block rounded-sm border border-hairline bg-canvas px-3 py-2.5 text-base text-ink focus:border-hairline-dark focus:outline-none"
               >
-                {ORG_ROLES.map(r => (
+                {grantableRoles.map(r => (
                   <option key={r} value={r}>
                     {r}
                   </option>
@@ -246,7 +312,7 @@ export function OrgMembers({ orgId }: { orgId: string }) {
               type="submit"
               disabled={addMember.isPending || username === '' || password === ''}
             >
-              Add member
+              Create user
             </Button>
           </form>
           {addMember.isError && (
@@ -254,6 +320,7 @@ export function OrgMembers({ orgId }: { orgId: string }) {
               {(addMember.error as Error).message}
             </p>
           )}
+          {createdMessage && <p className="mt-2 text-sm text-ink-mute">{createdMessage}</p>}
         </Card>
       )}
     </div>
