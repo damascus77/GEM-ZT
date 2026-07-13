@@ -130,6 +130,8 @@ export function MemberRow({
   presence?: PresenceEntry;
 }) {
   const queryClient = useQueryClient();
+  const [name, setName] = useState(member.name);
+  useEffect(() => setName(member.name), [member.name]);
   const serverIps = member.ipAssignments.join(', ');
   const [ips, setIps] = useState(serverIps);
   // Re-seed from the server (e.g. the controller auto-assigns an IP after
@@ -247,8 +249,18 @@ export function MemberRow({
           <MemberPresenceInfo memberId={member.memberId} presence={presence} />
         </td>
         <td className="py-3 pr-4">
-          <div className="wght-540 text-ink">{member.name || '—'}</div>
-          <div className="font-mono text-xs text-ink-mute">{member.memberId}</div>
+          <Input
+            value={name}
+            placeholder="Nickname"
+            disabled={degraded || patch.isPending}
+            onChange={e => setName(e.target.value)}
+            onBlur={() => {
+              if (name !== member.name) patch.mutate({ name });
+            }}
+            className="mt-0 wght-540 text-ink"
+            aria-label={`Nickname for ${member.memberId}`}
+          />
+          <div className="mt-1 font-mono text-xs text-ink-mute">{member.memberId}</div>
         </td>
         <td className="py-3 pr-4">
           <Button

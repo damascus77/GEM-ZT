@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { dateInputToEndOfDayIso } from '@/lib/util/date';
+import { ORG_ROLES, type OrgRole } from '@/lib/authz/roles';
 
 interface ApiKeyRow {
   id: string;
@@ -28,12 +29,13 @@ export default function ApiKeysPage() {
   });
 
   const [name, setName] = useState('');
+  const [role, setRole] = useState<OrgRole>('viewer');
   const [expiresAt, setExpiresAt] = useState('');
   const [revealed, setRevealed] = useState<string | null>(null);
 
   const create = useMutation({
     mutationFn: async () => {
-      const body: Record<string, unknown> = { name };
+      const body: Record<string, unknown> = { name, role };
       if (expiresAt !== '') body.expiresAt = dateInputToEndOfDayIso(expiresAt);
       const res = await fetch('/api/v1/apikeys', {
         method: 'POST',
@@ -49,6 +51,7 @@ export default function ApiKeysPage() {
     onSuccess: body => {
       setRevealed(body.fullKey);
       setName('');
+      setRole('viewer');
       setExpiresAt('');
       queryClient.invalidateQueries({ queryKey: ['apikeys'] });
     },
@@ -91,6 +94,20 @@ export default function ApiKeysPage() {
             required
             className="mt-0 w-64"
           />
+          <label className="text-sm text-ink-mute">
+            Role
+            <select
+              className="mt-1 block rounded-sm border border-hairline bg-canvas px-2 py-2 text-sm text-ink"
+              value={role}
+              onChange={e => setRole(e.target.value as OrgRole)}
+            >
+              {ORG_ROLES.map(r => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="text-sm text-ink-mute">
             Expires (optional)
             <Input

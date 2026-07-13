@@ -7,7 +7,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex flex-1 flex-col bg-canvas-soft">
         <DegradedBanner />
-        <main className="mx-auto w-full max-w-[1100px] px-6 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1600px] px-6 py-8">{children}</main>
       </div>
     </div>
   );

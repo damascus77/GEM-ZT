@@ -91,7 +91,7 @@ describe('MemberTable', () => {
   it('renders presence, IPs, latency and shows Unknown for missing peer data', async () => {
     stubFetch();
     renderWithQuery(<MemberTable nwid={NWID} />);
-    expect(await screen.findByText('laptop')).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('laptop')).toBeInTheDocument();
     expect(screen.getByText('deadbeef01')).toBeInTheDocument();
     expect(screen.getByText('Online')).toBeInTheDocument();
     expect(screen.getByText('42 ms')).toBeInTheDocument();
@@ -108,7 +108,7 @@ describe('MemberTable', () => {
       },
     });
     renderWithQuery(<MemberTable nwid={NWID} />);
-    await screen.findByText('laptop');
+    await screen.findByDisplayValue('laptop');
     expect(await screen.findByText(/last seen: 5m ago/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Presence history for deadbeef01')).toBeInTheDocument();
   });
@@ -116,7 +116,7 @@ describe('MemberTable', () => {
   it('renders no presence UI when the presence query is not stubbed (degrades gracefully)', async () => {
     stubFetch();
     renderWithQuery(<MemberTable nwid={NWID} />);
-    await screen.findByText('laptop');
+    await screen.findByDisplayValue('laptop');
     expect(screen.queryByText(/last seen:/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/^Presence history for/i)).not.toBeInTheDocument();
   });
@@ -230,9 +230,9 @@ describe('MemberTable', () => {
   it('filters members by free-text search', async () => {
     stubFetch();
     renderWithQuery(<MemberTable nwid={NWID} />);
-    await screen.findByText('laptop');
+    await screen.findByDisplayValue('laptop');
     await userEvent.type(screen.getByLabelText(/search members/i), 'laptop');
-    expect(screen.getByText('laptop')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nickname for deadbeef01')).toHaveValue('laptop');
     expect(screen.queryByText('deadbeef02')).not.toBeInTheDocument();
   });
 
@@ -293,7 +293,7 @@ describe('MemberTable', () => {
   it('renders no capability/tag controls when the rules maps are missing (not stubbed)', async () => {
     stubFetch({ withRules: false });
     renderWithQuery(<MemberTable nwid={NWID} />);
-    await screen.findByText('laptop');
+    await screen.findByDisplayValue('laptop');
     expect(screen.queryByLabelText(/^capability /i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/^tag /i)).not.toBeInTheDocument();
   });
@@ -317,6 +317,29 @@ describe('MemberTable', () => {
       );
       expect(patch).toBeDefined();
       expect(JSON.parse(patch![1]!.body as string)).toEqual({ capabilities: [2000] });
+    });
+  });
+
+  it('renders an editable nickname field seeded with the member name and PATCHes it on blur', async () => {
+    const fetchMock = stubFetch();
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByText('deadbeef02');
+
+    const nicknameInput = screen.getByLabelText('Nickname for deadbeef01') as HTMLInputElement;
+    expect(nicknameInput.value).toBe('laptop');
+
+    const emptyNicknameInput = screen.getByLabelText(
+      'Nickname for deadbeef02'
+    ) as HTMLInputElement;
+    expect(emptyNicknameInput.value).toBe('');
+    await userEvent.type(emptyNicknameInput, 'garage-pi');
+    await userEvent.tab();
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(
+        ([u, i]) => String(u).endsWith('/members/deadbeef02') && i?.method === 'PATCH'
+      );
+      expect(patch).toBeDefined();
+      expect(JSON.parse(patch![1]!.body as string)).toEqual({ name: 'garage-pi' });
     });
   });
 

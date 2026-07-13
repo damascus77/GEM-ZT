@@ -49,16 +49,24 @@ describe('ApiKeysPage', () => {
     expect(screen.getByText(/ztk_abcd1234…/)).toBeInTheDocument();
   });
 
-  it('creates a key and reveals the full key exactly once', async () => {
+  it('creates a key with a selected role and reveals the full key exactly once', async () => {
     const fetchMock = stubFetch();
     renderWithQuery(<ApiKeysPage />);
     await screen.findByText('ci');
     await userEvent.type(screen.getByPlaceholderText(/key name/i), 'new-key');
+    await userEvent.selectOptions(screen.getByLabelText(/role/i), 'editor');
     await userEvent.click(screen.getByRole('button', { name: /create key/i }));
     expect(await screen.findByText(`ztk_${'a'.repeat(48)}`)).toBeInTheDocument();
     expect(screen.getByText(/will not be shown again/i)).toBeInTheDocument();
     const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')!;
-    expect(JSON.parse(post[1]!.body as string)).toEqual({ name: 'new-key' });
+    expect(JSON.parse(post[1]!.body as string)).toEqual({ name: 'new-key', role: 'editor' });
+  });
+
+  it('defaults the role select to viewer, the least-privileged option', async () => {
+    stubFetch();
+    renderWithQuery(<ApiKeysPage />);
+    await screen.findByText('ci');
+    expect(screen.getByLabelText(/role/i)).toHaveValue('viewer');
   });
 
   it('revokes a key via DELETE after confirmation', async () => {
