@@ -8,12 +8,11 @@ import { notifyNewUnauthorizedMembers } from '@/lib/services/webhooks';
 
 type Ctx = { params: Promise<{ nwid: string }> };
 
-// Throttle presence sampling per-network so a busy members list (polled every
-// 10s per open tab) doesn't write a presence row on every request. This is a
+// Throttle presence sampling per-network to reduce database writes. This is a
 // deliberately honest limitation: presence is only ever sampled while someone
 // has the members list open — there is no background scheduler, so a network
 // nobody is viewing accumulates no history.
-const SAMPLE_INTERVAL_MS = 60_000;
+const SAMPLE_INTERVAL_MS = 120_000;
 const lastSampledAt = new Map<string, number>();
 
 async function maybeSamplePresence(nwid: string, now: number): Promise<void> {
@@ -30,7 +29,7 @@ async function maybeSamplePresence(nwid: string, now: number): Promise<void> {
 // two features can be tuned independently. Same honest limitation applies:
 // this only fires while someone is viewing the network's member list, since
 // there is no background scheduler.
-const WEBHOOK_CHECK_INTERVAL_MS = 30_000;
+const WEBHOOK_CHECK_INTERVAL_MS = 60_000;
 const lastWebhookCheckAt = new Map<string, number>();
 
 async function maybeCheckNewMemberWebhook(nwid: string, now: number): Promise<void> {

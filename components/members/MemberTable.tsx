@@ -74,6 +74,9 @@ function TagInput({
 function PresencePill({ online }: { online: boolean | null }) {
   if (online === true) return <Pill className="border-teal-mid text-teal-deep">Online</Pill>;
   if (online === false) return <Pill>Offline</Pill>;
+  // "Unknown" typically appears for newly authorized members before they establish their first connection.
+  // The ZT controller needs time to propagate member info to all peers; newly added members may take
+  // 5-10 minutes to become reachable via pings from existing members.
   return <Pill className="text-ink-faint">Unknown</Pill>;
 }
 
@@ -412,7 +415,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
       if (!res.ok) throw new Error('Failed to load members');
       return res.json();
     },
-    refetchInterval: 10000,
+    refetchInterval: parseInt(process.env.NEXT_PUBLIC_MEMBERS_REFETCH_MS ?? '30000', 10),
   });
 
   const { data: rulesData } = useQuery<RulesMaps>({
@@ -435,6 +438,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
       if (!res.ok) throw new Error('Failed to load presence');
       return res.json();
     },
+    refetchInterval: parseInt(process.env.NEXT_PUBLIC_PRESENCE_REFETCH_MS ?? '30000', 10),
   });
   const presenceMap: Record<string, PresenceEntry> = presenceData?.presence ?? {};
 

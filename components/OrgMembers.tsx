@@ -130,11 +130,19 @@ export function OrgMembers({ orgId }: { orgId: string }) {
       }
       return res.json();
     },
+    onMutate: async () => {
+      setCreatedMessage(null);
+      const newMember: Member = { userId: '', username, role };
+      queryClient.setQueryData<{ members: Member[] }>(
+        ['org-members', targetOrgId],
+        old =>
+          old
+            ? { members: [...old.members, newMember] }
+            : { members: [newMember] }
+      );
+    },
     onSuccess: () => {
-      if (targetOrgId === orgId) {
-        invalidate();
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['org-members', targetOrgId] });
+      if (targetOrgId !== orgId) {
         const org = manageableOrgs.find(o => o.id === targetOrgId);
         setCreatedMessage(
           `${username} created and added to ${org?.name ?? 'the selected organization'}.`
@@ -143,6 +151,7 @@ export function OrgMembers({ orgId }: { orgId: string }) {
       setUsername('');
       setPassword('');
       setRole('viewer');
+      queryClient.invalidateQueries({ queryKey: ['org-members', targetOrgId] });
     },
   });
 
