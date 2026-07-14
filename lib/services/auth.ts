@@ -81,6 +81,24 @@ export function createSession(userId: string): Promise<Session> {
   });
 }
 
+export async function createSessionWithOrg(userId: string): Promise<Session> {
+  const id = randomBytes(32).toString('hex');
+  const session = await getDb().session.create({
+    data: { id, userId, expiresAt: new Date(Date.now() + SESSION_TTL_MS) },
+  });
+  const firstMembership = await getDb().membership.findFirst({
+    where: { userId },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (firstMembership) {
+    return getDb().session.update({
+      where: { id: session.id },
+      data: { activeOrgId: firstMembership.orgId },
+    });
+  }
+  return session;
+}
+
 /**
  * Verify a username/password pair only — no session is created. Used by the
  * login route so a TOTP challenge (for 2FA-enabled users) can be interposed

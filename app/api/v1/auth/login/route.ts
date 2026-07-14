@@ -4,7 +4,7 @@ import { apiError, handleRouteError } from '@/lib/api/errors';
 import { clientIp } from '@/lib/api/net';
 import {
   authenticateUser,
-  createSession,
+  createSessionWithOrg,
   SESSION_COOKIE,
   sessionCookieOptions,
 } from '@/lib/services/auth';
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     ipLimiter.reset(ipKey);
     // Opportunistic, self-throttled cleanup of expired sessions / old audit rows.
     await runRetention();
-    const session = await createSession(user.id);
+    const session = await createSessionWithOrg(user.id);
     const res = NextResponse.json({
       user: { id: user.id, username: user.username, role: user.role },
     });
