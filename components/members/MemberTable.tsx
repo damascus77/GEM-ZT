@@ -260,7 +260,7 @@ export function MemberRow({
             onBlur={() => {
               if (name !== member.name) patch.mutate({ name });
             }}
-            className="mt-0 wght-540 text-ink"
+            className="wght-540 mt-0 text-ink"
             aria-label={`Nickname for ${member.memberId}`}
           />
           <div className="mt-1 font-mono text-xs text-ink-mute">{member.memberId}</div>
@@ -404,6 +404,15 @@ export function MemberRow({
 const selectClass =
   'mt-0 bg-canvas text-ink text-sm rounded-sm border border-hairline px-2 py-2 focus:outline-none';
 
+// Parse a poll-interval env override, falling back to the default for anything
+// non-numeric or non-positive. Guards against a garbage value (e.g. "30s")
+// becoming NaN, which React Query would treat as either "never poll" or a 0ms
+// hot loop depending on version — both worse than the intended default.
+function pollInterval(raw: string | undefined, fallbackMs: number): number {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallbackMs;
+}
+
 export function MemberTable({ nwid }: { nwid: string }) {
   const queryClient = useQueryClient();
   const controller = useControllerStatus();
@@ -415,7 +424,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
       if (!res.ok) throw new Error('Failed to load members');
       return res.json();
     },
-    refetchInterval: parseInt(process.env.NEXT_PUBLIC_MEMBERS_REFETCH_MS ?? '30000', 10),
+    refetchInterval: pollInterval(process.env.NEXT_PUBLIC_MEMBERS_REFETCH_MS, 30000),
   });
 
   const { data: rulesData } = useQuery<RulesMaps>({
@@ -438,7 +447,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
       if (!res.ok) throw new Error('Failed to load presence');
       return res.json();
     },
-    refetchInterval: parseInt(process.env.NEXT_PUBLIC_PRESENCE_REFETCH_MS ?? '30000', 10),
+    refetchInterval: pollInterval(process.env.NEXT_PUBLIC_PRESENCE_REFETCH_MS, 30000),
   });
   const presenceMap: Record<string, PresenceEntry> = presenceData?.presence ?? {};
 

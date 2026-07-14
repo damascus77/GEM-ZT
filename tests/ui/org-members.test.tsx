@@ -213,6 +213,25 @@ describe('OrgMembers', () => {
     expect(await screen.findByText(/already in use/i)).toBeInTheDocument();
   });
 
+  it('rolls back the optimistically-inserted member row when create-user fails', async () => {
+    stubFetch('owner', {
+      mutationStatus: 409,
+      mutationBody: {
+        error: { code: 'USERNAME_TAKEN', message: 'That username is already in use.' },
+      },
+    });
+    renderWithQuery(<OrgMembers orgId={ORG_ID} />);
+    await screen.findByText('alice');
+    // 'ghost' is not in the base member list, so if the optimistic insert is not
+    // rolled back on error it would linger as a phantom member cell.
+    await userEvent.type(screen.getByLabelText(/username/i), 'ghost');
+    await userEvent.type(screen.getByLabelText(/password/i), 'supersecretpw');
+    await userEvent.click(screen.getByRole('button', { name: /create user/i }));
+    expect(await screen.findByText(/already in use/i)).toBeInTheDocument();
+    // The phantom row must be gone — no member table cell named "ghost".
+    expect(screen.queryByRole('cell', { name: 'ghost' })).toBeNull();
+  });
+
   it("role options exclude ranks at or above an admin caller's own rank", async () => {
     stubFetch('admin');
     renderWithQuery(<OrgMembers orgId={ORG_ID} />);

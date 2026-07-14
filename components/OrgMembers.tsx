@@ -130,16 +130,26 @@ export function OrgMembers({ orgId }: { orgId: string }) {
       }
       return res.json();
     },
+    // Optimistically insert the new member so the list updates instantly instead
+    // of blanking on a full refetch. Snapshot the previous cache so onError can
+    // roll the phantom row back if the create fails.
     onMutate: async () => {
       setCreatedMessage(null);
-      const newMember: Member = { userId: '', username, role };
-      queryClient.setQueryData<{ members: Member[] }>(
-        ['org-members', targetOrgId],
-        old =>
-          old
-            ? { members: [...old.members, newMember] }
-            : { members: [newMember] }
+      const key = ['org-members', targetOrgId] as const;
+      // Cancel any in-flight refetch so it can't land after — and clobber — our
+      // optimistic write.
+      await queryClient.cancelQueries({ queryKey: key });
+      const prev = queryClient.getQueryData<{ members: Member[] }>(key);
+      // A stable sentinel id keeps React keys unique even across rapid or
+      // retried creates; the real id arrives with the onSuccess invalidation.
+      const newMember: Member = { userId: `optimistic-${username}`, username, role };
+      queryClient.setQueryData<{ members: Member[] }>(key, old =>
+        old ? { members: [...old.members, newMember] } : { members: [newMember] }
       );
+      return { prev, key };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(context.key, context.prev);
     },
     onSuccess: () => {
       if (targetOrgId !== orgId) {
