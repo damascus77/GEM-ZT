@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db/client';
-import { listMembers } from './members';
+import { listMembers, type MemberView } from './members';
 
 export interface PresenceSample {
   memberId: string;
@@ -30,11 +30,17 @@ export async function recordPresenceSamples(
  * Sample current presence for every member of a network and persist it.
  * Best-effort, like audit/retention: never throws, so callers can await it
  * from a hot path (e.g. the members LIST route) without risking the response.
+ *
+ * Callers that have already loaded the member list (the members LIST route does)
+ * can pass it in to avoid a second N+1 controller fan-out on each sampling tick.
  */
-export async function sampleNetworkPresence(nwid: string): Promise<void> {
+export async function sampleNetworkPresence(
+  nwid: string,
+  members?: MemberView[]
+): Promise<void> {
   try {
-    const members = await listMembers(nwid);
-    const samples = members
+    const roster = members ?? (await listMembers(nwid));
+    const samples = roster
       .filter(m => m.online !== null)
       .map(m => ({ memberId: m.memberId, online: m.online as boolean }));
     await recordPresenceSamples(nwid, samples);

@@ -8,7 +8,9 @@ export async function getControllerClient(): Promise<ControllerClient> {
   if (cached) return cached;
   const baseUrl = getEnv('ZT_CONTROLLER_URL', 'http://zerotier-controller:9993');
   const token = await readAuthToken();
-  cached = new ControllerClient({ baseUrl, token });
+  const parsedTimeout = Number(getEnv('ZT_CONTROLLER_TIMEOUT_MS', '8000'));
+  const timeoutMs = Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : 8000;
+  cached = new ControllerClient({ baseUrl, token, timeoutMs });
   return cached;
 }
 
