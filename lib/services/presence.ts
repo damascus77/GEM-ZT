@@ -34,10 +34,7 @@ export async function recordPresenceSamples(
  * Callers that have already loaded the member list (the members LIST route does)
  * can pass it in to avoid a second N+1 controller fan-out on each sampling tick.
  */
-export async function sampleNetworkPresence(
-  nwid: string,
-  members?: MemberView[]
-): Promise<void> {
+export async function sampleNetworkPresence(nwid: string, members?: MemberView[]): Promise<void> {
   try {
     const roster = members ?? (await listMembers(nwid));
     const samples = roster
