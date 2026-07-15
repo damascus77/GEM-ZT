@@ -46,3 +46,22 @@ Legend: **[P0]** blocker / do now · **[P1]** important · **[P2]** nice-to-have
 9. **Presence history / metrics depth.** Both features are live but sampling is opportunistic
    (only while a page is open) — a real background scheduler would make "offline > N days"
    bulk-select and metrics accurate between page visits.
+
+
+
+## Added by Project Manager:
+
+M1: Increase usability of member sections in the network. Currently there are long load times when adding members or refreshing the page to get updated status. I want the online or offline times to be nearly immediate and for all values to be able to live changes without refreshing the page.
+
+M2: User account creation is still walled off from a UI/UX thing where you have to create a new organization prior to being able to create accounts. Move the organization tab switch to the bottom of the side taskbar tree and seperate out account management into its own section that is visual to accounts with the proper roles scoped.
+
+M3: When filling in fields in the members and routes & ip section of a selected network I want it to be clear once a valid field has been typed and for it to bouble as a selected field within the box
+
+M4: design overhaul and fuction overhaul of network members. Take insiration from the link and redesign the network page. Functions available from these screenshots should be added. https://github.com/sinamics/ztnet/blob/main/docs/images/showcase/network_local.jpg, https://github.com/sinamics/ztnet/blob/main/docs/images/showcase/member_options.jpg
+
+M4: Current boxes take up too much vertical space. I would prefer to not have to scroll down to access settings or info that is frequently needed. Flow rules and DNS can stay at the bottom and require a scroll because they are not used as often but members and routes and IP pools should be easily accessed.
+
+M5: Adding a Admin (super-user/owner role) ZT Controller page to show the full status of the controller itself and its settings. Refrence: https://github.com/sinamics/ztnet/blob/main/docs/images/showcase/admin_controller.jpg
+
+M6: Read through ZTNETs github release list of previous version release note to generate ideas to add to the TODO.md. Refrence: https://github.com/sinamics/ztnet/releases#release-v0.8.2
+
