@@ -23,3 +23,16 @@ export async function getControllerClient(): Promise<ControllerClient> {
 export function invalidateControllerClient(): void {
   cached = null;
 }
+
+const DEFAULT_CACHE_TTL_MS = 3000;
+
+/**
+ * TTL (ms) for coalescing/caching controller reads (peers, member rosters).
+ * Kept small so data stays fresh; it exists to collapse overlapping polls/tabs
+ * into one controller sweep rather than to serve stale data. Validated the same
+ * way as ZT_CONTROLLER_TIMEOUT_MS: non-numeric/non-positive falls back.
+ */
+export function getControllerCacheTtlMs(): number {
+  const parsed = Number(getEnv('ZT_CONTROLLER_CACHE_TTL_MS', String(DEFAULT_CACHE_TTL_MS)));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_CACHE_TTL_MS;
+}

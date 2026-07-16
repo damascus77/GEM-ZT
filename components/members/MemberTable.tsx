@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Pill } from '@/components/ui/Pill';
+import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useControllerStatus } from '@/components/DegradedBanner';
 import {
   filterAndSortMembers,
@@ -14,6 +15,8 @@ import {
   type MemberSort,
 } from '@/lib/util/memberFilter';
 import { timeAgo } from '@/lib/util/timeAgo';
+
+export type ConnectionType = 'direct' | 'relayed';
 
 export interface MemberViewClient {
   memberId: string;
@@ -26,6 +29,7 @@ export interface MemberViewClient {
   ipAssignments: string[];
   lastAuthorizedTime: number;
   online: boolean | null;
+  connection: ConnectionType | null;
   latency: number | null;
   physicalAddress: string | null;
   clientVersion: string | null;
@@ -44,6 +48,10 @@ export interface PresenceEntry {
   lastSeen: string | null;
   samples: boolean[];
 }
+
+// The member table has this many columns; skeleton rows span the same count so
+// the loading placeholder lines up with the real header.
+const MEMBER_TABLE_COLUMNS = 10;
 
 function TagInput({
   label,
@@ -80,6 +88,15 @@ function PresencePill({ online }: { online: boolean | null }) {
   return <Pill className="text-ink-faint">Unknown</Pill>;
 }
 
+function ConnectionPill({ connection }: { connection: ConnectionType | null }) {
+  if (connection === 'direct')
+    return <Pill className="border-teal-mid text-teal-deep">Direct</Pill>;
+  // Relayed: reachable only via a root/relay (no direct peer-to-peer path).
+  if (connection === 'relayed') return <Pill>Relayed</Pill>;
+  // Unknown: the controller has no peer entry (e.g. never connected yet).
+  return <Pill className="text-ink-faint">—</Pill>;
+}
+
 function PresenceSparkline({ memberId, samples }: { memberId: string; samples: boolean[] }) {
   return (
     <div className="flex items-end gap-px" aria-label={`Presence history for ${memberId}`}>
@@ -113,7 +130,7 @@ function MemberPresenceInfo({
   );
 }
 
-export function MemberRow({
+function MemberRowInner({
   member,
   nwid,
   degraded,
@@ -252,6 +269,9 @@ export function MemberRow({
           <MemberPresenceInfo memberId={member.memberId} presence={presence} />
         </td>
         <td className="py-3 pr-4">
+          <ConnectionPill connection={member.connection} />
+        </td>
+        <td className="py-3 pr-4">
           <Input
             value={name}
             placeholder="Nickname"
@@ -388,7 +408,7 @@ export function MemberRow({
       </tr>
       {(patch.isError || remove.isError) && (
         <tr>
-          <td colSpan={9} className="pb-3">
+          <td colSpan={MEMBER_TABLE_COLUMNS} className="pb-3">
             <p role="alert" className="text-sm text-ink">
               {patch.isError && (patch.error as Error).message}
               {patch.isError && remove.isError && ' '}
@@ -400,6 +420,12 @@ export function MemberRow({
     </>
   );
 }
+
+// Memoized so a members poll (or an optimistic cache write to one row) only
+// re-renders the rows whose props actually changed, not every heavy row. The
+// handlers passed in from MemberTable (onChanged, onToggleSelect) and the
+// rulesMaps object are memoized there so this shallow comparison holds.
+export const MemberRow = memo(MemberRowInner);
 
 const selectClass =
   'mt-0 bg-canvas text-ink text-sm rounded-sm border border-hairline px-2 py-2 focus:outline-none';
@@ -425,6 +451,9 @@ export function MemberTable({ nwid }: { nwid: string }) {
       return res.json();
     },
     refetchInterval: pollInterval(process.env.NEXT_PUBLIC_MEMBERS_REFETCH_MS, 30000),
+    // Keep the current rows on screen during a poll refetch or filter change
+    // instead of blanking the table back to a loading state.
+    placeholderData: keepPreviousData,
   });
 
   const { data: rulesData } = useQuery<RulesMaps>({
@@ -435,10 +464,13 @@ export function MemberTable({ nwid }: { nwid: string }) {
       return res.json();
     },
   });
-  const rulesMaps: RulesMaps = {
-    capabilities: rulesData?.capabilities ?? {},
-    tags: rulesData?.tags ?? {},
-  };
+  const rulesMaps: RulesMaps = useMemo(
+    () => ({
+      capabilities: rulesData?.capabilities ?? {},
+      tags: rulesData?.tags ?? {},
+    }),
+    [rulesData]
+  );
 
   const { data: presenceData } = useQuery<{ presence: Record<string, PresenceEntry> }>({
     queryKey: ['presence', nwid],
@@ -458,7 +490,10 @@ export function MemberTable({ nwid }: { nwid: string }) {
   const [sort, setSort] = useState<MemberSort | 'default'>('default');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const onChanged = () => queryClient.invalidateQueries({ queryKey: ['members', nwid] });
+  const onChanged = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: ['members', nwid] }),
+    [queryClient, nwid]
+  );
 
   const visible = useMemo(
     () =>
@@ -472,14 +507,14 @@ export function MemberTable({ nwid }: { nwid: string }) {
     [data, search, authFilter, onlineFilter, sort]
   );
 
-  function toggleSelect(memberId: string) {
+  const toggleSelect = useCallback((memberId: string) => {
     setSelected(prev => {
       const next = new Set(prev);
       if (next.has(memberId)) next.delete(memberId);
       else next.add(memberId);
       return next;
     });
-  }
+  }, []);
 
   const bulk = useMutation({
     mutationFn: async (action: 'authorize' | 'deauthorize' | 'delete') => {
@@ -617,7 +652,13 @@ export function MemberTable({ nwid }: { nwid: string }) {
         </p>
       )}
 
-      {isLoading && <p className="text-ink-mute">Loading…</p>}
+      {isLoading && !data && (
+        <table className="w-full text-left">
+          <tbody>
+            <SkeletonRows rows={5} columns={MEMBER_TABLE_COLUMNS} />
+          </tbody>
+        </table>
+      )}
       {isError && !data && (
         <p role="alert" className="text-sm text-ink">
           Could not load members. Retrying…
@@ -648,6 +689,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
                 />
               </th>
               <th className="pb-2 pr-4">Status</th>
+              <th className="pb-2 pr-4">Connection</th>
               <th className="pb-2 pr-4">Member</th>
               <th className="pb-2 pr-4">Auth</th>
               <th className="pb-2 pr-4">Managed IPs</th>

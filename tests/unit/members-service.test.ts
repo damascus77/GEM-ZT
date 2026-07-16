@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 
-vi.mock('@/lib/controller', () => ({ getControllerClient: vi.fn() }));
+vi.mock('@/lib/controller', () => ({
+  getControllerClient: vi.fn(),
+  getControllerCacheTtlMs: () => 0,
+}));
 
 import { getControllerClient } from '@/lib/controller';
 import { ControllerApiError } from '@/lib/controller/client';
@@ -111,6 +114,43 @@ describe('members service', () => {
     const members = await listMembers(NWID);
     expect(members).toHaveLength(2);
     expect(members[0].online).toBeNull();
+  });
+
+  it('classifies a member with an active path as a direct connection', async () => {
+    const members = await listMembers(NWID);
+    const laptop = members.find(m => m.memberId === 'deadbeef01')!;
+    expect(laptop.connection).toBe('direct');
+  });
+
+  it('classifies a peer with no active path but measured latency as relayed', async () => {
+    mockClient.listPeers.mockResolvedValueOnce([
+      {
+        address: 'deadbeef02',
+        latency: 88,
+        version: '1.14.2',
+        role: 'LEAF',
+        paths: [
+          {
+            address: '198.51.100.7/9993',
+            active: false,
+            preferred: false,
+            lastReceive: 0,
+            lastSend: 0,
+          },
+        ],
+      },
+    ]);
+    const members = await listMembers(NWID);
+    const relayed = members.find(m => m.memberId === 'deadbeef02')!;
+    expect(relayed.connection).toBe('relayed');
+    // `online` stays false (no active path); connection is an independent signal.
+    expect(relayed.online).toBe(false);
+  });
+
+  it('reports connection=null when the node is not in /peer', async () => {
+    const members = await listMembers(NWID);
+    const other = members.find(m => m.memberId === 'deadbeef02')!;
+    expect(other.connection).toBeNull();
   });
 
   it('bounds concurrent per-member controller fetches and preserves order', async () => {
