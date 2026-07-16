@@ -66,3 +66,7 @@ M6: Adding a Admin (super-user/owner role) ZT Controller page to show the full s
 M7: Read through ZTNETs github release list of previous version release note to generate ideas to add to the TODO.md. Refrence: https://github.com/sinamics/ztnet/releases#release-v0.8.2
 
 M8: Extend the M3 accepted-field chip validation to IPv6 addresses and IPv6 CIDR ranges. Current implementation is intentionally IPv4-only for member managed IPs, route targets, IP pool endpoints, and the CIDR helper.
+
+M9: Once IPs are filled in and accepted empty the input box. I want to be able to enter an ip, save it and then enter another. Provide a little red "X" to remove an assigned IP at the end of a accepted IP. Also the Green IP/Route/Pool accepted box is a little hard to read with the color spec.
+
+
