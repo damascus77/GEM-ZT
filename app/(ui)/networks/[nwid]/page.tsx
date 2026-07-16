@@ -8,14 +8,19 @@ import { NetworkActions } from '@/components/networks/NetworkActions';
 export default async function NetworkDetailPage({ params }: { params: Promise<{ nwid: string }> }) {
   const { nwid } = await params;
   return (
-    <div className="flex flex-col gap-6">
-      <div>
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="wght-540 text-[28px] tracking-[-0.63px]">Network</h1>
         <p className="font-mono text-sm text-ink-mute">{nwid}</p>
       </div>
-      <NetworkSettings nwid={nwid} />
+      <section
+        aria-label="Frequent network controls"
+        className="grid items-start gap-5 xl:grid-cols-[minmax(340px,0.9fr)_minmax(520px,1.1fr)]"
+      >
+        <NetworkSettings nwid={nwid} />
+        <RoutesEditor nwid={nwid} />
+      </section>
       <MemberTable nwid={nwid} />
-      <RoutesEditor nwid={nwid} />
       <DnsEditor nwid={nwid} />
       <RulesEditor nwid={nwid} />
       <NetworkActions nwid={nwid} />

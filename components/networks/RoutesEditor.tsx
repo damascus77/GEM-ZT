@@ -5,8 +5,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { AcceptedChips } from '@/components/ui/AcceptedChip';
 import { useControllerStatus } from '@/components/DegradedBanner';
-import { cidrToPool } from '@/lib/util/cidr';
+import { cidrToPool, ipv4CidrRange, ipv4ToIntChecked } from '@/lib/util/cidr';
 import { validateRoutesAndPools } from '@/lib/util/networkValidation';
 import { useNetworkDetail } from './useNetworkDetail';
 
@@ -29,6 +30,33 @@ interface DetailResponse {
       v6AssignMode: { zt: boolean; '6plane': boolean; rfc4193: boolean };
     };
   };
+}
+
+function isValidIpAddress(value: string): boolean {
+  return ipv4ToIntChecked(value) !== null;
+}
+
+function acceptedRouteValues(route: RouteRow): Array<{ label: string; value: string }> {
+  const values: Array<{ label: string; value: string }> = [];
+  const target = route.target.trim();
+  const via = route.via?.trim() ?? '';
+  if (target !== '' && ipv4CidrRange(target) !== null) values.push({ label: 'Route', value: target });
+  if (via !== '' && ipv4ToIntChecked(via) !== null) values.push({ label: 'Gateway', value: via });
+  return values;
+}
+
+function acceptedPoolValues(pool: PoolRow): Array<{ label: string; value: string }> {
+  const start = pool.ipRangeStart.trim();
+  const end = pool.ipRangeEnd.trim();
+  return [
+    ...(start !== '' && isValidIpAddress(start) ? [{ label: 'Pool start', value: start }] : []),
+    ...(end !== '' && isValidIpAddress(end) ? [{ label: 'Pool end', value: end }] : []),
+  ];
+}
+
+function acceptedCidrValues(cidr: string): Array<{ label: string; value: string }> {
+  const trimmed = cidr.trim();
+  return trimmed !== '' && ipv4CidrRange(trimmed) !== null ? [{ label: 'CIDR', value: trimmed }] : [];
 }
 
 export function RoutesEditor({ nwid }: { nwid: string }) {
@@ -109,8 +137,8 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
   // wipes every managed route and IP pool on the live network.
   if (!seeded) {
     return (
-      <Card>
-        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Routes & IP pools</h2>
+      <Card className="!p-5">
+        <h2 className="wght-540 mb-3 text-[20px] tracking-[-0.4px]">Routes & IP pools</h2>
         {isError ? (
           <p role="alert" className="text-sm text-ink">
             Could not load routes. Retrying…
@@ -123,46 +151,51 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
   }
 
   return (
-    <Card onChange={() => setDirty(true)}>
-      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Routes & IP pools</h2>
+    <Card className="!p-5" onChange={() => setDirty(true)}>
+      <h2 className="wght-540 mb-3 text-[20px] tracking-[-0.4px]">Routes & IP pools</h2>
 
       <h3 className="wght-600 mb-2 text-sm text-ink-mute">Managed routes</h3>
-      <div className="mb-4 flex flex-col gap-2">
+      <div className="mb-3 flex flex-col gap-2">
         {routes.map((r, i) => (
-          <div key={`route-${i}`} className="flex items-center gap-2">
-            <Input
-              aria-label={`Route target ${i + 1}`}
-              value={r.target}
-              onChange={e =>
-                setRoutes(
-                  routes.map((row, j) => (j === i ? { ...row, target: e.target.value } : row))
-                )
-              }
-              className="mt-0 font-mono"
-            />
-            <Input
-              aria-label={`Route via ${i + 1}`}
-              placeholder="via (LAN gateway, optional)"
-              value={r.via ?? ''}
-              onChange={e =>
-                setRoutes(
-                  routes.map((row, j) =>
-                    j === i ? { ...row, via: e.target.value === '' ? null : e.target.value } : row
+          <div key={`route-${i}`}>
+            <div className="flex items-center gap-2">
+              <Input
+                aria-label={`Route target ${i + 1}`}
+                value={r.target}
+                onChange={e =>
+                  setRoutes(
+                    routes.map((row, j) => (j === i ? { ...row, target: e.target.value } : row))
                   )
-                )
-              }
-              className="mt-0 font-mono"
-            />
-            <Button
-              variant="outline"
-              className="shrink-0 px-3 py-2 text-sm"
-              onClick={() => {
-                setRoutes(routes.filter((_, j) => j !== i));
-                setDirty(true);
-              }}
-            >
-              Remove
-            </Button>
+                }
+                className="mt-0 font-mono"
+              />
+              <Input
+                aria-label={`Route via ${i + 1}`}
+                placeholder="via (LAN gateway, optional)"
+                value={r.via ?? ''}
+                onChange={e =>
+                  setRoutes(
+                    routes.map((row, j) =>
+                      j === i
+                        ? { ...row, via: e.target.value === '' ? null : e.target.value }
+                        : row
+                    )
+                  )
+                }
+                className="mt-0 font-mono"
+              />
+              <Button
+                variant="outline"
+                className="shrink-0 px-3 py-2 text-sm"
+                onClick={() => {
+                  setRoutes(routes.filter((_, j) => j !== i));
+                  setDirty(true);
+                }}
+              >
+                Remove
+              </Button>
+            </div>
+            <AcceptedChips values={acceptedRouteValues(r)} />
           </div>
         ))}
         <Button
@@ -178,51 +211,61 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
       </div>
 
       <h3 className="wght-600 mb-2 text-sm text-ink-mute">IP assignment pools</h3>
-      <div className="mb-4 flex flex-col gap-2">
+      <div className="mb-3 flex flex-col gap-2">
         {pools.map((p, i) => (
-          <div key={`pool-${i}`} className="flex items-center gap-2">
-            <Input
-              aria-label={`Pool start ${i + 1}`}
-              value={p.ipRangeStart}
-              onChange={e =>
-                setPools(
-                  pools.map((row, j) => (j === i ? { ...row, ipRangeStart: e.target.value } : row))
-                )
-              }
-              className="mt-0 font-mono"
-            />
-            <Input
-              aria-label={`Pool end ${i + 1}`}
-              value={p.ipRangeEnd}
-              onChange={e =>
-                setPools(
-                  pools.map((row, j) => (j === i ? { ...row, ipRangeEnd: e.target.value } : row))
-                )
-              }
-              className="mt-0 font-mono"
-            />
-            <Button
-              variant="outline"
-              className="shrink-0 px-3 py-2 text-sm"
-              onClick={() => {
-                setPools(pools.filter((_, j) => j !== i));
-                setDirty(true);
-              }}
-            >
-              Remove
-            </Button>
+          <div key={`pool-${i}`}>
+            <div className="flex items-center gap-2">
+              <Input
+                aria-label={`Pool start ${i + 1}`}
+                value={p.ipRangeStart}
+                onChange={e =>
+                  setPools(
+                    pools.map((row, j) =>
+                      j === i ? { ...row, ipRangeStart: e.target.value } : row
+                    )
+                  )
+                }
+                className="mt-0 font-mono"
+              />
+              <Input
+                aria-label={`Pool end ${i + 1}`}
+                value={p.ipRangeEnd}
+                onChange={e =>
+                  setPools(
+                    pools.map((row, j) =>
+                      j === i ? { ...row, ipRangeEnd: e.target.value } : row
+                    )
+                  )
+                }
+                className="mt-0 font-mono"
+              />
+              <Button
+                variant="outline"
+                className="shrink-0 px-3 py-2 text-sm"
+                onClick={() => {
+                  setPools(pools.filter((_, j) => j !== i));
+                  setDirty(true);
+                }}
+              >
+                Remove
+              </Button>
+            </div>
+            <AcceptedChips values={acceptedPoolValues(p)} />
           </div>
         ))}
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="10.10.0.0/16 or fd00::/112"
-            value={cidr}
-            onChange={e => setCidr(e.target.value)}
-            className="mt-0 w-64 font-mono"
-          />
-          <Button variant="outline" className="px-3 py-2 text-sm" onClick={addFromCidr}>
-            Add pool from CIDR
-          </Button>
+        <div>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="10.10.0.0/16 or fd00::/112"
+              value={cidr}
+              onChange={e => setCidr(e.target.value)}
+              className="mt-0 w-64 font-mono"
+            />
+            <Button variant="outline" className="px-3 py-2 text-sm" onClick={addFromCidr}>
+              Add pool from CIDR
+            </Button>
+          </div>
+          <AcceptedChips values={acceptedCidrValues(cidr)} />
         </div>
         {error && (
           <p role="alert" className="text-sm text-ink">
@@ -232,7 +275,7 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
       </div>
 
       <h3 className="wght-600 mb-2 text-sm text-ink-mute">Auto-assign</h3>
-      <div className="mb-4 flex flex-wrap gap-6 text-sm text-ink">
+      <div className="mb-3 flex flex-wrap gap-4 text-sm text-ink">
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={v4zt} onChange={e => setV4zt(e.target.checked)} />
           IPv4 from pools

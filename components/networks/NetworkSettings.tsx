@@ -84,8 +84,8 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
 
   if (!seeded) {
     return (
-      <Card>
-        <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Settings</h2>
+      <Card className="!p-5">
+        <h2 className="wght-540 mb-3 text-[20px] tracking-[-0.4px]">Settings</h2>
         {isError ? (
           <p role="alert" className="text-sm text-ink">
             Could not load network settings. Retrying…
@@ -98,10 +98,10 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
   }
 
   return (
-    <Card>
-      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Settings</h2>
+    <Card className="!p-5">
+      <h2 className="wght-540 mb-3 text-[20px] tracking-[-0.4px]">Settings</h2>
       <form
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-3"
         onChange={() => setDirty(true)}
         onSubmit={e => {
           e.preventDefault();
@@ -116,7 +116,7 @@ export function NetworkSettings({ nwid }: { nwid: string }) {
           Description
           <Input value={description} onChange={e => setDescription(e.target.value)} />
         </label>
-        <div className="flex flex-wrap gap-6">
+        <div className="flex flex-wrap gap-4">
           <label className="flex items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"

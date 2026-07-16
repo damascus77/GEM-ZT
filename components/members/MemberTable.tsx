@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Pill } from '@/components/ui/Pill';
+import { AcceptedChips } from '@/components/ui/AcceptedChip';
 import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useControllerStatus } from '@/components/DegradedBanner';
+import { ipv4ToIntChecked } from '@/lib/util/cidr';
 import {
   filterAndSortMembers,
   type AuthorizedFilter,
@@ -108,6 +110,15 @@ function PresenceSparkline({ memberId, samples }: { memberId: string; samples: b
       ))}
     </div>
   );
+}
+
+function acceptedIpAssignments(value: string): Array<{ label: string; value: string }> {
+  return value
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s !== '')
+    .filter(s => ipv4ToIntChecked(s) !== null)
+    .map(s => ({ label: 'IP', value: s }));
 }
 
 function MemberPresenceInfo({
@@ -352,36 +363,39 @@ function MemberRowInner({
           )}
         </td>
         <td className="min-w-52 py-3 pr-4">
-          <div className="flex gap-2">
-            <Input
-              value={ips}
-              onChange={e => {
-                setIps(e.target.value);
-                setIpsDirty(true);
-              }}
-              className="mt-0"
-              aria-label={`IP assignments for ${member.memberId}`}
-            />
-            <Button
-              variant="outline"
-              className="shrink-0 px-3 py-2 text-sm"
-              disabled={degraded || patch.isPending}
-              onClick={() =>
-                patch.mutate(
-                  {
-                    ipAssignments: ips
-                      .split(',')
-                      .map(s => s.trim())
-                      .filter(s => s !== ''),
-                  },
-                  // Clear the dirty flag so the input re-syncs to the server's
-                  // canonical list once the write lands.
-                  { onSuccess: () => setIpsDirty(false) }
-                )
-              }
-            >
-              Save IPs
-            </Button>
+          <div>
+            <div className="flex gap-2">
+              <Input
+                value={ips}
+                onChange={e => {
+                  setIps(e.target.value);
+                  setIpsDirty(true);
+                }}
+                className="mt-0"
+                aria-label={`IP assignments for ${member.memberId}`}
+              />
+              <Button
+                variant="outline"
+                className="shrink-0 px-3 py-2 text-sm"
+                disabled={degraded || patch.isPending}
+                onClick={() =>
+                  patch.mutate(
+                    {
+                      ipAssignments: ips
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(s => s !== ''),
+                    },
+                    // Clear the dirty flag so the input re-syncs to the server's
+                    // canonical list once the write lands.
+                    { onSuccess: () => setIpsDirty(false) }
+                  )
+                }
+              >
+                Save IPs
+              </Button>
+            </div>
+            <AcceptedChips values={acceptedIpAssignments(ips)} />
           </div>
         </td>
         <td className="whitespace-nowrap py-3 pr-4 text-sm text-ink-mute">
@@ -555,8 +569,8 @@ export function MemberTable({ nwid }: { nwid: string }) {
   const allVisibleSelected = visible.length > 0 && visible.every(m => selected.has(m.memberId));
 
   return (
-    <Card className="overflow-x-auto">
-      <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Members</h2>
+    <Card className="overflow-x-auto !p-5">
+      <h2 className="wght-540 mb-3 text-[20px] tracking-[-0.4px]">Members</h2>
 
       {data && data.members.length > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-2">

@@ -97,6 +97,39 @@ describe('RoutesEditor', () => {
     expect(await screen.findByText(/outside every managed route/i)).toBeInTheDocument();
   });
 
+  it('shows accepted chips for valid route, pool, and CIDR helper fields', async () => {
+    stubFetch();
+    renderWithQuery(<RoutesEditor nwid={NWID} />);
+    await screen.findByDisplayValue('10.147.17.0/24');
+
+    expect(screen.getByText('Route accepted: 10.147.17.0/24')).toBeInTheDocument();
+    expect(screen.getByText('Pool start accepted: 10.147.17.1')).toBeInTheDocument();
+    expect(screen.getByText('Pool end accepted: 10.147.17.254')).toBeInTheDocument();
+
+    await userEvent.type(screen.getByPlaceholderText(/10\.10\.0\.0\/16/i), '10.10.0.0/16');
+    expect(screen.getByText('CIDR accepted: 10.10.0.0/16')).toBeInTheDocument();
+  });
+
+  it('does not show accepted chips for IPv6 route, pool, or CIDR helper fields yet', async () => {
+    stubFetch();
+    renderWithQuery(<RoutesEditor nwid={NWID} />);
+    await screen.findByDisplayValue('10.147.17.0/24');
+
+    const routeInput = screen.getByLabelText(/route target 1/i);
+    await userEvent.clear(routeInput);
+    await userEvent.type(routeInput, 'fd00::/112');
+
+    const poolInput = screen.getByLabelText(/pool start 1/i);
+    await userEvent.clear(poolInput);
+    await userEvent.type(poolInput, 'fd00::1');
+
+    await userEvent.type(screen.getByPlaceholderText(/10\.10\.0\.0\/16/i), 'fd00::/112');
+
+    expect(screen.queryByText('Route accepted: fd00::/112')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pool start accepted: fd00::1')).not.toBeInTheDocument();
+    expect(screen.queryByText('CIDR accepted: fd00::/112')).not.toBeInTheDocument();
+  });
+
   it('rejects an invalid CIDR in the helper without PATCHing', async () => {
     const fetchMock = stubFetch();
     renderWithQuery(<RoutesEditor nwid={NWID} />);

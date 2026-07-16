@@ -167,6 +167,31 @@ describe('MemberTable', () => {
     });
   });
 
+  it('shows accepted chips for comma-separated managed IP edits', async () => {
+    stubFetch();
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    const ipInput = await screen.findByDisplayValue('10.147.17.10');
+
+    expect(screen.getByText('IP accepted: 10.147.17.10')).toBeInTheDocument();
+
+    await userEvent.clear(ipInput);
+    await userEvent.type(ipInput, '10.147.17.10, 10.147.17.11');
+
+    expect(screen.getByText('IP accepted: 10.147.17.10')).toBeInTheDocument();
+    expect(screen.getByText('IP accepted: 10.147.17.11')).toBeInTheDocument();
+  });
+
+  it('does not show accepted chips for IPv6 managed IP edits yet', async () => {
+    stubFetch();
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    const ipInput = await screen.findByDisplayValue('10.147.17.10');
+
+    await userEvent.clear(ipInput);
+    await userEvent.type(ipInput, 'fd00::1');
+
+    expect(screen.queryByText('IP accepted: fd00::1')).not.toBeInTheDocument();
+  });
+
   it('DELETEs a member after confirmation', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fetchMock = stubFetch();

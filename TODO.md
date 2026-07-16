@@ -59,9 +59,10 @@ M3: When filling in fields in the members and routes & ip section of a selected 
 
 M4: design overhaul and fuction overhaul of network members. Take insiration from the link and redesign the network page. Functions available from these screenshots should be added. https://github.com/sinamics/ztnet/blob/main/docs/images/showcase/network_local.jpg, https://github.com/sinamics/ztnet/blob/main/docs/images/showcase/member_options.jpg
 
-M4: Current boxes take up too much vertical space. I would prefer to not have to scroll down to access settings or info that is frequently needed. Flow rules and DNS can stay at the bottom and require a scroll because they are not used as often but members and routes and IP pools should be easily accessed.
+M5: Current boxes take up too much vertical space. I would prefer to not have to scroll down to access settings or info that is frequently needed. Flow rules and DNS can stay at the bottom and require a scroll because they are not used as often but members and routes and IP pools should be easily accessed.
 
-M5: Adding a Admin (super-user/owner role) ZT Controller page to show the full status of the controller itself and its settings. Refrence: https://github.com/sinamics/ztnet/blob/main/docs/images/showcase/admin_controller.jpg
+M6: Adding a Admin (super-user/owner role) ZT Controller page to show the full status of the controller itself and its settings. Refrence: https://github.com/sinamics/ztnet/blob/main/docs/images/showcase/admin_controller.jpg
 
-M6: Read through ZTNETs github release list of previous version release note to generate ideas to add to the TODO.md. Refrence: https://github.com/sinamics/ztnet/releases#release-v0.8.2
+M7: Read through ZTNETs github release list of previous version release note to generate ideas to add to the TODO.md. Refrence: https://github.com/sinamics/ztnet/releases#release-v0.8.2
 
+M8: Extend the M3 accepted-field chip validation to IPv6 addresses and IPv6 CIDR ranges. Current implementation is intentionally IPv4-only for member managed IPs, route targets, IP pool endpoints, and the CIDR helper.
