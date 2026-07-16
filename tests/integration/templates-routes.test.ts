@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 
-vi.mock('@/lib/controller', () => ({ getControllerClient: vi.fn() }));
+vi.mock('@/lib/controller', () => ({ getControllerClient: vi.fn(), getControllerCacheTtlMs: () => 0 }));
 
 import { getControllerClient } from '@/lib/controller';
 import { setupTestDb } from '../helpers/db';

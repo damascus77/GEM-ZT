@@ -78,6 +78,37 @@ describe('PendingMembers', () => {
     });
   });
 
+  it('optimistically hides the row when authorizing (feels instant)', async () => {
+    stubFetch();
+    renderWithQuery(<PendingMembers />);
+    await screen.findByText('laptop');
+    await userEvent.click(screen.getAllByRole('button', { name: /^authorize$/i })[0]);
+    await waitFor(() => expect(screen.queryByText('laptop')).not.toBeInTheDocument());
+    // The other pending row is unaffected.
+    expect(screen.getByText('guest')).toBeInTheDocument();
+  });
+
+  it('restores the optimistically hidden row when authorize fails', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        return new Response(JSON.stringify({ error: { message: 'controller down' } }), {
+          status: 502,
+        });
+      }
+      if (String(url).includes('/api/v1/pending')) {
+        return new Response(JSON.stringify({ pending }), { status: 200 });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithQuery(<PendingMembers />);
+    await screen.findByText('laptop');
+    await userEvent.click(screen.getAllByRole('button', { name: /^authorize$/i })[0]);
+    // On failure the row reappears alongside the error.
+    expect(await screen.findByRole('alert')).toHaveTextContent(/controller down/i);
+    expect(screen.getByText('laptop')).toBeInTheDocument();
+  });
+
   it('DELETEs the member after confirmation when clicking Deny', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fetchMock = stubFetch();

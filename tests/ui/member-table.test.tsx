@@ -25,6 +25,7 @@ const members = [
     ipAssignments: ['10.147.17.10'],
     lastAuthorizedTime: 1719900000000,
     online: true,
+    connection: 'direct',
     latency: 42,
     physicalAddress: '203.0.113.9/41234',
     clientVersion: '1.14.2',
@@ -42,6 +43,7 @@ const members = [
     ipAssignments: [],
     lastAuthorizedTime: 0,
     online: null,
+    connection: null,
     latency: null,
     physicalAddress: null,
     clientVersion: null,
@@ -111,6 +113,21 @@ describe('MemberTable', () => {
     await screen.findByDisplayValue('laptop');
     expect(await screen.findByText(/last seen: 5m ago/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Presence history for deadbeef01')).toBeInTheDocument();
+  });
+
+  it('renders a Connection column with a Direct pill and a — for unknown peers', async () => {
+    stubFetch();
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    await screen.findByDisplayValue('laptop');
+    // Column header present.
+    expect(screen.getByRole('columnheader', { name: /connection/i })).toBeInTheDocument();
+    // deadbeef01 has connection 'direct'; deadbeef02 has none (—).
+    expect(screen.getByText('Direct')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  it('exposes MemberRow as a memoized component', () => {
+    expect((MemberRow as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'));
   });
 
   it('renders no presence UI when the presence query is not stubbed (degrades gracefully)', async () => {
@@ -328,9 +345,7 @@ describe('MemberTable', () => {
     const nicknameInput = screen.getByLabelText('Nickname for deadbeef01') as HTMLInputElement;
     expect(nicknameInput.value).toBe('laptop');
 
-    const emptyNicknameInput = screen.getByLabelText(
-      'Nickname for deadbeef02'
-    ) as HTMLInputElement;
+    const emptyNicknameInput = screen.getByLabelText('Nickname for deadbeef02') as HTMLInputElement;
     expect(emptyNicknameInput.value).toBe('');
     await userEvent.type(emptyNicknameInput, 'garage-pi');
     await userEvent.tab();
@@ -379,6 +394,7 @@ describe('MemberRow IP input re-seed (stale-IP guard)', () => {
     ipAssignments: [],
     lastAuthorizedTime: 0,
     online: null,
+    connection: null,
     latency: null,
     physicalAddress: null,
     clientVersion: null,

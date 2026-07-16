@@ -1,9 +1,11 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
+import { SkeletonRows } from '@/components/ui/Skeleton';
 
 export interface PendingMemberView {
   nwid: string;
@@ -14,6 +16,10 @@ export interface PendingMemberView {
   lastAuthorizedTime: number;
 }
 
+type PendingData = { pending: PendingMemberView[] };
+
+const PENDING_KEY = ['pending'] as const;
+
 function PresencePill({ online }: { online: boolean | null }) {
   if (online === true) return <Pill className="border-teal-mid text-teal-deep">Online</Pill>;
   if (online === false) return <Pill>Offline</Pill>;
@@ -21,6 +27,14 @@ function PresencePill({ online }: { online: boolean | null }) {
 }
 
 function PendingRow({ member, onChanged }: { member: PendingMemberView; onChanged: () => void }) {
+  // Optimistically hide the row on authorize/deny so it feels instant. We hide
+  // via local state rather than removing it from the ['pending'] cache so this
+  // component stays mounted while the request is in flight — otherwise removing
+  // it from the cache would unmount the row and the mutation's onError could not
+  // restore it on failure. onSuccess leaves it hidden; the reconciling refetch
+  // then drops it for real (an authorized/denied member is no longer pending).
+  const [hidden, setHidden] = useState(false);
+
   const authorize = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/v1/networks/${member.nwid}/members/${member.memberId}`, {
@@ -34,6 +48,8 @@ function PendingRow({ member, onChanged }: { member: PendingMemberView; onChange
       }
       return res.json();
     },
+    onMutate: () => setHidden(true),
+    onError: () => setHidden(false),
     onSuccess: onChanged,
   });
 
@@ -47,6 +63,8 @@ function PendingRow({ member, onChanged }: { member: PendingMemberView; onChange
         throw new Error(parsed?.error?.message ?? 'Deny failed');
       }
     },
+    onMutate: () => setHidden(true),
+    onError: () => setHidden(false),
     onSuccess: onChanged,
   });
 
@@ -56,6 +74,10 @@ function PendingRow({ member, onChanged }: { member: PendingMemberView; onChange
       deny.mutate();
     }
   }
+
+  // Hidden while a successful/in-flight authorize or deny settles. On error the
+  // handlers clear `hidden`, so the row (and its alert below) reappears.
+  if (hidden) return null;
 
   return (
     <>
@@ -110,23 +132,30 @@ function PendingRow({ member, onChanged }: { member: PendingMemberView; onChange
 
 export function PendingMembers() {
   const queryClient = useQueryClient();
-  const { data, isLoading, isError } = useQuery<{ pending: PendingMemberView[] }>({
-    queryKey: ['pending'],
+  const { data, isLoading, isError } = useQuery<PendingData>({
+    queryKey: PENDING_KEY,
     queryFn: async () => {
       const res = await fetch('/api/v1/pending');
       if (!res.ok) throw new Error('Failed to load pending members');
       return res.json();
     },
     refetchInterval: 10000,
+    placeholderData: keepPreviousData,
   });
 
-  const onChanged = () => queryClient.invalidateQueries({ queryKey: ['pending'] });
+  const onChanged = () => queryClient.invalidateQueries({ queryKey: PENDING_KEY });
   const pending = data?.pending ?? [];
 
   return (
     <Card className="overflow-x-auto">
       <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Pending Members</h2>
-      {isLoading && <p className="text-ink-mute">Loading…</p>}
+      {isLoading && !data && (
+        <table className="w-full text-left">
+          <tbody>
+            <SkeletonRows rows={3} columns={5} />
+          </tbody>
+        </table>
+      )}
       {isError && !data && (
         <p role="alert" className="text-sm text-ink">
           Could not load pending members. Retrying…
