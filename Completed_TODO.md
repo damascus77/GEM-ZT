@@ -166,3 +166,84 @@ useNetworkDetail.ts`, now used by `NetworkSettings`, `RoutesEditor`, and `DnsEdi
 - ✅ **[DONE] [P3] Prometheus metrics + status dashboard.** _(Done: `GET /api/v1/metrics` (text exposition)
   via `lib/services/metrics.ts`, plus a `/status` dashboard page (`StatusDashboard` parses the metrics text)
   showing controller reachability + inventory counts.)_
+
+## 4. Moved 2026-07-17
+
+Verified complete against the working tree and moved out of `TODO.md`.
+
+- ✅ **[DONE] [P1] Multi-user, organizations, and roles.** _(Done: full multi-tenant stack —
+  `Organization`/`Membership`/`Invitation`/`Identity` models in `prisma/schema.prisma` (org-scoped
+  `NetworkMeta`/`ApiKey`/`AuditLog`/`NetworkTemplate`); two role dimensions (`User.role`
+  superadmin/user + per-org `Membership.role` owner/admin/editor/viewer); a policy layer
+  `lib/authz/policy.ts` + `lib/authz/roles.ts`; per-route enforcement via `requireOrgRole` /
+  `requireSuperAdmin` (`lib/api/authz.ts`) across ~25 API routes with role-cap escalation guards;
+  a single-use hashed-token invitations system (`lib/services/invitations.ts` + routes); audit
+  logging in 19 routes; and management UI — `components/OrgMembers.tsx`, `OrgInvitations.tsx`,
+  `OrgSwitcher.tsx`, `AdminOrgs.tsx`, plus `/orgs/[orgId]/members`, `/admin`, and the invite-accept
+  flow. Was the explicit v1 deferral (spec §11); see
+  `docs/superpowers/specs/2026-07-05-multi-user-orgs-roles-design.md`. Authorization lives in route
+  handlers rather than global `middleware.ts` — by design.)_
+- ✅ **[DONE] [P1] (M1) Member section UX speed / live updates.** _(Done: React Query with
+  `staleTime` + `keepPreviousData` (`app/providers.tsx`), `refetchInterval` polling for members and
+  presence, optimistic `patch` mutations with `onError` rollback and freshest-cache reads, memoized
+  `MemberRow`, a request-coalescing controller cache (`lib/util/cache.ts`) with write-time bust, and a
+  direct/relayed connection indicator (`ConnectionPill` + "Connection" column). Commits `dbc009a`,
+  `ce61d5c`, `6d6f1cd`. Caveat: passive online/offline still updates on the poll interval (default
+  30s) rather than push — a WebSocket/SSE path and row virtualization were deferred, and the
+  direct/relayed heuristic still wants validation against a live controller `/peer`.)_
+- ✅ **[DONE] (M3) Accepted-field chip validation.** _(Done in `89a4e96`: `components/ui/AcceptedChip.tsx`
+  (`AcceptedChip`/`AcceptedChips`) shows a "… accepted: <value>" chip once a field validates, wired into
+  `MemberTable` (managed IPs) and `RoutesEditor` (route targets / IP pools / CIDR helper). IPv4-only by
+  design — IPv6 follow-up tracked as **M8**.)_
+- ✅ **[DONE] (M5) Network-detail layout ordering.** _(Done: `app/(ui)/networks/[nwid]/page.tsx` now leads
+  with a "Frequent network controls" grid (`NetworkSettings` + `RoutesEditor` side by side), then
+  `MemberTable`, with `DnsEditor` and `RulesEditor` (flow rules) pushed to the bottom — members and
+  routes/IP pools are reachable without scrolling, flow rules and DNS stay below.)_
+
+- ✅ **[DONE] (M7) Mine ZTNET release notes for TODO ideas.** _(Done 2026-07-17: read ZTNET's GitHub
+  release history v0.7.x–v0.8.x and folded seven new candidate items (I1–I7) into `TODO.md` under
+  "Ideas from ZTNET release notes" — real-time WebSocket/SSE updates, row virtualization / DB-first
+  member sync, i18n, responsive/PWA, duplicate-route prevention, configurable rate limits, and SMTP
+  STARTTLS — each triaged into the execution order.)_
+- ✅ **[DONE] [P2] Backup/restore edge case — no stored `rulesSource`.** _(The functional re-push landed
+  earlier in `f26987f` (existing network with compiled rules but no source now pushes the backup's
+  captured `rules`/`capabilities`/`tags` directly instead of silently keeping live rules). Completed
+  2026-07-17 by adding the missing operator-facing **warning**: `restoreBackup()` now pushes a
+  `summary.warnings` entry ("no editable rules source on record — restored the backup's compiled rules
+  directly …") for that path. `lib/services/backup.ts`; covered by `tests/unit/backup-restore.test.ts`
+  and `tests/integration/backup-restore-route.test.ts`.)_
+- ✅ **[DONE] (M9) Managed-IP add/remove flow + chip readability.** _(Done 2026-07-17: the member
+  "Managed IPs" cell is now add-one-at-a-time — type an IPv4, press Enter or "Add IP", it's saved and
+  the box clears for the next; each committed IP renders as a chip with a red "×" remove button
+  (`AcceptedChip` gained an optional `onRemove`); duplicate/invalid/IPv6 input is rejected inline
+  (IPv6 tracked as M8). The accepted chip's low-contrast teal-on-dark (`teal-deep` #0e3030 on the
+  #100e1c dark canvas) was replaced with a solid `teal-mid` fill + white text so IP/Route/Pool chips
+  read in both themes. `components/ui/AcceptedChip.tsx`, `components/members/MemberTable.tsx`;
+  `tests/ui/member-table.test.tsx` updated. This also retired the old whole-list-in-a-textbox input and
+  its stale-IP re-seed guard, which the per-IP model makes structurally unnecessary.)_
+
+## 5. Moved 2026-07-17 (second wave)
+
+- ✅ **[DONE] (M8) IPv6 accepted-field chip validation.** _(Done 2026-07-17: cidr.ts already had the
+  IPv6 machinery (`isValidCidr` covers v4+v6, `cidrToPool` v6); added a combined `isValidIp` (v4 or v6)
+  and switched every accepted-chip validator to the v4+v6-aware helpers — member managed IPs
+  (`MemberTable`, now accepts IPv6 in the M9 add flow), route targets / gateways / IP-pool endpoints /
+  the CIDR helper (`RoutesEditor`). The server side already accepted IPv6 everywhere (`z.string().ip()`
+  and `isValidCidr`), so this was a client-validation-only change. `lib/util/cidr.ts`,
+  `components/members/MemberTable.tsx`, `components/networks/RoutesEditor.tsx`; unit test for
+  `isValidIp` + flipped the two "IPv6 not accepted yet" UI tests to assert acceptance.)_
+- ✅ **[DONE] [P2] Pending-queue polish — self-authorize join tokens + QR.** _(Done 2026-07-17: a
+  network admin can mint a time-limited, optionally use-capped **self-authorize join link** so a device
+  can authorize itself right after `zerotier-cli join`, without manual approval. New `JoinToken` Prisma
+  model + migration `20260717120000_add_join_token`; `lib/services/joinTokens.ts` (hashed `jt_` tokens
+  like invitations, TTL ceiling 30d, atomic single-use claim via gated `updateMany`, controller-failure
+  roll-back so a not-yet-joined device doesn't burn a use); admin routes
+  `POST/GET /networks/{nwid}/join-tokens` + `DELETE .../{id}` (role-gated, audited); public
+  IP-rate-limited `POST /networks/{nwid}/self-authorize`. UI: `components/networks/JoinLinkPanel.tsx`
+  (generate link + **QR** + copy + active-list + revoke) on the network page, and the public
+  `JoinInstructions` gained a network-ID QR + a self-authorize form when the URL carries `?token=`.
+  `qrcode` was already a dependency (used by TOTP), so no new deps. Tests:
+  `tests/unit/join-tokens-service.test.ts` + `tests/integration/self-authorize-route.test.ts`.
+  Note: the earlier deferral reasons (QR dependency, extra token table) are both resolved; the public
+  self-authorize redemption is intentionally not audit-logged since it has no acting user — revisit if
+  per-device attribution is wanted.)_
