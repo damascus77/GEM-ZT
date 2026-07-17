@@ -49,6 +49,11 @@ export function ipv4ToIntChecked(ip: string): number | null {
   return IPV4_ADDR_RE.test(ip) ? ipv4ToInt(ip) >>> 0 : null;
 }
 
+/** True for a bare IP address (no prefix), either IPv4 or IPv6. */
+export function isValidIp(ip: string): boolean {
+  return ipv4ToIntChecked(ip) !== null || isIpv6(ip);
+}
+
 /** Inclusive [network, broadcast] uint32 range of an IPv4 CIDR, or null if not IPv4. */
 export function ipv4CidrRange(cidr: string): [number, number] | null {
   if (!IPV4_RE.test(cidr)) return null;

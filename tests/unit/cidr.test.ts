@@ -1,5 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { isValidCidr, cidrToPool } from '@/lib/util/cidr';
+import { isValidCidr, isValidIp, cidrToPool } from '@/lib/util/cidr';
+
+describe('isValidIp', () => {
+  it('accepts bare IPv4 and IPv6 addresses', () => {
+    expect(isValidIp('10.147.17.10')).toBe(true);
+    expect(isValidIp('0.0.0.0')).toBe(true);
+    expect(isValidIp('fd00::1')).toBe(true);
+    expect(isValidIp('2001:db8::1')).toBe(true);
+    expect(isValidIp('::1')).toBe(true);
+  });
+
+  it('rejects CIDRs (prefix present) and garbage', () => {
+    expect(isValidIp('10.147.17.0/24')).toBe(false);
+    expect(isValidIp('fd00::/64')).toBe(false);
+    expect(isValidIp('300.1.1.1')).toBe(false);
+    expect(isValidIp('gggg::1')).toBe(false);
+    expect(isValidIp('banana')).toBe(false);
+  });
+});
 
 describe('isValidCidr', () => {
   it('accepts valid IPv4 CIDRs', () => {

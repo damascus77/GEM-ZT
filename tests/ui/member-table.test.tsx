@@ -99,7 +99,8 @@ describe('MemberTable', () => {
     expect(screen.getByText('42 ms')).toBeInTheDocument();
     expect(screen.getByText('203.0.113.9/41234')).toBeInTheDocument();
     expect(screen.getByText('Unknown')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('10.147.17.10')).toBeInTheDocument();
+    // Committed managed IPs now render as removable chips, not an input value.
+    expect(screen.getByText('IP accepted: 10.147.17.10')).toBeInTheDocument();
   });
 
   it('renders last-seen text and a presence sparkline when presence data is stubbed', async () => {
@@ -151,45 +152,63 @@ describe('MemberTable', () => {
     });
   });
 
-  it('PATCHes ipAssignments when saving the IP editor', async () => {
+  it('appends an IP and clears the input when adding a managed IP', async () => {
     const fetchMock = stubFetch();
     renderWithQuery(<MemberTable nwid={NWID} />);
-    const ipInput = await screen.findByDisplayValue('10.147.17.10');
-    await userEvent.clear(ipInput);
-    await userEvent.type(ipInput, '10.147.17.10, 10.147.17.11');
-    await userEvent.click(screen.getAllByRole('button', { name: /save ips/i })[0]);
+    const ipInput = (await screen.findByLabelText(
+      'Add IP assignment for deadbeef01'
+    )) as HTMLInputElement;
+    await userEvent.type(ipInput, '10.147.17.11');
+    await userEvent.click(screen.getAllByRole('button', { name: /add ip/i })[0]);
     await waitFor(() => {
       const patch = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
       expect(patch).toBeDefined();
+      // The committed IP (10.147.17.10) is preserved and the new one appended.
       expect(JSON.parse(patch![1]!.body as string)).toEqual({
         ipAssignments: ['10.147.17.10', '10.147.17.11'],
       });
     });
+    // Input clears once the append lands, ready for the next IP.
+    await waitFor(() => expect(ipInput.value).toBe(''));
   });
 
-  it('shows accepted chips for comma-separated managed IP edits', async () => {
-    stubFetch();
+  it('removes a committed managed IP via its red × chip button', async () => {
+    const fetchMock = stubFetch();
     renderWithQuery(<MemberTable nwid={NWID} />);
-    const ipInput = await screen.findByDisplayValue('10.147.17.10');
-
-    expect(screen.getByText('IP accepted: 10.147.17.10')).toBeInTheDocument();
-
-    await userEvent.clear(ipInput);
-    await userEvent.type(ipInput, '10.147.17.10, 10.147.17.11');
-
-    expect(screen.getByText('IP accepted: 10.147.17.10')).toBeInTheDocument();
-    expect(screen.getByText('IP accepted: 10.147.17.11')).toBeInTheDocument();
+    await screen.findByText('IP accepted: 10.147.17.10');
+    await userEvent.click(screen.getByRole('button', { name: 'Remove IP 10.147.17.10' }));
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(
+        ([u, i]) => String(u).endsWith('/members/deadbeef01') && i?.method === 'PATCH'
+      );
+      expect(patch).toBeDefined();
+      expect(JSON.parse(patch![1]!.body as string)).toEqual({ ipAssignments: [] });
+    });
   });
 
-  it('does not show accepted chips for IPv6 managed IP edits yet', async () => {
-    stubFetch();
+  it('accepts an IPv6 managed IP (M8) and PATCHes it appended to the committed list', async () => {
+    const fetchMock = stubFetch();
     renderWithQuery(<MemberTable nwid={NWID} />);
-    const ipInput = await screen.findByDisplayValue('10.147.17.10');
-
-    await userEvent.clear(ipInput);
+    const ipInput = await screen.findByLabelText('Add IP assignment for deadbeef01');
     await userEvent.type(ipInput, 'fd00::1');
+    await userEvent.click(screen.getAllByRole('button', { name: /add ip/i })[0]);
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
+      expect(patch).toBeDefined();
+      expect(JSON.parse(patch![1]!.body as string)).toEqual({
+        ipAssignments: ['10.147.17.10', 'fd00::1'],
+      });
+    });
+  });
 
-    expect(screen.queryByText('IP accepted: fd00::1')).not.toBeInTheDocument();
+  it('rejects a malformed managed IP with an inline error and no PATCH', async () => {
+    const fetchMock = stubFetch();
+    renderWithQuery(<MemberTable nwid={NWID} />);
+    const ipInput = await screen.findByLabelText('Add IP assignment for deadbeef01');
+    await userEvent.type(ipInput, 'not-an-ip');
+    await userEvent.click(screen.getAllByRole('button', { name: /add ip/i })[0]);
+    expect(await screen.findByText(/valid IPv4 or IPv6 address/i)).toBeInTheDocument();
+    expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH')).toBeUndefined();
   });
 
   it('DELETEs a member after confirmation', async () => {
@@ -407,7 +426,7 @@ describe('MemberTable', () => {
   });
 });
 
-describe('MemberRow IP input re-seed (stale-IP guard)', () => {
+describe('MemberRow managed IP add/remove', () => {
   const base: MemberViewClient = {
     memberId: 'deadbeef01',
     nwid: NWID,
@@ -440,23 +459,23 @@ describe('MemberRow IP input re-seed (stale-IP guard)', () => {
     );
   }
 
-  it('re-seeds the IP input when the server assignment changes and the field is untouched', () => {
-    const { rerender } = render(wrap({ ...base, ipAssignments: [] }));
-    const input = screen.getByLabelText('IP assignments for deadbeef01');
-    expect(input).toHaveValue('');
-    // Controller auto-assigns an IP after authorization → input must reflect it,
-    // otherwise a later "Save IPs" would PATCH the stale (empty) list and wipe it.
-    rerender(wrap({ ...base, ipAssignments: ['10.147.17.10'] }));
-    expect(screen.getByLabelText('IP assignments for deadbeef01')).toHaveValue('10.147.17.10');
+  it('renders committed IPs as chips and starts with an empty add-IP input', () => {
+    render(wrap({ ...base, ipAssignments: ['10.147.17.10', '10.147.17.11'] }));
+    expect(screen.getByLabelText('Add IP assignment for deadbeef01')).toHaveValue('');
+    expect(screen.getByText('IP accepted: 10.147.17.10')).toBeInTheDocument();
+    expect(screen.getByText('IP accepted: 10.147.17.11')).toBeInTheDocument();
+    // Each committed chip exposes a remove control.
+    expect(screen.getByRole('button', { name: 'Remove IP 10.147.17.10' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove IP 10.147.17.11' })).toBeInTheDocument();
   });
 
-  it('does not clobber an in-progress edit when the server value changes', async () => {
-    const { rerender } = render(wrap({ ...base, ipAssignments: ['10.147.17.10'] }));
-    const input = screen.getByLabelText('IP assignments for deadbeef01');
-    await userEvent.clear(input);
-    await userEvent.type(input, '10.0.0.9');
-    // A background poll brings a different server value; the operator's edit wins.
-    rerender(wrap({ ...base, ipAssignments: ['10.147.17.99'] }));
-    expect(screen.getByLabelText('IP assignments for deadbeef01')).toHaveValue('10.0.0.9');
+  it('reflects a server-side IP change (e.g. controller auto-assign) as a new chip', () => {
+    const { rerender } = render(wrap({ ...base, ipAssignments: [] }));
+    expect(screen.queryByText(/IP accepted:/)).not.toBeInTheDocument();
+    // Controller auto-assigns an IP after authorization → chip appears, and the
+    // add-input is unaffected (it only ever holds the next IP being added).
+    rerender(wrap({ ...base, ipAssignments: ['10.147.17.10'] }));
+    expect(screen.getByText('IP accepted: 10.147.17.10')).toBeInTheDocument();
+    expect(screen.getByLabelText('Add IP assignment for deadbeef01')).toHaveValue('');
   });
 });

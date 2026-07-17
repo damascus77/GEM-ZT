@@ -110,7 +110,7 @@ describe('RoutesEditor', () => {
     expect(screen.getByText('CIDR accepted: 10.10.0.0/16')).toBeInTheDocument();
   });
 
-  it('does not show accepted chips for IPv6 route, pool, or CIDR helper fields yet', async () => {
+  it('shows accepted chips for IPv6 route, pool, and CIDR helper fields (M8)', async () => {
     stubFetch();
     renderWithQuery(<RoutesEditor nwid={NWID} />);
     await screen.findByDisplayValue('10.147.17.0/24');
@@ -125,9 +125,9 @@ describe('RoutesEditor', () => {
 
     await userEvent.type(screen.getByPlaceholderText(/10\.10\.0\.0\/16/i), 'fd00::/112');
 
-    expect(screen.queryByText('Route accepted: fd00::/112')).not.toBeInTheDocument();
-    expect(screen.queryByText('Pool start accepted: fd00::1')).not.toBeInTheDocument();
-    expect(screen.queryByText('CIDR accepted: fd00::/112')).not.toBeInTheDocument();
+    expect(screen.getByText('Route accepted: fd00::/112')).toBeInTheDocument();
+    expect(screen.getByText('Pool start accepted: fd00::1')).toBeInTheDocument();
+    expect(screen.getByText('CIDR accepted: fd00::/112')).toBeInTheDocument();
   });
 
   it('rejects an invalid CIDR in the helper without PATCHing', async () => {

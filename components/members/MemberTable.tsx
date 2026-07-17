@@ -9,7 +9,7 @@ import { Pill } from '@/components/ui/Pill';
 import { AcceptedChips } from '@/components/ui/AcceptedChip';
 import { SkeletonRows } from '@/components/ui/Skeleton';
 import { useControllerStatus } from '@/components/DegradedBanner';
-import { ipv4ToIntChecked } from '@/lib/util/cidr';
+import { isValidIp } from '@/lib/util/cidr';
 import {
   filterAndSortMembers,
   type AuthorizedFilter,
@@ -112,15 +112,6 @@ function PresenceSparkline({ memberId, samples }: { memberId: string; samples: b
   );
 }
 
-function acceptedIpAssignments(value: string): Array<{ label: string; value: string }> {
-  return value
-    .split(',')
-    .map(s => s.trim())
-    .filter(s => s !== '')
-    .filter(s => ipv4ToIntChecked(s) !== null)
-    .map(s => ({ label: 'IP', value: s }));
-}
-
 function MemberPresenceInfo({
   memberId,
   presence,
@@ -163,15 +154,13 @@ function MemberRowInner({
   const queryClient = useQueryClient();
   const [name, setName] = useState(member.name);
   useEffect(() => setName(member.name), [member.name]);
-  const serverIps = member.ipAssignments.join(', ');
-  const [ips, setIps] = useState(serverIps);
-  // Re-seed from the server (e.g. the controller auto-assigns an IP after
-  // authorization) UNLESS the operator is mid-edit. Without this, a stale input
-  // seeded before auto-assignment would wipe the live IP on the next "Save IPs".
-  const [ipsDirty, setIpsDirty] = useState(false);
-  useEffect(() => {
-    if (!ipsDirty) setIps(serverIps);
-  }, [serverIps, ipsDirty]);
+  // Managed IPs are edited one at a time: the input holds only the IP being
+  // added, and the committed list renders as removable chips sourced from the
+  // server. This replaces the whole-list-in-a-textbox model (which could PATCH a
+  // stale snapshot and wipe an auto-assigned IP) — you add an IP, it's saved and
+  // the box clears, then you add the next one.
+  const [ipDraft, setIpDraft] = useState('');
+  const [ipError, setIpError] = useState<string | null>(null);
 
   const patch = useMutation({
     mutationFn: async (body: Record<string, unknown>) => {
@@ -260,6 +249,29 @@ function MemberRowInner({
     const next: [number, number][] =
       trimmed === '' ? withoutId : [...withoutId, [id, Number(trimmed)]];
     patch.mutate({ tags: next });
+  }
+
+  function addIp() {
+    const ip = ipDraft.trim();
+    if (ip === '') return;
+    if (!isValidIp(ip)) {
+      setIpError('Enter a valid IPv4 or IPv6 address.');
+      return;
+    }
+    const current = currentMember().ipAssignments;
+    if (current.includes(ip)) {
+      setIpError('That IP is already assigned.');
+      return;
+    }
+    setIpError(null);
+    // Clear the input only once the append actually lands, so a failed write
+    // keeps the operator's typed value.
+    patch.mutate({ ipAssignments: [...current, ip] }, { onSuccess: () => setIpDraft('') });
+  }
+
+  function removeIp(ip: string) {
+    const current = currentMember().ipAssignments;
+    patch.mutate({ ipAssignments: current.filter(x => x !== ip) });
   }
 
   return (
@@ -366,36 +378,43 @@ function MemberRowInner({
           <div>
             <div className="flex gap-2">
               <Input
-                value={ips}
+                value={ipDraft}
+                placeholder="Add IP (IPv4 or IPv6)"
+                disabled={degraded || patch.isPending}
                 onChange={e => {
-                  setIps(e.target.value);
-                  setIpsDirty(true);
+                  setIpDraft(e.target.value);
+                  if (ipError) setIpError(null);
                 }}
-                className="mt-0"
-                aria-label={`IP assignments for ${member.memberId}`}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addIp();
+                  }
+                }}
+                className="mt-0 font-mono"
+                aria-label={`Add IP assignment for ${member.memberId}`}
               />
               <Button
                 variant="outline"
                 className="shrink-0 px-3 py-2 text-sm"
-                disabled={degraded || patch.isPending}
-                onClick={() =>
-                  patch.mutate(
-                    {
-                      ipAssignments: ips
-                        .split(',')
-                        .map(s => s.trim())
-                        .filter(s => s !== ''),
-                    },
-                    // Clear the dirty flag so the input re-syncs to the server's
-                    // canonical list once the write lands.
-                    { onSuccess: () => setIpsDirty(false) }
-                  )
-                }
+                disabled={degraded || patch.isPending || ipDraft.trim() === ''}
+                onClick={addIp}
               >
-                Save IPs
+                Add IP
               </Button>
             </div>
-            <AcceptedChips values={acceptedIpAssignments(ips)} />
+            <AcceptedChips
+              values={member.ipAssignments.map(ip => ({
+                label: 'IP',
+                value: ip,
+                onRemove: degraded || patch.isPending ? undefined : () => removeIp(ip),
+              }))}
+            />
+            {ipError && (
+              <p role="alert" className="mt-1 text-xs text-ink">
+                {ipError}
+              </p>
+            )}
           </div>
         </td>
         <td className="whitespace-nowrap py-3 pr-4 text-sm text-ink-mute">

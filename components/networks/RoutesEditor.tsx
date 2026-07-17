@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { AcceptedChips } from '@/components/ui/AcceptedChip';
 import { useControllerStatus } from '@/components/DegradedBanner';
-import { cidrToPool, ipv4CidrRange, ipv4ToIntChecked } from '@/lib/util/cidr';
+import { cidrToPool, isValidCidr, isValidIp } from '@/lib/util/cidr';
 import { validateRoutesAndPools } from '@/lib/util/networkValidation';
 import { useNetworkDetail } from './useNetworkDetail';
 
@@ -32,16 +32,12 @@ interface DetailResponse {
   };
 }
 
-function isValidIpAddress(value: string): boolean {
-  return ipv4ToIntChecked(value) !== null;
-}
-
 function acceptedRouteValues(route: RouteRow): Array<{ label: string; value: string }> {
   const values: Array<{ label: string; value: string }> = [];
   const target = route.target.trim();
   const via = route.via?.trim() ?? '';
-  if (target !== '' && ipv4CidrRange(target) !== null) values.push({ label: 'Route', value: target });
-  if (via !== '' && ipv4ToIntChecked(via) !== null) values.push({ label: 'Gateway', value: via });
+  if (target !== '' && isValidCidr(target)) values.push({ label: 'Route', value: target });
+  if (via !== '' && isValidIp(via)) values.push({ label: 'Gateway', value: via });
   return values;
 }
 
@@ -49,14 +45,14 @@ function acceptedPoolValues(pool: PoolRow): Array<{ label: string; value: string
   const start = pool.ipRangeStart.trim();
   const end = pool.ipRangeEnd.trim();
   return [
-    ...(start !== '' && isValidIpAddress(start) ? [{ label: 'Pool start', value: start }] : []),
-    ...(end !== '' && isValidIpAddress(end) ? [{ label: 'Pool end', value: end }] : []),
+    ...(start !== '' && isValidIp(start) ? [{ label: 'Pool start', value: start }] : []),
+    ...(end !== '' && isValidIp(end) ? [{ label: 'Pool end', value: end }] : []),
   ];
 }
 
 function acceptedCidrValues(cidr: string): Array<{ label: string; value: string }> {
   const trimmed = cidr.trim();
-  return trimmed !== '' && ipv4CidrRange(trimmed) !== null ? [{ label: 'CIDR', value: trimmed }] : [];
+  return trimmed !== '' && isValidCidr(trimmed) ? [{ label: 'CIDR', value: trimmed }] : [];
 }
 
 export function RoutesEditor({ nwid }: { nwid: string }) {
