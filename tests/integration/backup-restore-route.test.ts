@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 
-vi.mock('@/lib/controller', () => ({ getControllerClient: vi.fn(), getControllerCacheTtlMs: () => 0 }));
+vi.mock('@/lib/controller', () => ({
+  getControllerClient: vi.fn(),
+  getControllerCacheTtlMs: () => 0,
+}));
 
 import { getControllerClient } from '@/lib/controller';
 import { ControllerApiError } from '@/lib/controller/client';
@@ -120,7 +123,9 @@ describe('POST /api/v1/backup/restore', () => {
     expect(body.networksCreated).toBe(0);
     expect(body.membersRestored).toBe(0);
     expect(body.membersSkipped).toBe(0);
-    expect(body.warnings).toEqual([]);
+    // validBackup has an empty rulesSource on an existing network, so restore
+    // pushes the compiled rules directly and warns that no source is on record.
+    expect(body.warnings).toEqual([expect.stringContaining('no editable rules source on record')]);
 
     const audit = await getDb().auditLog.findFirst({ where: { action: 'backup.restore' } });
     expect(audit).toBeTruthy();

@@ -232,6 +232,12 @@ export async function restoreBackup(data: BackupData): Promise<RestoreSummary> {
           capabilities: net.config.capabilities,
           tags: net.config.tags,
         } as Partial<ControllerNetwork>);
+        // Surface this: the compiled rules were restored, but there's no editable
+        // source behind them, so the rules editor will show the default template
+        // as its baseline until the operator re-saves a source.
+        summary.warnings.push(
+          `network ${net.nwid}: no editable rules source on record — restored the backup's compiled rules directly; re-save the rules editor to reattach an editable source`
+        );
       }
       targetNwid = net.nwid;
       summary.networksUpdated += 1;

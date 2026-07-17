@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 
-vi.mock('@/lib/controller', () => ({ getControllerClient: vi.fn(), getControllerCacheTtlMs: () => 0 }));
+vi.mock('@/lib/controller', () => ({
+  getControllerClient: vi.fn(),
+  getControllerCacheTtlMs: () => 0,
+}));
 
 import { getControllerClient } from '@/lib/controller';
 import { ControllerApiError } from '@/lib/controller/client';
@@ -233,7 +236,7 @@ describe('restoreBackup', () => {
     const backup = makeBackup();
     backup.networks[0].meta.rulesSource = '';
     backup.networks[0].members = [];
-    await restoreBackup(backup);
+    const summary = await restoreBackup(backup);
     const rulesCall = mockClient.updateNetwork.mock.calls.find(c =>
       Object.prototype.hasOwnProperty.call(c[1], 'rules')
     );
@@ -244,6 +247,10 @@ describe('restoreBackup', () => {
       capabilities: portableConfig.capabilities,
       tags: portableConfig.tags,
     });
+    // ...and it warns that the network had no editable rules source on record.
+    expect(summary.warnings).toEqual([
+      expect.stringContaining('no editable rules source on record'),
+    ]);
   });
 
   it('preserves orgId on the created network when restoring onto a new nwid (P2 regression)', async () => {
