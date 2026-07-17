@@ -3,6 +3,7 @@ import { MemberTable } from '@/components/members/MemberTable';
 import { RoutesEditor } from '@/components/networks/RoutesEditor';
 import { DnsEditor } from '@/components/networks/DnsEditor';
 import { RulesEditor } from '@/components/networks/RulesEditor';
+import { JoinLinkPanel } from '@/components/networks/JoinLinkPanel';
 import { NetworkActions } from '@/components/networks/NetworkActions';
 
 export default async function NetworkDetailPage({ params }: { params: Promise<{ nwid: string }> }) {
@@ -23,6 +24,7 @@ export default async function NetworkDetailPage({ params }: { params: Promise<{ 
       <MemberTable nwid={nwid} />
       <DnsEditor nwid={nwid} />
       <RulesEditor nwid={nwid} />
+      <JoinLinkPanel nwid={nwid} />
       <NetworkActions nwid={nwid} />
     </div>
   );

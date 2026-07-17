@@ -23,6 +23,10 @@ vi.mock('@/components/networks/RulesEditor', () => ({
   RulesEditor: () => <section aria-label="Flow rules">Flow rules panel</section>,
 }));
 
+vi.mock('@/components/networks/JoinLinkPanel', () => ({
+  JoinLinkPanel: () => <section aria-label="Join link">Join link panel</section>,
+}));
+
 vi.mock('@/components/networks/NetworkActions', () => ({
   NetworkActions: () => <section aria-label="Actions">Actions panel</section>,
 }));
@@ -41,6 +45,7 @@ describe('NetworkDetailPage', () => {
     expect(text.indexOf('Routes panel')).toBeLessThan(text.indexOf('Members panel'));
     expect(text.indexOf('Members panel')).toBeLessThan(text.indexOf('DNS panel'));
     expect(text.indexOf('DNS panel')).toBeLessThan(text.indexOf('Flow rules panel'));
-    expect(text.indexOf('Flow rules panel')).toBeLessThan(text.indexOf('Actions panel'));
+    expect(text.indexOf('Flow rules panel')).toBeLessThan(text.indexOf('Join link panel'));
+    expect(text.indexOf('Join link panel')).toBeLessThan(text.indexOf('Actions panel'));
   });
 });

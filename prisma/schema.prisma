@@ -157,3 +157,17 @@ model MemberPresence {
 
   @@index([nwid, memberId, sampledAt])
 }
+
+model JoinToken {
+  id          String    @id @default(cuid())
+  nwid        String
+  hashedToken String    @unique
+  maxUses     Int       @default(0) // 0 = unlimited uses within the TTL
+  usedCount   Int       @default(0)
+  createdById String
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([nwid])
+}
