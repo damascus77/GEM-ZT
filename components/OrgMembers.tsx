@@ -27,8 +27,14 @@ interface OrgOption {
   role: OrgRole | null;
 }
 
-export function OrgMembers({ orgId }: { orgId: string }) {
+interface OrgMembersProps {
+  orgId: string;
+  orgSelectionMode?: 'picker' | 'fixed';
+}
+
+export function OrgMembers({ orgId, orgSelectionMode = 'picker' }: OrgMembersProps) {
   const queryClient = useQueryClient();
+  const showOrgPicker = orgSelectionMode === 'picker';
 
   const membersQuery = useQuery<{ members: Member[] }>({
     queryKey: ['org-members', orgId],
@@ -75,7 +81,15 @@ export function OrgMembers({ orgId }: { orgId: string }) {
   const [targetOrgId, setTargetOrgId] = useState(orgId);
   const [createdMessage, setCreatedMessage] = useState<string | null>(null);
 
-  const targetOrgRole = manageableOrgs.find(o => o.id === targetOrgId)?.role ?? null;
+  useEffect(() => {
+    if (!showOrgPicker) setTargetOrgId(orgId);
+  }, [orgId, showOrgPicker]);
+
+  const currentOrgRole =
+    ORG_ROLES.includes(myRole as OrgRole) && myRole ? (myRole as OrgRole) : null;
+  const targetOrgRole =
+    manageableOrgs.find(o => o.id === targetOrgId)?.role ??
+    (targetOrgId === orgId ? currentOrgRole : null);
   const grantableRoles = useMemo(() => {
     if (isSuperAdmin || !targetOrgRole || targetOrgRole === 'owner') return ORG_ROLES;
     return ORG_ROLES.filter(r => ROLE_RANK[r] < ROLE_RANK[targetOrgRole as OrgRole]);
@@ -290,7 +304,7 @@ export function OrgMembers({ orgId }: { orgId: string }) {
                 className="w-48"
               />
             </label>
-            {manageableOrgs.length > 1 ? (
+            {showOrgPicker && manageableOrgs.length > 1 ? (
               <label className="text-sm text-ink-mute">
                 Organization
                 <select
@@ -305,14 +319,14 @@ export function OrgMembers({ orgId }: { orgId: string }) {
                   ))}
                 </select>
               </label>
-            ) : (
+            ) : showOrgPicker ? (
               <div className="text-sm text-ink-mute">
                 Organization
                 <div className="mt-1 text-ink">
                   {manageableOrgs[0]?.name ?? 'this organization'}
                 </div>
               </div>
-            )}
+            ) : null}
             <label className="text-sm text-ink-mute">
               Role
               <select

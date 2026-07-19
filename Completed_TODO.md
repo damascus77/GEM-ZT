@@ -247,3 +247,15 @@ Verified complete against the working tree and moved out of `TODO.md`.
   Note: the earlier deferral reasons (QR dependency, extra token table) are both resolved; the public
   self-authorize redemption is intentionally not audit-logged since it has no acting user — revisit if
   per-device attribution is wanted.)_
+
+## 6. Moved 2026-07-19
+
+- ✅ **[DONE] (M2) Standalone account management + sidebar reorg.** _(Done 2026-07-19:
+  account creation is now reachable from a first-class `/accounts` page instead of being hidden
+  under an active organization's Members page. Added `components/AccountManagement.tsx`, which
+  selects manageable orgs (super-admins see all; org owners/admins see their manageable orgs),
+  renders scoped `OrgMembers` + `OrgInvitations`, and defaults to the active manageable org or the
+  first manageable fallback. `OrgMembers` now has a fixed-org reuse mode for `/accounts` while
+  preserving the old cross-org picker on `/orgs/{orgId}/members`. `components/Sidebar.tsx` now has
+  a role-scoped Account Management group (`/accounts`, `/accounts#invitations`), renames personal
+  settings to "My Account", and moves `OrgSwitcher` to the bottom sidebar controls.)_

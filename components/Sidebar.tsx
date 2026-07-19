@@ -121,10 +121,10 @@ export function Sidebar() {
   const { data: me } = useMe();
   const pendingCount = usePendingCount();
 
-  const activeOrgId = me?.activeOrgId ?? null;
-  const myRole = me ? me.memberships.find(m => m.orgId === activeOrgId)?.role : undefined;
   const isSuperAdmin = Boolean(me?.user.isSuperAdmin);
-  const canManageOrg = Boolean(isSuperAdmin || myRole === 'owner' || myRole === 'admin');
+  const canManageAccounts = Boolean(
+    isSuperAdmin || me?.memberships.some(m => m.role === 'owner' || m.role === 'admin')
+  );
 
   return (
     <aside className="flex w-[272px] shrink-0 flex-col bg-primary text-on-primary">
@@ -135,9 +135,7 @@ export function Sidebar() {
 
       <nav className="flex flex-1 flex-col gap-[18px] overflow-y-auto px-3 pb-3 pt-1.5">
         <NavGroup label="Workspace" divider={false}>
-          <NavItem href="/networks">
-            Networks
-          </NavItem>
+          <NavItem href="/networks">Networks</NavItem>
           <NavTreeChild href="/pending">
             <span>Pending</span>
             <NavBadge count={pendingCount} />
@@ -145,22 +143,15 @@ export function Sidebar() {
           <NavItem href="/apikeys">API Keys</NavItem>
           <NavItem href="/audit">Audit Log</NavItem>
           <NavItem href="/docs">API Docs</NavItem>
-          <NavItem href="/account">Account</NavItem>
+          <NavItem href="/account">My Account</NavItem>
         </NavGroup>
 
-        <NavGroup label="Organization">
-          <div className="px-0.5 pb-2.5">
-            <OrgSwitcher />
-          </div>
-          {canManageOrg && activeOrgId && (
-            <>
-              <NavItem href={`/orgs/${activeOrgId}/members`}>Members</NavItem>
-              <NavTreeChild href={`/orgs/${activeOrgId}/members#invitations`}>
-                Invitations
-              </NavTreeChild>
-            </>
-          )}
-        </NavGroup>
+        {canManageAccounts && (
+          <NavGroup label="Account Management">
+            <NavItem href="/accounts">Accounts</NavItem>
+            <NavTreeChild href="/accounts#invitations">Invitations</NavTreeChild>
+          </NavGroup>
+        )}
 
         {isSuperAdmin && (
           <NavGroup
@@ -174,7 +165,12 @@ export function Sidebar() {
         )}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-3 border-t border-[#2a2745] px-5 py-[18px]">
+      <div
+        role="group"
+        aria-label="Sidebar controls"
+        className="mt-auto flex flex-col gap-3 border-t border-[#2a2745] px-5 py-[18px]"
+      >
+        <OrgSwitcher />
         <ThemeToggle className="text-left text-sm text-on-dark-mute hover:text-on-primary" />
         <SignOutButton />
       </div>

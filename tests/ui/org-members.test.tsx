@@ -296,6 +296,26 @@ describe('OrgMembers', () => {
     expect(await screen.findByText(/created and added to globex/i)).toBeInTheDocument();
   });
 
+  it('fixed-org mode hides the organization selector and posts to the provided org', async () => {
+    const fetchMock = stubFetch('owner', {
+      orgs: [
+        { id: ORG_ID, name: 'Acme', slug: 'acme', role: 'owner' },
+        { id: 'org-2', name: 'Globex', slug: 'globex', role: 'owner' },
+      ],
+    });
+    renderWithQuery(<OrgMembers orgId={ORG_ID} orgSelectionMode="fixed" />);
+    await screen.findByText('alice');
+    expect(screen.queryByLabelText(/^organization$/i)).toBeNull();
+    await userEvent.type(screen.getByLabelText(/username/i), 'scoped');
+    await userEvent.type(screen.getByLabelText(/password/i), 'supersecretpw');
+    await userEvent.click(screen.getByRole('button', { name: /create user/i }));
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+      expect(post).toBeDefined();
+      expect(post![0]).toBe(`/api/v1/orgs/${ORG_ID}/members`);
+    });
+  });
+
   it('falls back to the current org when GET /api/v1/orgs fails', async () => {
     const fetchMock = stubFetch('owner', { orgsStatus: 500 });
     renderWithQuery(<OrgMembers orgId={ORG_ID} />);
