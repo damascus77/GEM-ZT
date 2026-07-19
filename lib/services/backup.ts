@@ -190,12 +190,25 @@ export async function exportBackup(): Promise<BackupData> {
   return { version: 1, networks };
 }
 
+/** Safely derive a human-readable message from an unknown thrown value. */
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
 /**
  * Replay a backup against the live controller. Networks are matched by nwid,
  * but nwids are controller-assigned — if a network's nwid is no longer on the
  * controller, restore mints a NEW network (new nwid) rather than forcing the
  * old one. Members that aren't currently joined to the controller are skipped
  * (they're auto-created only when a device joins).
+ *
+ * Restore is NOT idempotent once nwids change: re-running a backup whose
+ * networks no longer exist on the controller mints fresh networks each time
+ * (surfaced as a warning). It is also not transactional — a restore spans many
+ * controller HTTP calls, so it degrades gracefully instead of aborting: a
+ * partial failure at the member or network level is recorded in
+ * RestoreSummary.warnings and the restore continues, rather than throwing and
+ * discarding the summary mid-way.
  */
 export async function restoreBackup(data: BackupData): Promise<RestoreSummary> {
   const summary: RestoreSummary = {
@@ -207,76 +220,94 @@ export async function restoreBackup(data: BackupData): Promise<RestoreSummary> {
   };
 
   for (const net of data.networks) {
-    const existing = await getNetwork(net.nwid);
-    let targetNwid: string;
+    try {
+      const existing = await getNetwork(net.nwid);
+      let targetNwid: string;
 
-    if (existing) {
-      await updateNetwork(net.nwid, {
-        ...net.config,
-        name: net.meta.name,
-        description: net.meta.description,
-        tags: net.meta.tags,
-      });
-      if (net.meta.rulesSource) {
-        await setRules(net.nwid, net.meta.rulesSource);
+      if (existing) {
+        await updateNetwork(net.nwid, {
+          ...net.config,
+          name: net.meta.name,
+          description: net.meta.description,
+          tags: net.meta.tags,
+        });
+        if (net.meta.rulesSource) {
+          await setRules(net.nwid, net.meta.rulesSource);
+        } else {
+          // updateNetwork's CONTROLLER_KEYS deliberately excludes rules/
+          // capabilities/tags — they normally flow through setRules from the
+          // editable source. With no source on record (network predates GEM-ZT,
+          // or meta was lost), push the backup's captured compiled values
+          // directly; otherwise restore silently keeps the live rules, which is
+          // security-relevant since rules are the network's access policy.
+          const client = await getControllerClient();
+          await client.updateNetwork(net.nwid, {
+            rules: net.config.rules,
+            capabilities: net.config.capabilities,
+            tags: net.config.tags,
+          } as Partial<ControllerNetwork>);
+          // Surface this: the compiled rules were restored, but there's no editable
+          // source behind them, so the rules editor will show the default template
+          // as its baseline until the operator re-saves a source.
+          summary.warnings.push(
+            `network ${net.nwid}: no editable rules source on record — restored the backup's compiled rules directly; re-save the rules editor to reattach an editable source`
+          );
+        }
+        targetNwid = net.nwid;
+        summary.networksUpdated += 1;
       } else {
-        // updateNetwork's CONTROLLER_KEYS deliberately excludes rules/
-        // capabilities/tags — they normally flow through setRules from the
-        // editable source. With no source on record (network predates GEM-ZT,
-        // or meta was lost), push the backup's captured compiled values
-        // directly; otherwise restore silently keeps the live rules, which is
-        // security-relevant since rules are the network's access policy.
-        const client = await getControllerClient();
-        await client.updateNetwork(net.nwid, {
-          rules: net.config.rules,
-          capabilities: net.config.capabilities,
-          tags: net.config.tags,
-        } as Partial<ControllerNetwork>);
-        // Surface this: the compiled rules were restored, but there's no editable
-        // source behind them, so the rules editor will show the default template
-        // as its baseline until the operator re-saves a source.
+        const created = await createNetworkFromConfig({
+          config: net.config,
+          name: net.meta.name,
+          description: net.meta.description,
+          tags: JSON.stringify(net.meta.tags),
+          rulesSource: net.meta.rulesSource,
+          orgId: net.meta.orgId ?? undefined,
+        });
+        targetNwid = created.data.nwid;
+        summary.networksCreated += 1;
+        // The old nwid is gone, so we could not restore in place. Surface the
+        // non-idempotency: re-running this same backup will mint yet another
+        // network rather than reconcile with the one just created.
         summary.warnings.push(
-          `network ${net.nwid}: no editable rules source on record — restored the backup's compiled rules directly; re-save the rules editor to reattach an editable source`
+          `network ${net.nwid} no longer on controller — created a NEW network ${created.data.nwid} instead of restoring in place; re-running this backup will create duplicates`
         );
       }
-      targetNwid = net.nwid;
-      summary.networksUpdated += 1;
-    } else {
-      const created = await createNetworkFromConfig({
-        config: net.config,
-        name: net.meta.name,
-        description: net.meta.description,
-        tags: JSON.stringify(net.meta.tags),
-        rulesSource: net.meta.rulesSource,
-        orgId: net.meta.orgId ?? undefined,
-      });
-      targetNwid = created.data.nwid;
-      summary.networksCreated += 1;
-    }
 
-    for (const member of net.members) {
-      try {
-        await updateMember(targetNwid, member.memberId, {
-          authorized: member.config.authorized,
-          activeBridge: member.config.activeBridge,
-          noAutoAssignIps: member.config.noAutoAssignIps,
-          ipAssignments: member.config.ipAssignments,
-          capabilities: member.config.capabilities,
-          tags: member.config.tags,
-          name: member.meta.name,
-          notes: member.meta.notes,
-        });
-        summary.membersRestored += 1;
-      } catch (e) {
-        if (e instanceof ControllerApiError && e.status === 404) {
+      for (const member of net.members) {
+        try {
+          await updateMember(targetNwid, member.memberId, {
+            authorized: member.config.authorized,
+            activeBridge: member.config.activeBridge,
+            noAutoAssignIps: member.config.noAutoAssignIps,
+            ipAssignments: member.config.ipAssignments,
+            capabilities: member.config.capabilities,
+            tags: member.config.tags,
+            name: member.meta.name,
+            notes: member.meta.notes,
+          });
+          summary.membersRestored += 1;
+        } catch (e) {
           summary.membersSkipped += 1;
+          if (e instanceof ControllerApiError && e.status === 404) {
+            summary.warnings.push(
+              `member ${member.memberId} on network ${targetNwid} not joined yet — config skipped`
+            );
+            continue;
+          }
+          // Any other member failure is reported and skipped rather than aborting
+          // the whole network — the remaining members still get restored.
           summary.warnings.push(
-            `member ${member.memberId} on network ${targetNwid} not joined yet — config skipped`
+            `member ${member.memberId} on network ${targetNwid}: ${errorMessage(e)}; skipped`
           );
           continue;
         }
-        throw e;
       }
+    } catch (e) {
+      // A network-level failure (getNetwork/updateNetwork/setRules/create) must
+      // not abort the entire restore: record it and move on to the next network.
+      summary.warnings.push(`network ${net.nwid}: restore failed — ${errorMessage(e)}; skipped`);
+      continue;
     }
   }
 

@@ -12,6 +12,7 @@
   --c-ink-mute: 115 112 109; /* #73706d */
   --c-ink-faint: 154 151 148; /* #9a9794 */
   --c-hairline: 232 228 221; /* #e8e4dd */
+  --c-success: 14 48 48; /* #0e3030 — legible on white */
 }
 .dark {
   --c-canvas: 28 26 46; /* #1c1a2e — card / input surface */
@@ -20,6 +21,7 @@
   --c-ink-mute: 165 162 184;
   --c-ink-faint: 120 117 143;
   --c-hairline: 48 43 68; /* #302b44 */
+  --c-success: 95 208 196; /* #5fd0c4 — light teal, legible on #100e1c */
 }
 
 /* DESIGN.md: Inter Variable substitute for Super Sans VF — sub-default weights */

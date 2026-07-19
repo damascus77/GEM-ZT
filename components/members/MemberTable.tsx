@@ -82,7 +82,7 @@ function TagInput({
 }
 
 function PresencePill({ online }: { online: boolean | null }) {
-  if (online === true) return <Pill className="border-teal-mid text-teal-deep">Online</Pill>;
+  if (online === true) return <Pill tone="success">Online</Pill>;
   if (online === false) return <Pill>Offline</Pill>;
   // "Unknown" typically appears for newly authorized members before they establish their first connection.
   // The ZT controller needs time to propagate member info to all peers; newly added members may take
@@ -91,8 +91,7 @@ function PresencePill({ online }: { online: boolean | null }) {
 }
 
 function ConnectionPill({ connection }: { connection: ConnectionType | null }) {
-  if (connection === 'direct')
-    return <Pill className="border-teal-mid text-teal-deep">Direct</Pill>;
+  if (connection === 'direct') return <Pill tone="success">Direct</Pill>;
   // Relayed: reachable only via a root/relay (no direct peer-to-peer path).
   if (connection === 'relayed') return <Pill>Relayed</Pill>;
   // Unknown: the controller has no peer entry (e.g. never connected yet).

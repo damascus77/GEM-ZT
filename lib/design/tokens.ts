@@ -30,6 +30,9 @@ export const semanticColorsLight = {
   'ink-mute': '#73706d',
   'ink-faint': '#9a9794',
   hairline: '#e8e4dd',
+  // Positive/"added" foreground. Dark teal reads on white; the dark-mode value
+  // below swaps to a light teal so it stays legible on the dark page background.
+  success: '#0e3030',
 } as const;
 
 /** Semantic color tokens for dark mode (for reference; actual values in CSS) */
@@ -40,6 +43,9 @@ export const semanticColorsDark = {
   'ink-mute': '#a5a2b8',
   'ink-faint': '#78758f',
   hairline: '#302b44',
+  // Light teal so positive text stays legible on #100e1c (the dark teal-deep
+  // #0e3030 was ~1.1:1 contrast there — effectively invisible).
+  success: '#5fd0c4',
 } as const;
 
 // ============================================================================

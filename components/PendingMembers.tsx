@@ -21,7 +21,7 @@ type PendingData = { pending: PendingMemberView[] };
 const PENDING_KEY = ['pending'] as const;
 
 function PresencePill({ online }: { online: boolean | null }) {
-  if (online === true) return <Pill className="border-teal-mid text-teal-deep">Online</Pill>;
+  if (online === true) return <Pill tone="success">Online</Pill>;
   if (online === false) return <Pill>Offline</Pill>;
   return <Pill className="text-ink-faint">Unknown</Pill>;
 }

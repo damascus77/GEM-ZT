@@ -222,12 +222,18 @@ describe('restoreBackup', () => {
     expect(meta?.rulesSource).toBe('accept;');
   });
 
-  it('re-throws non-404 errors from updateMember', async () => {
+  it('records a non-404 member error as a warning and continues the restore', async () => {
+    // A non-404 controller error on one member must no longer abort the whole
+    // restore (AUD-05): it is recorded as a warning, that member is skipped, and
+    // the remaining members still restore.
     mockClient.getMember.mockImplementation(async (nwid: string, id: string) => {
       if (id === 'deadbeef02') throw new ControllerApiError(500, 'boom');
       return controllerMember(id, nwid);
     });
-    await expect(restoreBackup(makeBackup())).rejects.toThrow('boom');
+    const summary = await restoreBackup(makeBackup());
+    expect(summary.membersRestored).toBe(1);
+    expect(summary.membersSkipped).toBe(1);
+    expect(summary.warnings.some(w => w.includes('deadbeef02') && w.includes('boom'))).toBe(true);
   });
 
   it('pushes the backup rules/capabilities/tags directly when rulesSource is empty', async () => {

@@ -36,7 +36,7 @@ function AuditDetail({ detail }: { detail: unknown }) {
             key={i}
             className={
               line.type === 'added'
-                ? 'text-teal-deep'
+                ? 'text-success'
                 : line.type === 'removed'
                   ? 'text-ink-faint line-through'
                   : 'text-ink-mute'

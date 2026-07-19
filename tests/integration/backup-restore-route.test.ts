@@ -171,9 +171,16 @@ describe('POST /api/v1/backup/restore', () => {
     expect(res.status).toBe(400);
   });
 
-  it('bubbles up non-404 controller errors as 502', async () => {
+  it('records a non-404 controller error as a warning and returns 200 (continue-on-error)', async () => {
+    // AUD-05: a network-level controller failure no longer aborts the restore
+    // with a 502 — it is skipped, recorded in summary.warnings, and the route
+    // returns 200 so any other networks in the backup still apply.
     mockClient.getNetwork.mockRejectedValueOnce(new ControllerApiError(500, 'boom'));
     const res = await restorePost(req(validBackup));
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.networksCreated).toBe(0);
+    expect(body.networksUpdated).toBe(0);
+    expect(body.warnings.some((w: string) => w.includes('boom'))).toBe(true);
   });
 });

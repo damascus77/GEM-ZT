@@ -25,6 +25,7 @@ const config: Config = {
         'ink-mute': 'rgb(var(--c-ink-mute) / <alpha-value>)',
         'ink-faint': 'rgb(var(--c-ink-faint) / <alpha-value>)',
         hairline: 'rgb(var(--c-hairline) / <alpha-value>)',
+        success: 'rgb(var(--c-success) / <alpha-value>)',
       },
       borderRadius: {
         xs: tokens.borderRadius.xs,

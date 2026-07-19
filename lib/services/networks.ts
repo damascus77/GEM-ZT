@@ -5,6 +5,7 @@ import type { ControllerNetwork } from '@/lib/controller/types';
 import { getDb } from '@/lib/db/client';
 import { isValidCidr } from '@/lib/util/cidr';
 import { coalesce, bustCache } from '@/lib/util/cache';
+import { mapWithConcurrency } from '@/lib/util/concurrency';
 import { findDuplicateRouteTargets } from '@/lib/util/networkValidation';
 import { bustMetricsCache } from './cacheInvalidation';
 
@@ -111,6 +112,10 @@ const META_UPSERT_WARNING =
   'The controller accepted the change, but saving GEM-ZT metadata failed. ' +
   'Network operation is unaffected; retry to restore friendly names.';
 
+// Cap simultaneous controller GETs when fanning out over a network list.
+// Matches lib/services/members.ts / metrics.ts / backup.ts.
+const NETWORK_FETCH_CONCURRENCY = 8;
+
 const NETWORK_LIST_ALL_CACHE_KEY = 'controller:networks:all';
 const NETWORK_LIST_UNASSIGNED_CACHE_KEY = 'controller:networks:unassigned';
 const networkListForOrgCacheKey = (orgId: string): string => `controller:networks:org:${orgId}`;
@@ -162,23 +167,21 @@ async function listNetworksUncached(): Promise<NetworkSummary[]> {
       return [];
     });
   const metaMap = new Map(metas.map(m => [m.nwid, m]));
-  return Promise.all(
-    ids.map(async nwid => {
-      const [config, memberIds] = await Promise.all([
-        client.getNetwork(nwid),
-        client.listMemberIds(nwid),
-      ]);
-      const meta = metaMap.get(nwid);
-      return {
-        nwid,
-        name: meta?.name || config.name || nwid,
-        description: meta?.description ?? '',
-        tags: meta ? (JSON.parse(meta.tags) as string[]) : [],
-        private: config.private,
-        memberCount: Object.keys(memberIds).length,
-      };
-    })
-  );
+  return mapWithConcurrency(ids, NETWORK_FETCH_CONCURRENCY, async nwid => {
+    const [config, memberIds] = await Promise.all([
+      client.getNetwork(nwid),
+      client.listMemberIds(nwid),
+    ]);
+    const meta = metaMap.get(nwid);
+    return {
+      nwid,
+      name: meta?.name || config.name || nwid,
+      description: meta?.description ?? '',
+      tags: meta ? (JSON.parse(meta.tags) as string[]) : [],
+      private: config.private,
+      memberCount: Object.keys(memberIds).length,
+    };
+  });
 }
 
 export async function listNetworksForOrg(orgId: string): Promise<NetworkSummary[]> {
@@ -200,25 +203,22 @@ async function listNetworksForOrgUncached(orgId: string): Promise<NetworkSummary
     });
   const owned = new Set(metas.map(m => m.nwid));
   const metaMap = new Map(metas.map(m => [m.nwid, m]));
-  return Promise.all(
-    ids
-      .filter(nwid => owned.has(nwid))
-      .map(async nwid => {
-        const [config, memberIds] = await Promise.all([
-          client.getNetwork(nwid),
-          client.listMemberIds(nwid),
-        ]);
-        const meta = metaMap.get(nwid);
-        return {
-          nwid,
-          name: meta?.name || config.name || nwid,
-          description: meta?.description ?? '',
-          tags: meta ? (JSON.parse(meta.tags) as string[]) : [],
-          private: config.private,
-          memberCount: Object.keys(memberIds).length,
-        };
-      })
-  );
+  const ownedIds = ids.filter(nwid => owned.has(nwid));
+  return mapWithConcurrency(ownedIds, NETWORK_FETCH_CONCURRENCY, async nwid => {
+    const [config, memberIds] = await Promise.all([
+      client.getNetwork(nwid),
+      client.listMemberIds(nwid),
+    ]);
+    const meta = metaMap.get(nwid);
+    return {
+      nwid,
+      name: meta?.name || config.name || nwid,
+      description: meta?.description ?? '',
+      tags: meta ? (JSON.parse(meta.tags) as string[]) : [],
+      private: config.private,
+      memberCount: Object.keys(memberIds).length,
+    };
+  });
 }
 
 /** True iff `nwid` has GEM-ZT metadata and belongs to `orgId`. */
@@ -254,23 +254,21 @@ async function listUnassignedNetworksUncached(): Promise<NetworkSummary[]> {
   const metaMap = new Map(metas.map(m => [m.nwid, m]));
   const assigned = new Set(metas.filter(m => m.orgId).map(m => m.nwid));
   const orphanIds = ids.filter(nwid => !assigned.has(nwid));
-  return Promise.all(
-    orphanIds.map(async nwid => {
-      const [config, memberIds] = await Promise.all([
-        client.getNetwork(nwid),
-        client.listMemberIds(nwid),
-      ]);
-      const meta = metaMap.get(nwid);
-      return {
-        nwid,
-        name: meta?.name || config.name || nwid,
-        description: meta?.description ?? '',
-        tags: meta ? (JSON.parse(meta.tags) as string[]) : [],
-        private: config.private,
-        memberCount: Object.keys(memberIds).length,
-      };
-    })
-  );
+  return mapWithConcurrency(orphanIds, NETWORK_FETCH_CONCURRENCY, async nwid => {
+    const [config, memberIds] = await Promise.all([
+      client.getNetwork(nwid),
+      client.listMemberIds(nwid),
+    ]);
+    const meta = metaMap.get(nwid);
+    return {
+      nwid,
+      name: meta?.name || config.name || nwid,
+      description: meta?.description ?? '',
+      tags: meta ? (JSON.parse(meta.tags) as string[]) : [],
+      private: config.private,
+      memberCount: Object.keys(memberIds).length,
+    };
+  });
 }
 
 export async function createNetwork(

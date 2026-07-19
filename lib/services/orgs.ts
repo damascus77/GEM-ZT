@@ -40,13 +40,18 @@ export async function createOrg(input: {
   createdById: string;
 }): Promise<Organization> {
   const slug = await uniqueSlug(slugify(input.name));
-  const org = await getDb().organization.create({
-    data: { name: input.name, slug, createdById: input.createdById },
+  // Create the org and its owner membership atomically. If the membership
+  // insert fails, the org insert rolls back too, so an organization can never
+  // exist without an owner (which would leave it unadministrable).
+  return getDb().$transaction(async tx => {
+    const org = await tx.organization.create({
+      data: { name: input.name, slug, createdById: input.createdById },
+    });
+    await tx.membership.create({
+      data: { orgId: org.id, userId: input.createdById, role: 'owner' },
+    });
+    return org;
   });
-  await getDb().membership.create({
-    data: { orgId: org.id, userId: input.createdById, role: 'owner' },
-  });
-  return org;
 }
 
 export function renameOrg(orgId: string, name: string): Promise<Organization> {
@@ -91,30 +96,45 @@ export function addMembership(orgId: string, userId: string, role: OrgRole): Pro
   return getDb().membership.create({ data: { orgId, userId, role } });
 }
 
-async function ownerCount(orgId: string): Promise<number> {
-  return getDb().membership.count({ where: { orgId, role: 'owner' } });
-}
-
 export async function setMemberRole(orgId: string, userId: string, role: OrgRole): Promise<void> {
-  const current = await getMembership(userId, orgId);
-  if (current?.role === 'owner' && role !== 'owner' && (await ownerCount(orgId)) <= 1) {
-    throw new LastOwnerError();
-  }
-  await getDb().membership.update({
-    where: { userId_orgId: { userId, orgId } },
-    data: { role },
+  // Read the current role, enforce the last-owner guard, and write the update
+  // inside one transaction. Keeping the check and the write atomic prevents a
+  // TOCTOU race where two concurrent demotions both pass the guard and leave
+  // the org with zero owners.
+  await getDb().$transaction(async tx => {
+    const current = await tx.membership.findUnique({
+      where: { userId_orgId: { userId, orgId } },
+    });
+    if (
+      current?.role === 'owner' &&
+      role !== 'owner' &&
+      (await tx.membership.count({ where: { orgId, role: 'owner' } })) <= 1
+    ) {
+      throw new LastOwnerError();
+    }
+    await tx.membership.update({
+      where: { userId_orgId: { userId, orgId } },
+      data: { role },
+    });
   });
 }
 
 export async function removeMember(orgId: string, userId: string): Promise<void> {
-  const current = await getMembership(userId, orgId);
-  if (current?.role === 'owner' && (await ownerCount(orgId)) <= 1) {
-    throw new LastOwnerError();
-  }
-  // Delete the membership and all org-scoped API keys atomically so a removed
-  // member can never retain API access via a surviving credential.
-  await getDb().$transaction([
-    getDb().membership.deleteMany({ where: { orgId, userId } }),
-    getDb().apiKey.deleteMany({ where: { userId, orgId } }),
-  ]);
+  // Enforce the last-owner guard and delete the membership plus all org-scoped
+  // API keys inside one transaction. The check and both writes must be atomic:
+  // concurrent removals can't strip the final owner, and a removed member can
+  // never retain API access via a surviving credential.
+  await getDb().$transaction(async tx => {
+    const current = await tx.membership.findUnique({
+      where: { userId_orgId: { userId, orgId } },
+    });
+    if (
+      current?.role === 'owner' &&
+      (await tx.membership.count({ where: { orgId, role: 'owner' } })) <= 1
+    ) {
+      throw new LastOwnerError();
+    }
+    await tx.membership.deleteMany({ where: { orgId, userId } });
+    await tx.apiKey.deleteMany({ where: { userId, orgId } });
+  });
 }

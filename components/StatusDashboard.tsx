@@ -48,7 +48,7 @@ export function StatusDashboard() {
     : 'Checking';
   const controllerPill =
     controllerStatus && !controllerStatus.degraded ? (
-      <Pill className="border-teal-mid text-teal-deep">{controllerLabel}</Pill>
+      <Pill tone="success">{controllerLabel}</Pill>
     ) : (
       <Pill className="text-ink-faint">{controllerLabel}</Pill>
     );
