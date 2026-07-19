@@ -8,7 +8,10 @@ import { Input } from '@/components/ui/Input';
 import { AcceptedChips } from '@/components/ui/AcceptedChip';
 import { useControllerStatus } from '@/components/DegradedBanner';
 import { cidrToPool, isValidCidr, isValidIp } from '@/lib/util/cidr';
-import { validateRoutesAndPools } from '@/lib/util/networkValidation';
+import {
+  duplicateRouteTargetMessages,
+  validateRoutesAndPools,
+} from '@/lib/util/networkValidation';
 import { useNetworkDetail } from './useNetworkDetail';
 
 interface RouteRow {
@@ -90,6 +93,10 @@ export function RoutesEditor({ nwid }: { nwid: string }) {
 
   const save = useMutation({
     mutationFn: async () => {
+      const duplicateErrors = duplicateRouteTargetMessages(routes);
+      if (duplicateErrors.length > 0) {
+        throw new Error(duplicateErrors[0]);
+      }
       const res = await fetch(`/api/v1/networks/${nwid}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

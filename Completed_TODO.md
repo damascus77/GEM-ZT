@@ -259,3 +259,21 @@ Verified complete against the working tree and moved out of `TODO.md`.
   preserving the old cross-org picker on `/orgs/{orgId}/members`. `components/Sidebar.tsx` now has
   a role-scoped Account Management group (`/accounts`, `/accounts#invitations`), renames personal
   settings to "My Account", and moves `OrgSwitcher` to the bottom sidebar controls.)_
+- ✅ **[DONE] (I5) Prevent duplicate managed routes.** _(Done 2026-07-19: added reusable
+  duplicate target detection in `lib/util/networkValidation.ts` keyed by trimmed/lowercased
+  route targets. `RoutesEditor` now blocks Save before PATCH and shows the duplicate route
+  error inline, while `updateNetworkSchema` rejects duplicate `routes` server-side before the
+  controller is patched. Operators must remove or change the duplicate row; no auto-merge.)_
+- ✅ **[DONE] (I6) Configurable runtime rate-limit settings.** _(Done 2026-07-19: added
+  `lib/services/rateLimitSettings.ts` backed by the global `Setting` table with env defaults,
+  cache reset, and in-memory limiter rebuilds. New super-admin-only
+  `GET/PUT /api/v1/admin/rate-limits` returns defaults/effective/overrides and validates
+  positive attempt counts plus windows `>= 1000ms`. Login and self-authorize routes now read
+  the effective config at request time, and `/admin` includes an editable `RateLimitSettings`
+  panel.)_
+- ✅ **[DONE] (M6) Admin ZT Controller status/settings page.** _(Done 2026-07-19:
+  `/api/v1/controller/status` still returns `address`, `online`, and `version`, and now also
+  includes redacted controller connection settings (`controllerUrl`, timeout, cache TTL) plus
+  best-effort network/peer/active path counts. `/admin` now shows an `AdminControllerPanel`
+  alongside rate-limit settings and existing organization management. Controller credentials
+  remain server-only.)_

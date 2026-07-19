@@ -2,17 +2,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiError, handleRouteError } from '@/lib/api/errors';
 import { clientIp } from '@/lib/api/net';
-import { createRateLimiter } from '@/lib/services/rateLimit';
 import { ControllerApiError } from '@/lib/controller/client';
 import { redeemJoinToken } from '@/lib/services/joinTokens';
+import { getSelfAuthorizeRateLimiter } from '@/lib/services/rateLimitSettings';
 
 type Ctx = { params: Promise<{ nwid: string }> };
-
-// Public, unauthenticated device self-authorization — rate-limit by IP so a
-// leaked/guessed token endpoint can't be sprayed to probe tokens or member ids.
-const MAX_ATTEMPTS = Number(process.env.GEMZT_SELF_AUTHORIZE_MAX_ATTEMPTS ?? 10);
-const WINDOW_MS = Number(process.env.GEMZT_SELF_AUTHORIZE_WINDOW_MS ?? 15 * 60 * 1000);
-const limiter = createRateLimiter({ limit: MAX_ATTEMPTS, windowMs: WINDOW_MS });
 
 const bodySchema = z
   .object({
@@ -24,6 +18,9 @@ const bodySchema = z
 export async function POST(req: Request, { params }: Ctx) {
   try {
     const ipKey = clientIp(req);
+    // Public, unauthenticated device self-authorization — rate-limit by IP so a
+    // leaked/guessed token endpoint can't be sprayed to probe tokens or member ids.
+    const limiter = await getSelfAuthorizeRateLimiter();
     const gate = limiter.check(ipKey);
     if (!gate.allowed) {
       return apiError('RATE_LIMITED', 'Too many requests. Try again later.', 429, {

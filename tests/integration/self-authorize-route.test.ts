@@ -11,6 +11,10 @@ import type { ControllerMember } from '@/lib/controller/types';
 import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
 import { createJoinToken } from '@/lib/services/joinTokens';
+import {
+  resetRateLimitSettingsCache,
+  setRateLimitSettings,
+} from '@/lib/services/rateLimitSettings';
 import { POST as selfAuthorize } from '@/app/api/v1/networks/[nwid]/self-authorize/route';
 
 const NWID = 'abcdef0123456789';
@@ -62,6 +66,8 @@ beforeEach(async () => {
   );
   mockClient.listPeers.mockResolvedValue([]);
   await getDb().joinToken.deleteMany();
+  await getDb().setting.deleteMany({ where: { key: 'admin.rate_limits' } });
+  resetRateLimitSettingsCache();
 });
 
 const ctx = { params: Promise.resolve({ nwid: NWID }) };
@@ -108,5 +114,20 @@ describe('POST /api/v1/networks/[nwid]/self-authorize', () => {
     const res = await selfAuthorize(req({ token: 'jt_x' }), ctx);
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('honors saved runtime self-authorize limits without restarting the route module', async () => {
+    await setRateLimitSettings({
+      loginMaxAttempts: 5,
+      loginIpMaxAttempts: 20,
+      loginWindowMs: 60_000,
+      selfAuthorizeMaxAttempts: 1,
+      selfAuthorizeWindowMs: 60_000,
+    });
+
+    const first = await selfAuthorize(req({ token: 'jt_bogus', memberId: MEMBER }), ctx);
+    expect(first.status).toBe(404);
+    const blocked = await selfAuthorize(req({ token: 'jt_bogus', memberId: MEMBER }), ctx);
+    expect(blocked.status).toBe(429);
   });
 });

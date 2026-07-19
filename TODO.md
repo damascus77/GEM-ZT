@@ -11,7 +11,8 @@ Legend: **[P0]** blocker / do now · **[P1]** important · **[P2]** nice-to-have
 > **M5** (network-detail layout), **M7** (ZTNET release-note mining), the **backup/restore
 > `rulesSource`** guard/warning, **M9** (clear-on-accept + red-X remove + chip readability),
 > the **pending-queue polish** (self-authorize join tokens + QR), and **M2** (standalone
-> account management + sidebar reorg).
+> account management + sidebar reorg), **I5** (duplicate managed-route rejection), **I6**
+> (runtime rate-limit settings), and **M6** (admin controller status/settings).
 
 ---
 
@@ -62,20 +63,12 @@ tracked above; triage into the P-buckets as they get scheduled.
   GEM-ZT is English-only. Introduce a message catalog + locale switch. **[P3]**
 - **I4 — Responsive/mobile member table + PWA.** ZTNET v0.8.0 refactored the members table to
   be responsive and (v0.8.2) ships a PWA/service worker. GEM-ZT's wide table is desktop-first. **[P3]**
-- **I5 — Prevent duplicate managed routes.** ZTNET v0.8.1 explicitly de-duped managed routes.
-  GEM-ZT warns on overlaps but doesn't reject/merge exact duplicates on save
-  (`lib/util/networkValidation.ts`, `components/networks/RoutesEditor.tsx`). **[P3]**
-- **I6 — Configurable rate-limit options in settings.** ZTNET v0.7.14 made rate limiting
-  configurable. GEM-ZT has a login limiter (`lib/services/rateLimit.ts`) and a self-authorize
-  limiter driven only by env vars — surface window/attempts in an admin settings UI. **[P3]**
 - **I7 — STARTTLS in SMTP email settings.** ZTNET v0.7.14 added STARTTLS. Fold into #3 when the
   SMTP email path is built. **[P2]**
 
 ## Added by Project Manager:
 
 M4: design overhaul and fuction overhaul of network members. Take insiration from the link and redesign the network page. Functions available from these screenshots should be added. https://github.com/sinamics/ztnet/blob/main/docs/images/showcase/network_local.jpg, https://github.com/sinamics/ztnet/blob/main/docs/images/showcase/member_options.jpg
-
-M6: Adding a Admin (super-user/owner role) ZT Controller page to show the full status of the controller itself and its settings. Refrence: https://github.com/sinamics/ztnet/blob/main/docs/images/showcase/admin_controller.jpg
 
 ---
 
@@ -84,21 +77,16 @@ M6: Adding a Admin (super-user/owner role) ZT Controller page to show the full s
 Ordered across the whole remaining backlog (P-items + M-items + ZTNET ideas). Rough effort
 in parens.
 
-1. **I5 — reject/merge duplicate managed routes on save.** (S, harden `networkValidation.ts`).
-2. **I6 — expose rate-limit options in an admin settings UI.** (S–M, surface the existing env
-   knobs for the login + self-authorize limiters).
-3. **M6 — Admin ZT Controller status/settings page.** (M, new super-admin page + expand the
-   `/controller/status` endpoint beyond address/online/version).
-4. **#1 — OIDC/SSO login.** (M, `lib/services/auth.ts` + callback route + provider config).
-5. **#3 + I7 — complete email + webhook notifications.** (M–L, SMTP w/ STARTTLS + more events
+1. **#1 — OIDC/SSO login.** (M, `lib/services/auth.ts` + callback route + provider config).
+2. **#3 + I7 — complete email + webhook notifications.** (M–L, SMTP w/ STARTTLS + more events
    - a real background scheduler).
-6. **#6 + I1 — presence/metrics depth + real-time push.** (M–L, a background scheduler unblocks
+3. **#6 + I1 — presence/metrics depth + real-time push.** (M–L, a background scheduler unblocks
    accurate presence/metrics; a WebSocket/SSE channel makes updates instant — shares the
    scheduler with #3).
-7. **I2 — row virtualization + database-first member sync for large networks.** (M–L).
-8. **M4 — network members design + function overhaul.** (L, redesign after the ZTNET showcase).
-9. **#5 — visual flow-rule builder.** (L, block-based editor emitting rule source + presets).
-10. **I3 — internationalization (i18n).** (L, message catalog + locale switch across the UI).
-11. **I4 — responsive/mobile member table + PWA.** (L).
-12. **#2 — Prisma 5 → 7 major upgrade.** (L / risky, follow the migration guide).
-13. **#4 — private root / custom planet (mkworld).** (XL, binary tooling in the image + docs).
+4. **I2 — row virtualization + database-first member sync for large networks.** (M–L).
+5. **M4 — network members design + function overhaul.** (L, redesign after the ZTNET showcase).
+6. **#5 — visual flow-rule builder.** (L, block-based editor emitting rule source + presets).
+7. **I3 — internationalization (i18n).** (L, message catalog + locale switch across the UI).
+8. **I4 — responsive/mobile member table + PWA.** (L).
+9. **#2 — Prisma 5 → 7 major upgrade.** (L / risky, follow the migration guide).
+10. **#4 — private root / custom planet (mkworld).** (XL, binary tooling in the image + docs).

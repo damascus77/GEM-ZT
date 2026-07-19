@@ -177,8 +177,53 @@ export const openApiSpec = {
     '/controller/status': {
       get: {
         tags: ['controller'],
-        summary: 'Controller node id, version, online state (502 when degraded); super-admin only',
-        responses: { ...ok('{ address, online, version }'), ...authz },
+        summary:
+          'Controller node id, version, online state, connection settings, and inventory counts; ' +
+          'super-admin only',
+        responses: {
+          ...ok(
+            '{ address, online, version, controllerUrl, timeoutMs, cacheTtlMs, networkCount, peerCount, activePeerCount, activePathCount }'
+          ),
+          ...authz,
+        },
+      },
+    },
+    '/admin/rate-limits': {
+      get: {
+        tags: ['admin'],
+        summary:
+          'Get effective login and self-authorize rate-limit settings plus environment defaults; ' +
+          'super-admin only',
+        responses: { '200': { description: '{ defaults, effective, overrides }' }, ...authz },
+      },
+      put: {
+        tags: ['admin'],
+        summary: 'Persist runtime login and self-authorize rate-limit overrides; super-admin only',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: [
+                  'loginMaxAttempts',
+                  'loginIpMaxAttempts',
+                  'loginWindowMs',
+                  'selfAuthorizeMaxAttempts',
+                  'selfAuthorizeWindowMs',
+                ],
+                properties: {
+                  loginMaxAttempts: { type: 'integer', minimum: 1 },
+                  loginIpMaxAttempts: { type: 'integer', minimum: 1 },
+                  loginWindowMs: { type: 'integer', minimum: 1000 },
+                  selfAuthorizeMaxAttempts: { type: 'integer', minimum: 1 },
+                  selfAuthorizeWindowMs: { type: 'integer', minimum: 1000 },
+                },
+              },
+            },
+          },
+        },
+        responses: { '200': { description: '{ defaults, effective, overrides }' }, ...authz },
       },
     },
     '/networks': {

@@ -139,6 +139,17 @@ describe('RoutesEditor', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/valid ipv4 cidr/i);
     expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH')).toBeUndefined();
   });
+
+  it('blocks saving duplicate route targets without PATCHing', async () => {
+    const fetchMock = stubFetch();
+    renderWithQuery(<RoutesEditor nwid={NWID} />);
+    await screen.findByDisplayValue('10.147.17.0/24');
+    await userEvent.click(screen.getByRole('button', { name: /add route/i }));
+    await userEvent.type(screen.getByLabelText(/route target 2/i), ' 10.147.17.0/24 ');
+    await userEvent.click(screen.getByRole('button', { name: /save routes & pools/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/duplicated/i);
+    expect(fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH')).toBeUndefined();
+  });
 });
 
 describe('DnsEditor', () => {

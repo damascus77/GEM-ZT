@@ -1,12 +1,21 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
 import { createUser } from '@/lib/services/auth';
+import {
+  resetRateLimitSettingsCache,
+  setRateLimitSettings,
+} from '@/lib/services/rateLimitSettings';
 import { POST as loginPost } from '@/app/api/v1/auth/login/route';
 
 beforeAll(async () => {
   setupTestDb();
   await createUser('rl-admin', 'password12345');
+});
+
+beforeEach(async () => {
+  resetRateLimitSettingsCache();
+  await getDb().setting.deleteMany({ where: { key: 'admin.rate_limits' } });
 });
 
 afterAll(async () => {
@@ -57,5 +66,19 @@ describe('login rate limiting', () => {
     expect(blocked.status).toBe(429);
     expect((await blocked.json()).error.code).toBe('RATE_LIMITED');
     expect(blocked.headers.get('Retry-After')).toBeTruthy();
+  });
+
+  it('honors saved runtime login limits without restarting the route module', async () => {
+    await setRateLimitSettings({
+      loginMaxAttempts: 1,
+      loginIpMaxAttempts: 20,
+      loginWindowMs: 60_000,
+      selfAuthorizeMaxAttempts: 10,
+      selfAuthorizeWindowMs: 60_000,
+    });
+
+    expect((await loginPost(loginReq('rl-runtime-limit', 'wrong'))).status).toBe(401);
+    const blocked = await loginPost(loginReq('rl-runtime-limit', 'wrong'));
+    expect(blocked.status).toBe(429);
   });
 });

@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 
-vi.mock('@/lib/controller', () => ({ getControllerClient: vi.fn(), getControllerCacheTtlMs: () => 0 }));
+vi.mock('@/lib/controller', () => ({
+  getControllerClient: vi.fn(),
+  getControllerCacheTtlMs: () => 0,
+}));
 
 import { getControllerClient } from '@/lib/controller';
 import { ControllerUnreachableError, ControllerApiError } from '@/lib/controller/client';
@@ -190,6 +193,21 @@ describe('networks routes', () => {
       { params: Promise.resolve({ nwid: NWID }) }
     );
     expect(res.status).toBe(400);
+  });
+
+  it('PATCH rejects duplicate managed route targets without updating the controller', async () => {
+    const res = await detailPatch(
+      req(`http://x/api/v1/networks/${NWID}`, 'PATCH', {
+        routes: [
+          { target: 'FD00::/112', via: null },
+          { target: 'fd00::/112', via: null },
+        ],
+      }),
+      { params: Promise.resolve({ nwid: NWID }) }
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.message).toMatch(/duplicate route targets/i);
+    expect(mockClient.updateNetwork).not.toHaveBeenCalled();
   });
 
   it('DELETE /networks/{nwid} returns 204 and audits', async () => {

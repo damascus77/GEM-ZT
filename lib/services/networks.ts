@@ -5,6 +5,7 @@ import type { ControllerNetwork } from '@/lib/controller/types';
 import { getDb } from '@/lib/db/client';
 import { isValidCidr } from '@/lib/util/cidr';
 import { coalesce, bustCache } from '@/lib/util/cache';
+import { findDuplicateRouteTargets } from '@/lib/util/networkValidation';
 import { bustMetricsCache } from './cacheInvalidation';
 
 export interface WriteResult<T> {
@@ -56,6 +57,9 @@ export const updateNetworkSchema = z
           .strict()
       )
       .max(128)
+      .refine(routes => findDuplicateRouteTargets(routes).length === 0, {
+        message: 'duplicate route targets are not allowed',
+      })
       .optional(),
     ipAssignmentPools: z
       .array(

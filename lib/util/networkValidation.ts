@@ -2,12 +2,35 @@ import { isValidCidr, ipv4CidrRange, ipv4ToIntChecked } from './cidr';
 
 export interface RouteInput {
   target: string;
-  via: string | null;
+  via?: string | null;
 }
 
 export interface PoolInput {
   ipRangeStart: string;
   ipRangeEnd: string;
+}
+
+export function routeTargetKey(target: string): string {
+  return target.trim().toLowerCase();
+}
+
+export function findDuplicateRouteTargets(routes: RouteInput[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Map<string, string>();
+  for (const route of routes) {
+    const target = route.target.trim();
+    if (target === '') continue;
+    const key = routeTargetKey(target);
+    if (seen.has(key)) duplicates.set(key, target);
+    else seen.add(key);
+  }
+  return Array.from(duplicates.values());
+}
+
+export function duplicateRouteTargetMessages(routes: RouteInput[]): string[] {
+  return findDuplicateRouteTargets(routes).map(
+    target => `Route "${target}" is duplicated. Remove or change the duplicate before saving.`
+  );
 }
 
 /**
@@ -22,6 +45,8 @@ export function validateRoutesAndPools(input: {
 }): string[] {
   const warnings: string[] = [];
   const { routes, pools } = input;
+
+  warnings.push(...duplicateRouteTargetMessages(routes));
 
   for (const r of routes) {
     if (r.target.trim() !== '' && !isValidCidr(r.target)) {

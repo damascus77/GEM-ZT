@@ -46,15 +46,28 @@ export function AccountManagement() {
     return orgs.filter(o => o.role === 'admin' || o.role === 'owner');
   }, [meQuery.data, orgsQuery.data]);
 
-  useEffect(() => {
-    if (manageableOrgs.length === 0) {
-      setSelectedOrgId(null);
-      return;
-    }
-    if (selectedOrgId && manageableOrgs.some(o => o.id === selectedOrgId)) return;
+  const defaultOrgId = useMemo(() => {
+    if (manageableOrgs.length === 0) return null;
     const activeOrg = manageableOrgs.find(o => o.id === meQuery.data?.activeOrgId);
-    setSelectedOrgId(activeOrg?.id ?? manageableOrgs[0].id);
-  }, [manageableOrgs, meQuery.data?.activeOrgId, selectedOrgId]);
+    return activeOrg?.id ?? manageableOrgs[0].id;
+  }, [manageableOrgs, meQuery.data?.activeOrgId]);
+
+  const effectiveSelectedOrgId =
+    selectedOrgId && manageableOrgs.some(o => o.id === selectedOrgId)
+      ? selectedOrgId
+      : defaultOrgId;
+
+  useEffect(() => {
+    if (manageableOrgs.length === 0 && selectedOrgId !== null) setSelectedOrgId(null);
+  }, [manageableOrgs.length, selectedOrgId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash !== '#invitations' || !effectiveSelectedOrgId) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById('invitations')?.scrollIntoView();
+    });
+  }, [effectiveSelectedOrgId]);
 
   if (meQuery.isLoading || orgsQuery.isLoading) {
     return <p className="text-ink-mute">Loading…</p>;
@@ -70,7 +83,7 @@ export function AccountManagement() {
     );
   }
 
-  if (manageableOrgs.length === 0 || !selectedOrgId) {
+  if (manageableOrgs.length === 0) {
     return (
       <Card>
         <p role="alert" className="text-sm text-ink">
@@ -80,7 +93,11 @@ export function AccountManagement() {
     );
   }
 
-  const selectedOrg = manageableOrgs.find(o => o.id === selectedOrgId)!;
+  if (!effectiveSelectedOrgId) {
+    return <p className="text-ink-mute">Loading…</p>;
+  }
+
+  const selectedOrg = manageableOrgs.find(o => o.id === effectiveSelectedOrgId)!;
 
   return (
     <div className="flex flex-col gap-6">
@@ -94,7 +111,7 @@ export function AccountManagement() {
             <label className="text-sm text-ink-mute">
               Organization
               <select
-                value={selectedOrgId}
+                value={effectiveSelectedOrgId}
                 onChange={e => setSelectedOrgId(e.target.value)}
                 className="mt-1 block min-w-56 rounded-sm border border-hairline bg-canvas px-3 py-2.5 text-base text-ink focus:border-hairline-dark focus:outline-none"
               >
@@ -114,9 +131,16 @@ export function AccountManagement() {
         </div>
       </Card>
 
-      <OrgMembers key={`members-${selectedOrgId}`} orgId={selectedOrgId} orgSelectionMode="fixed" />
+      <OrgMembers
+        key={`members-${effectiveSelectedOrgId}`}
+        orgId={effectiveSelectedOrgId}
+        orgSelectionMode="fixed"
+      />
       <div id="invitations">
-        <OrgInvitations key={`invitations-${selectedOrgId}`} orgId={selectedOrgId} />
+        <OrgInvitations
+          key={`invitations-${effectiveSelectedOrgId}`}
+          orgId={effectiveSelectedOrgId}
+        />
       </div>
     </div>
   );

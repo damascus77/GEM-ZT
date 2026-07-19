@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { validateRoutesAndPools, validateDnsServers } from '@/lib/util/networkValidation';
+import {
+  findDuplicateRouteTargets,
+  validateRoutesAndPools,
+  validateDnsServers,
+} from '@/lib/util/networkValidation';
 
 describe('validateRoutesAndPools', () => {
   it('flags overlapping route targets', () => {
@@ -32,6 +36,26 @@ describe('validateRoutesAndPools', () => {
   it('flags a malformed route target', () => {
     const w = validateRoutesAndPools({ routes: [{ target: 'banana', via: null }], pools: [] });
     expect(w.some(m => /valid|cidr/i.test(m))).toBe(true);
+  });
+
+  it('finds duplicate route targets after trim and case normalization', () => {
+    expect(
+      findDuplicateRouteTargets([
+        { target: 'FD00::/112', via: null },
+        { target: ' fd00::/112 ', via: null },
+      ])
+    ).toEqual(['fd00::/112']);
+  });
+
+  it('reports duplicate route targets as blocking validation messages', () => {
+    const w = validateRoutesAndPools({
+      routes: [
+        { target: '10.147.17.0/24', via: null },
+        { target: ' 10.147.17.0/24 ', via: null },
+      ],
+      pools: [],
+    });
+    expect(w.some(m => /duplicated/i.test(m))).toBe(true);
   });
 
   it('returns no warnings for a clean, consistent config', () => {

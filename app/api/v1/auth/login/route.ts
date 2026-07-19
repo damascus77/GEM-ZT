@@ -8,7 +8,7 @@ import {
   SESSION_COOKIE,
   sessionCookieOptions,
 } from '@/lib/services/auth';
-import { createRateLimiter } from '@/lib/services/rateLimit';
+import { getLoginRateLimiters } from '@/lib/services/rateLimitSettings';
 import { runRetention } from '@/lib/services/retention';
 import { verifyTotp } from '@/lib/services/totp';
 
@@ -20,31 +20,12 @@ const loginSchema = z
   })
   .strict();
 
-// Per-username failed-login limiter. argon2 slows single guesses; this stops
-// sustained guessing against the single admin account. In-memory is sufficient
-// for the single-instance panel (state resets on restart).
-const LOGIN_MAX_ATTEMPTS = Number(process.env.GEMZT_LOGIN_MAX_ATTEMPTS ?? 5);
-const LOGIN_WINDOW_MS = Number(process.env.GEMZT_LOGIN_WINDOW_MS ?? 15 * 60 * 1000);
-const loginLimiter = createRateLimiter({
-  limit: LOGIN_MAX_ATTEMPTS,
-  windowMs: LOGIN_WINDOW_MS,
-});
-
-// Per-IP failed-login limiter. Complements the per-username gate above: without
-// it, an attacker spraying one password across many usernames from a single IP
-// isn't bounded. The limit is intentionally higher than the per-username one —
-// NAT means many legitimate users can share a single public IP.
-const LOGIN_IP_MAX_ATTEMPTS = Number(process.env.GEMZT_LOGIN_IP_MAX_ATTEMPTS ?? 20);
-const ipLimiter = createRateLimiter({
-  limit: LOGIN_IP_MAX_ATTEMPTS,
-  windowMs: LOGIN_WINDOW_MS,
-});
-
 export async function POST(req: Request) {
   try {
     const body = loginSchema.parse(await req.json());
     const rlKey = body.username.toLowerCase();
     const ipKey = clientIp(req);
+    const { username: loginLimiter, ip: ipLimiter } = await getLoginRateLimiters();
     const gate = loginLimiter.check(rlKey);
     const ipGate = ipLimiter.check(ipKey);
     if (!gate.allowed || !ipGate.allowed) {

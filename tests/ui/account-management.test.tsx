@@ -8,6 +8,7 @@ import { AccountManagement } from '@/components/AccountManagement';
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  window.history.replaceState(null, '', '/');
 });
 
 interface StubOrg {
@@ -166,5 +167,24 @@ describe('AccountManagement', () => {
       expect(post).toBeDefined();
       expect(post![0]).toBe('/api/v1/orgs/org-2/members');
     });
+  });
+
+  it('scrolls to invitations after async content mounts for hash navigation', async () => {
+    window.history.replaceState(null, '', '/accounts#invitations');
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(window.HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      callback(0);
+      return 0;
+    });
+
+    stubFetch();
+    renderWithQuery(<AccountManagement />);
+
+    expect(await screen.findByText('invite-acme@example.com')).toBeInTheDocument();
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
   });
 });

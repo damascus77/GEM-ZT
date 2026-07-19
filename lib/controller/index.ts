@@ -4,12 +4,23 @@ import { getEnv } from '@/lib/util/env';
 
 let cached: ControllerClient | null = null;
 
-export async function getControllerClient(): Promise<ControllerClient> {
-  if (cached) return cached;
+export interface ControllerRuntimeSettings {
+  baseUrl: string;
+  timeoutMs: number;
+  cacheTtlMs: number;
+}
+
+export function getControllerRuntimeSettings(): ControllerRuntimeSettings {
   const baseUrl = getEnv('ZT_CONTROLLER_URL', 'http://zerotier-controller:9993');
-  const token = await readAuthToken();
   const parsedTimeout = Number(getEnv('ZT_CONTROLLER_TIMEOUT_MS', '8000'));
   const timeoutMs = Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : 8000;
+  return { baseUrl, timeoutMs, cacheTtlMs: getControllerCacheTtlMs() };
+}
+
+export async function getControllerClient(): Promise<ControllerClient> {
+  if (cached) return cached;
+  const { baseUrl, timeoutMs } = getControllerRuntimeSettings();
+  const token = await readAuthToken();
   cached = new ControllerClient({ baseUrl, token, timeoutMs });
   return cached;
 }

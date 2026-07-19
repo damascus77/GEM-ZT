@@ -5,6 +5,8 @@ const VARS = [
   'GEMZT_LOGIN_IP_MAX_ATTEMPTS',
   'GEMZT_LOGIN_MAX_ATTEMPTS',
   'GEMZT_LOGIN_WINDOW_MS',
+  'GEMZT_SELF_AUTHORIZE_MAX_ATTEMPTS',
+  'GEMZT_SELF_AUTHORIZE_WINDOW_MS',
   'GEMZT_AUDIT_RETENTION_DAYS',
   'GEMZT_TRUST_PROXY',
 ] as const;
@@ -68,6 +70,32 @@ describe('validateRateLimitEnv', () => {
     it('throws for a non-integer', () => {
       process.env.GEMZT_LOGIN_WINDOW_MS = '1000.5';
       expect(() => validateRateLimitEnv()).toThrow('GEMZT_LOGIN_WINDOW_MS');
+    });
+  });
+
+  describe('GEMZT_SELF_AUTHORIZE_MAX_ATTEMPTS', () => {
+    it('passes for a valid positive integer', () => {
+      process.env.GEMZT_SELF_AUTHORIZE_MAX_ATTEMPTS = '8';
+      expect(() => validateRateLimitEnv()).not.toThrow();
+    });
+    it('throws for zero', () => {
+      process.env.GEMZT_SELF_AUTHORIZE_MAX_ATTEMPTS = '0';
+      expect(() => validateRateLimitEnv()).toThrow('GEMZT_SELF_AUTHORIZE_MAX_ATTEMPTS');
+    });
+    it('throws for a non-integer', () => {
+      process.env.GEMZT_SELF_AUTHORIZE_MAX_ATTEMPTS = '1.5';
+      expect(() => validateRateLimitEnv()).toThrow('GEMZT_SELF_AUTHORIZE_MAX_ATTEMPTS');
+    });
+  });
+
+  describe('GEMZT_SELF_AUTHORIZE_WINDOW_MS', () => {
+    it('passes for a value >= 1000', () => {
+      process.env.GEMZT_SELF_AUTHORIZE_WINDOW_MS = '60000';
+      expect(() => validateRateLimitEnv()).not.toThrow();
+    });
+    it('throws for a value below 1000', () => {
+      process.env.GEMZT_SELF_AUTHORIZE_WINDOW_MS = '999';
+      expect(() => validateRateLimitEnv()).toThrow('GEMZT_SELF_AUTHORIZE_WINDOW_MS');
     });
   });
 
