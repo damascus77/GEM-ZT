@@ -29,6 +29,18 @@ const networks = [
 ];
 
 describe('NetworkList', () => {
+  it('uses skeleton cards instead of a bare loading message on first load', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Promise<Response>(() => {}))
+    );
+
+    renderWithQuery(<NetworkList />);
+
+    expect(screen.getByRole('heading', { name: 'Networks' })).toBeInTheDocument();
+    expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+  });
+
   it('renders networks from GET /api/v1/networks', async () => {
     vi.stubGlobal(
       'fetch',

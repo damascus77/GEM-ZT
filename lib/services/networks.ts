@@ -1,9 +1,11 @@
 import { z } from 'zod';
-import { getControllerClient } from '@/lib/controller';
+import { getControllerClient, getControllerCacheTtlMs } from '@/lib/controller';
 import { ControllerApiError } from '@/lib/controller/client';
 import type { ControllerNetwork } from '@/lib/controller/types';
 import { getDb } from '@/lib/db/client';
 import { isValidCidr } from '@/lib/util/cidr';
+import { coalesce, bustCache } from '@/lib/util/cache';
+import { bustMetricsCache } from './cacheInvalidation';
 
 export interface WriteResult<T> {
   data: T;
@@ -105,6 +107,23 @@ const META_UPSERT_WARNING =
   'The controller accepted the change, but saving GEM-ZT metadata failed. ' +
   'Network operation is unaffected; retry to restore friendly names.';
 
+const NETWORK_LIST_ALL_CACHE_KEY = 'controller:networks:all';
+const NETWORK_LIST_UNASSIGNED_CACHE_KEY = 'controller:networks:unassigned';
+const networkListForOrgCacheKey = (orgId: string): string => `controller:networks:org:${orgId}`;
+const networkListCacheKeys = new Set<string>([
+  NETWORK_LIST_ALL_CACHE_KEY,
+  NETWORK_LIST_UNASSIGNED_CACHE_KEY,
+]);
+
+function registerNetworkListCacheKey(key: string): string {
+  networkListCacheKeys.add(key);
+  return key;
+}
+
+export function bustNetworkListCaches(): void {
+  for (const key of networkListCacheKeys) bustCache(key);
+}
+
 async function toDetail(config: ControllerNetwork): Promise<NetworkDetail> {
   const meta = await getDb()
     .networkMeta.findUnique({ where: { nwid: config.id } })
@@ -122,6 +141,14 @@ async function toDetail(config: ControllerNetwork): Promise<NetworkDetail> {
 }
 
 export async function listNetworks(): Promise<NetworkSummary[]> {
+  return coalesce(
+    registerNetworkListCacheKey(NETWORK_LIST_ALL_CACHE_KEY),
+    getControllerCacheTtlMs(),
+    listNetworksUncached
+  );
+}
+
+async function listNetworksUncached(): Promise<NetworkSummary[]> {
   const client = await getControllerClient();
   const ids = await client.listNetworkIds();
   const metas = await getDb()
@@ -151,6 +178,14 @@ export async function listNetworks(): Promise<NetworkSummary[]> {
 }
 
 export async function listNetworksForOrg(orgId: string): Promise<NetworkSummary[]> {
+  return coalesce(
+    registerNetworkListCacheKey(networkListForOrgCacheKey(orgId)),
+    getControllerCacheTtlMs(),
+    () => listNetworksForOrgUncached(orgId)
+  );
+}
+
+async function listNetworksForOrgUncached(orgId: string): Promise<NetworkSummary[]> {
   const client = await getControllerClient();
   const ids = await client.listNetworkIds();
   const metas = await getDb()
@@ -196,6 +231,14 @@ export async function getNetworkForOrg(nwid: string, orgId: string): Promise<Net
 
 /** Networks known to the controller that have no org assigned yet (super-admin orphan view). */
 export async function listUnassignedNetworks(): Promise<NetworkSummary[]> {
+  return coalesce(
+    registerNetworkListCacheKey(NETWORK_LIST_UNASSIGNED_CACHE_KEY),
+    getControllerCacheTtlMs(),
+    listUnassignedNetworksUncached
+  );
+}
+
+async function listUnassignedNetworksUncached(): Promise<NetworkSummary[]> {
   const client = await getControllerClient();
   const ids = await client.listNetworkIds();
   const metas = await getDb()
@@ -237,6 +280,8 @@ export async function createNetwork(
     name: requestedName,
     private: true,
   });
+  bustNetworkListCaches();
+  bustMetricsCache();
   // No name given → name the network after its generated nwid.
   const name = requestedName || created.id;
   let metaWarning: string | null = null;
@@ -303,6 +348,8 @@ export async function createNetworkFromConfig(input: {
     ...input.config,
     name: input.name,
   } as Partial<ControllerNetwork>);
+  bustNetworkListCaches();
+  bustMetricsCache();
   let metaWarning: string | null = null;
   try {
     await getDb().networkMeta.upsert({
@@ -403,12 +450,15 @@ export async function updateNetwork(
       metaWarning = META_UPSERT_WARNING;
     }
   }
+  bustNetworkListCaches();
   return { data: await toDetail(updated), metaWarning };
 }
 
 export async function deleteNetwork(nwid: string): Promise<void> {
   const client = await getControllerClient();
   await client.deleteNetwork(nwid);
+  bustNetworkListCaches();
+  bustMetricsCache();
   try {
     await getDb().networkMeta.deleteMany({ where: { nwid } });
     await getDb().memberMeta.deleteMany({ where: { nwid } });

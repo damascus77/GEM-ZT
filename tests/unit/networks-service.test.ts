@@ -1,19 +1,27 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 
-vi.mock('@/lib/controller', () => ({ getControllerClient: vi.fn(), getControllerCacheTtlMs: () => 0 }));
+const controllerMock = vi.hoisted(() => ({ cacheTtlMs: 0 }));
+
+vi.mock('@/lib/controller', () => ({
+  getControllerClient: vi.fn(),
+  getControllerCacheTtlMs: () => controllerMock.cacheTtlMs,
+}));
 
 import { getControllerClient } from '@/lib/controller';
 import { ControllerApiError } from '@/lib/controller/client';
 import type { ControllerNetwork } from '@/lib/controller/types';
 import { setupTestDb } from '../helpers/db';
 import { getDb, resetDbForTests } from '@/lib/db/client';
+import { clearAllCache } from '@/lib/util/cache';
 import {
   listNetworks,
+  listNetworksForOrg,
   createNetwork,
   getNetwork,
   updateNetwork,
   deleteNetwork,
 } from '@/lib/services/networks';
+import { deleteMember } from '@/lib/services/members';
 
 const NWID = 'abcdef0123456789';
 
@@ -47,6 +55,7 @@ const mockClient = {
   createNetwork: vi.fn(),
   updateNetwork: vi.fn(),
   deleteNetwork: vi.fn(),
+  deleteMember: vi.fn(),
   listMemberIds: vi.fn(),
 };
 
@@ -57,6 +66,8 @@ beforeAll(() => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  clearAllCache();
+  controllerMock.cacheTtlMs = 0;
   (getControllerClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockClient);
   mockClient.getStatus.mockResolvedValue({
     address: 'abcdef0123',
@@ -68,8 +79,10 @@ beforeEach(async () => {
   mockClient.createNetwork.mockResolvedValue(fakeNet());
   mockClient.updateNetwork.mockResolvedValue(fakeNet());
   mockClient.deleteNetwork.mockResolvedValue(undefined);
+  mockClient.deleteMember.mockResolvedValue(undefined);
   mockClient.listMemberIds.mockResolvedValue({ deadbeef01: 1, deadbeef02: 2 });
   await getDb().networkMeta.deleteMany();
+  await getDb().memberMeta.deleteMany();
 });
 
 afterAll(async () => {
@@ -125,6 +138,49 @@ describe('networks service', () => {
         memberCount: 2,
       },
     ]);
+  });
+
+  it('listNetworksForOrg coalesces controller fan-out within the TTL', async () => {
+    controllerMock.cacheTtlMs = 10_000;
+    await getDb().networkMeta.create({
+      data: { nwid: NWID, orgId: 'org-1', name: 'friendly', description: 'd', tags: '[]' },
+    });
+
+    const first = await listNetworksForOrg('org-1');
+    const second = await listNetworksForOrg('org-1');
+
+    expect(first).toEqual(second);
+    expect(mockClient.listNetworkIds).toHaveBeenCalledTimes(1);
+    expect(mockClient.getNetwork).toHaveBeenCalledTimes(1);
+    expect(mockClient.listMemberIds).toHaveBeenCalledTimes(1);
+  });
+
+  it('network writes bust cached org network lists', async () => {
+    controllerMock.cacheTtlMs = 10_000;
+    await getDb().networkMeta.create({
+      data: { nwid: NWID, orgId: 'org-1', name: 'friendly', description: 'd', tags: '[]' },
+    });
+
+    await listNetworksForOrg('org-1');
+    await createNetwork({ name: 'new-net' }, 'org-1');
+    await listNetworksForOrg('org-1');
+
+    expect(mockClient.getNetwork).toHaveBeenCalledTimes(2);
+  });
+
+  it('member deletion busts cached org network lists so member counts refresh', async () => {
+    controllerMock.cacheTtlMs = 10_000;
+    await getDb().networkMeta.create({
+      data: { nwid: NWID, orgId: 'org-1', name: 'friendly', description: 'd', tags: '[]' },
+    });
+
+    await listNetworksForOrg('org-1');
+    await deleteMember(NWID, 'deadbeef01');
+    await listNetworksForOrg('org-1');
+
+    expect(mockClient.deleteMember).toHaveBeenCalledWith(NWID, 'deadbeef01');
+    expect(mockClient.getNetwork).toHaveBeenCalledTimes(2);
+    expect(mockClient.listMemberIds).toHaveBeenCalledTimes(2);
   });
 
   it('getNetwork merges metadata over controller config and returns null on 404', async () => {

@@ -5,7 +5,8 @@ import type { ControllerMember, ControllerPeer } from '@/lib/controller/types';
 import { getDb } from '@/lib/db/client';
 import { mapWithConcurrency } from '@/lib/util/concurrency';
 import { coalesce, bustCache } from '@/lib/util/cache';
-import type { WriteResult } from './networks';
+import { bustNetworkListCaches, type WriteResult } from './networks';
+import { bustMetricsCache } from './cacheInvalidation';
 
 // Cap on simultaneous per-member controller GETs in listMembers. The
 // controller has no bulk "get all members" endpoint, so we still issue one
@@ -184,6 +185,7 @@ export async function getMember(nwid: string, memberId: string): Promise<MemberV
 function bustMemberCaches(nwid: string): void {
   bustCache(membersCacheKey(nwid));
   bustCache(PEERS_CACHE_KEY);
+  bustMetricsCache();
 }
 
 export async function updateMember(
@@ -233,6 +235,7 @@ export async function deleteMember(nwid: string, memberId: string): Promise<void
   const client = await getControllerClient();
   await client.deleteMember(nwid, memberId);
   bustMemberCaches(nwid);
+  bustNetworkListCaches();
   try {
     await getDb().memberMeta.deleteMany({ where: { nwid, memberId } });
   } catch (e) {

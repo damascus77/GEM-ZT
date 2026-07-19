@@ -1,6 +1,9 @@
-import { getControllerClient } from '@/lib/controller';
+import { getControllerClient, getControllerCacheTtlMs } from '@/lib/controller';
 import { ControllerUnreachableError } from '@/lib/controller/client';
 import { mapWithConcurrency } from '@/lib/util/concurrency';
+import { coalesce } from '@/lib/util/cache';
+import { listMembers } from './members';
+import { METRICS_CACHE_KEY } from './cacheInvalidation';
 
 export interface MetricsSnapshot {
   controllerReachable: boolean;
@@ -62,32 +65,21 @@ export function formatMetrics(snapshot: MetricsSnapshot): string {
  * unreachable, returns reachable=false with zeroed counts rather than throwing,
  * so the endpoint always serves a scrapeable response.
  */
-export async function collectMetrics(): Promise<MetricsSnapshot> {
+async function collectMetricsUncached(): Promise<MetricsSnapshot> {
   try {
     const client = await getControllerClient();
-    const [ids, peers] = await Promise.all([
-      client.listNetworkIds(),
-      client.listPeers().catch(e => {
-        console.error('[gem-zt] listPeers failed in collectMetrics:', e);
-        return [];
-      }),
-    ]);
-    const onlineAddrs = new Set(
-      peers.filter(p => p.paths.some(path => path.active)).map(p => p.address)
-    );
+    const ids = await client.listNetworkIds();
     let members = 0;
     let authorizedMembers = 0;
     let onlineMembers = 0;
     const perNetwork = await mapWithConcurrency(ids, 8, async nwid => {
-      const memberIds = Object.keys(await client.listMemberIds(nwid));
-      const detailed = await mapWithConcurrency(memberIds, 8, id => client.getMember(nwid, id));
-      return detailed;
+      return listMembers(nwid);
     });
     for (const netMembers of perNetwork) {
       for (const m of netMembers) {
         members += 1;
         if (m.authorized) authorizedMembers += 1;
-        if (onlineAddrs.has(m.id)) onlineMembers += 1;
+        if (m.online === true) onlineMembers += 1;
       }
     }
     return {
@@ -109,4 +101,8 @@ export async function collectMetrics(): Promise<MetricsSnapshot> {
     }
     throw e;
   }
+}
+
+export async function collectMetrics(): Promise<MetricsSnapshot> {
+  return coalesce(METRICS_CACHE_KEY, getControllerCacheTtlMs(), collectMetricsUncached);
 }

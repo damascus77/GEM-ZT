@@ -23,7 +23,15 @@ describe('StatusDashboard', () => {
   it('renders inventory counts parsed from /api/v1/metrics', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(metricsText, { status: 200 }))
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/v1/controller/status')) {
+          return new Response(JSON.stringify({ online: true, version: '1.14.2' }), {
+            status: 200,
+          });
+        }
+        return new Response(metricsText, { status: 200 });
+      })
     );
     renderWithQuery(<StatusDashboard />);
     expect(await screen.findByText('Reachable')).toBeInTheDocument();
@@ -33,16 +41,42 @@ describe('StatusDashboard', () => {
     expect(screen.getByText('5')).toBeInTheDocument();
   });
 
-  it('shows the controller as Unreachable when the gauge is 0', async () => {
-    const down = metricsText.replace(
-      'gemzt_controller_reachable 1',
-      'gemzt_controller_reachable 0'
-    );
+  it('shows the controller as Unreachable when the status endpoint is degraded', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => new Response(down, { status: 200 }))
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/v1/controller/status')) {
+          return new Response(JSON.stringify({ error: { message: 'controller down' } }), {
+            status: 502,
+          });
+        }
+        return new Response(metricsText, { status: 200 });
+      })
     );
     renderWithQuery(<StatusDashboard />);
     expect(await screen.findByText('Unreachable')).toBeInTheDocument();
+  });
+
+  it('uses stat skeletons instead of a bare loading message on first metrics load', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/v1/controller/status')) {
+          return new Response(JSON.stringify({ online: true, version: '1.14.2' }), {
+            status: 200,
+          });
+        }
+        return new Promise<Response>(() => {});
+      })
+    );
+
+    renderWithQuery(<StatusDashboard />);
+
+    expect(await screen.findByText('Reachable')).toBeInTheDocument();
+    expect(screen.getByText('Networks')).toBeInTheDocument();
+    expect(screen.getByText('Members')).toBeInTheDocument();
+    expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
   });
 });

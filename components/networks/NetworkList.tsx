@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Pill } from '@/components/ui/Pill';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   filterAndSortNetworks,
   type NetworkSort,
@@ -31,12 +32,31 @@ async function fetchNetworks(): Promise<NetworkSummaryView[]> {
   return (await res.json()).networks;
 }
 
+function NetworkSkeletonCard() {
+  return (
+    <Card className="p-6" aria-hidden="true">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="mt-2 h-4 w-56" />
+          <Skeleton className="mt-2 h-4 w-32" />
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Skeleton className="h-7 w-16 rounded-full" />
+          <Skeleton className="h-7 w-20 rounded-full" />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export function NetworkList() {
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({
     queryKey: ['networks'],
     queryFn: fetchNetworks,
     refetchInterval: 5000,
+    placeholderData: keepPreviousData,
   });
   const [name, setName] = useState('');
   const [search, setSearch] = useState('');
@@ -133,8 +153,14 @@ export function NetworkList() {
           </select>
         </div>
       )}
-      {isLoading && <p className="text-ink-mute">Loading…</p>}
-      {isError && (
+      {isLoading && !data && (
+        <div className="grid gap-4">
+          <NetworkSkeletonCard />
+          <NetworkSkeletonCard />
+          <NetworkSkeletonCard />
+        </div>
+      )}
+      {isError && !data && (
         <p role="alert" className="text-ink-mute">
           Could not load networks.
         </p>

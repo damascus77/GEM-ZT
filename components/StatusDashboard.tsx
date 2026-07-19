@@ -1,8 +1,10 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { Pill } from '@/components/ui/Pill';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { useControllerStatus } from '@/components/DegradedBanner';
 import { parsePrometheusMetrics } from '@/lib/util/parseMetrics';
 
 async function fetchMetrics(): Promise<Record<string, number>> {
@@ -20,23 +22,36 @@ function StatCard({ label, value }: { label: string; value: number | undefined }
   );
 }
 
+function SkeletonStatCard({ label }: { label: string }) {
+  return (
+    <Card className="p-6">
+      <div className="text-sm text-ink-mute">{label}</div>
+      <Skeleton className="mt-2 h-10 w-16" />
+    </Card>
+  );
+}
+
 export function StatusDashboard() {
+  const { data: controllerStatus } = useControllerStatus();
   const { data, isLoading, isError } = useQuery({
     queryKey: ['metrics'],
     queryFn: fetchMetrics,
     refetchInterval: 10000,
+    placeholderData: keepPreviousData,
   });
 
-  if (isLoading) return <p className="text-ink-mute">Loading…</p>;
-  if (isError || !data) {
-    return (
-      <p role="alert" className="text-ink-mute">
-        Could not load metrics.
-      </p>
+  const firstLoad = isLoading && !data;
+  const controllerLabel = controllerStatus
+    ? controllerStatus.degraded
+      ? 'Unreachable'
+      : 'Reachable'
+    : 'Checking';
+  const controllerPill =
+    controllerStatus && !controllerStatus.degraded ? (
+      <Pill className="border-teal-mid text-teal-deep">{controllerLabel}</Pill>
+    ) : (
+      <Pill className="text-ink-faint">{controllerLabel}</Pill>
     );
-  }
-
-  const reachable = data.gemzt_controller_reachable === 1;
 
   return (
     <div className="flex flex-col gap-6">
@@ -45,19 +60,32 @@ export function StatusDashboard() {
           <div className="wght-540 text-[20px] tracking-[-0.4px]">Controller</div>
           <div className="text-sm text-ink-mute">Local ZeroTier controller API</div>
         </div>
-        {reachable ? (
-          <Pill className="border-teal-mid text-teal-deep">Reachable</Pill>
-        ) : (
-          <Pill className="text-ink-faint">Unreachable</Pill>
-        )}
+        {controllerPill}
       </Card>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard label="Networks" value={data.gemzt_networks_total} />
-        <StatCard label="Members" value={data.gemzt_members_total} />
-        <StatCard label="Authorized" value={data.gemzt_members_authorized} />
-        <StatCard label="Online" value={data.gemzt_members_online} />
-      </div>
+      {isError && !data ? (
+        <p role="alert" className="text-ink-mute">
+          Could not load metrics.
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {firstLoad ? (
+            <>
+              <SkeletonStatCard label="Networks" />
+              <SkeletonStatCard label="Members" />
+              <SkeletonStatCard label="Authorized" />
+              <SkeletonStatCard label="Online" />
+            </>
+          ) : (
+            <>
+              <StatCard label="Networks" value={data?.gemzt_networks_total} />
+              <StatCard label="Members" value={data?.gemzt_members_total} />
+              <StatCard label="Authorized" value={data?.gemzt_members_authorized} />
+              <StatCard label="Online" value={data?.gemzt_members_online} />
+            </>
+          )}
+        </div>
+      )}
 
       <p className="text-xs text-ink-faint">
         Liveness + inventory only — the controller API exposes no per-member traffic. Raw metrics:{' '}
