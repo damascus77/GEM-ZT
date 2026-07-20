@@ -105,7 +105,7 @@ function PendingRow({ member, onChanged }: { member: PendingMemberView; onChange
               Authorize
             </Button>
             <Button
-              variant="outline"
+              variant="destructive"
               className="px-3 py-2 text-sm"
               disabled={deny.isPending}
               onClick={confirmDeny}

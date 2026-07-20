@@ -123,7 +123,7 @@ export function NetworkActions({ nwid }: { nwid: string }) {
             placeholder={nwid}
           />
           <Button
-            variant="outline"
+            variant="destructive"
             className="shrink-0"
             disabled={confirmText !== nwid || remove.isPending}
             onClick={() => remove.mutate()}

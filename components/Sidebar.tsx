@@ -117,7 +117,13 @@ function NavBadge({ count }: { count: number }) {
   );
 }
 
-export function Sidebar() {
+/**
+ * The full sidebar body (brand, nav, controls). Shared by the persistent
+ * desktop rail (`Sidebar`) and the mobile drawer (`MobileNav`). The `me` and
+ * `pending` queries are React Query-cached, so rendering this in both places
+ * is deduplicated to a single request.
+ */
+export function SidebarContent() {
   const { data: me } = useMe();
   const pendingCount = usePendingCount();
 
@@ -127,7 +133,7 @@ export function Sidebar() {
   );
 
   return (
-    <aside className="flex w-[272px] shrink-0 flex-col bg-primary text-on-primary">
+    <>
       <div className="wght-600 flex items-center gap-[9px] px-5 py-[18px] text-[19px] tracking-[-0.3px] text-white">
         <Logo />
         GEM-ZT
@@ -174,6 +180,15 @@ export function Sidebar() {
         <ThemeToggle className="text-left text-sm text-on-dark-mute hover:text-on-primary" />
         <SignOutButton />
       </div>
+    </>
+  );
+}
+
+/** Persistent left rail — visible at md and up; hidden on mobile (see MobileNav). */
+export function Sidebar() {
+  return (
+    <aside className="hidden w-[272px] shrink-0 flex-col bg-primary text-on-primary md:flex">
+      <SidebarContent />
     </aside>
   );
 }

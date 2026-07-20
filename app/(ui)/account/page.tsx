@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { PasswordSettings } from '@/components/PasswordSettings';
 import { TotpSettings } from '@/components/TotpSettings';
@@ -13,14 +13,15 @@ interface Me {
 }
 
 export default function AccountPage() {
-  const [me, setMe] = useState<Me | null>(null);
-
-  useEffect(() => {
-    fetch('/api/v1/me')
-      .then(r => r.json())
-      .then(d => setMe(d.user))
-      .catch(() => {});
-  }, []);
+  const { data: me, isError } = useQuery<Me>({
+    queryKey: ['me'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/me');
+      if (!res.ok) throw new Error('Failed to load account');
+      const d = await res.json();
+      return d.user;
+    },
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -28,7 +29,11 @@ export default function AccountPage() {
 
       <Card>
         <h2 className="wght-540 mb-4 text-[20px] tracking-[-0.4px]">Profile</h2>
-        {me ? (
+        {isError && !me ? (
+          <p role="alert" className="text-sm text-ink">
+            Could not load account. Refresh to retry.
+          </p>
+        ) : me ? (
           <dl className="text-sm">
             <div className="flex gap-2">
               <dt className="text-ink-mute">Username</dt>

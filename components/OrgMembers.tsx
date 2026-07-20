@@ -257,7 +257,7 @@ export function OrgMembers({ orgId, orgSelectionMode = 'picker' }: OrgMembersPro
                     <td className="py-3">
                       {!isPhantom && canManage && (
                         <Button
-                          variant="outline"
+                          variant="destructive"
                           className="px-3 py-2 text-sm"
                           disabled={removeMember.isPending}
                           onClick={() => confirmRemove(member)}

@@ -149,7 +149,7 @@ export function OrgInvitations({ orgId }: { orgId: string }) {
                   </td>
                   <td className="py-3">
                     <Button
-                      variant="outline"
+                      variant="destructive"
                       className="px-3 py-2 text-sm"
                       disabled={revokeInvitation.isPending}
                       onClick={() => revokeInvitation.mutate(inv.id)}

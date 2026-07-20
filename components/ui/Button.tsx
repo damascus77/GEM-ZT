@@ -1,7 +1,7 @@
 import { clsx } from 'clsx';
 import type { ButtonHTMLAttributes } from 'react';
 
-type Variant = 'primary' | 'outline' | 'pill';
+type Variant = 'primary' | 'outline' | 'pill' | 'destructive';
 
 export function Button({
   variant = 'primary',
@@ -18,6 +18,8 @@ export function Button({
         variant === 'outline' &&
           'rounded-md border border-hairline-dark bg-canvas text-ink hover:bg-canvas-soft',
         variant === 'pill' && 'rounded-full bg-violet-soft text-primary',
+        variant === 'destructive' &&
+          'rounded-md border border-danger/40 bg-canvas text-danger hover:bg-danger hover:text-on-danger',
         className
       )}
       {...props}

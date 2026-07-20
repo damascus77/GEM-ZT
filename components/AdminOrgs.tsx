@@ -155,7 +155,7 @@ export function AdminOrgs() {
                   <td className="py-3 pr-4 text-sm text-ink-mute">{org.slug}</td>
                   <td className="py-3">
                     <Button
-                      variant="outline"
+                      variant="destructive"
                       className="px-3 py-2 text-sm"
                       disabled={remove.isPending}
                       onClick={() => confirmDelete(org)}

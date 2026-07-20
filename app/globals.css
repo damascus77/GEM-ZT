@@ -13,6 +13,7 @@
   --c-ink-faint: 154 151 148; /* #9a9794 */
   --c-hairline: 232 228 221; /* #e8e4dd */
   --c-success: 14 48 48; /* #0e3030 — legible on white */
+  --c-danger: 192 57 43; /* #c0392b — legible on white */
 }
 .dark {
   --c-canvas: 28 26 46; /* #1c1a2e — card / input surface */
@@ -22,6 +23,43 @@
   --c-ink-faint: 120 117 143;
   --c-hairline: 48 43 68; /* #302b44 */
   --c-success: 95 208 196; /* #5fd0c4 — light teal, legible on #100e1c */
+  --c-danger: 255 107 107; /* #ff6b6b — light red, legible on #100e1c */
+}
+
+/* Responsive member table: below the md breakpoint (768px) the wide members
+   table restacks into one card per member. Each cell is labelled from its
+   data-label so a value keeps its column context without the header row.
+   Applied only to tables carrying the .member-table class. */
+@media (max-width: 767px) {
+  table.member-table,
+  table.member-table > tbody,
+  table.member-table > tbody > tr,
+  table.member-table > tbody > tr > td {
+    display: block;
+    width: 100%;
+  }
+  table.member-table > thead {
+    display: none;
+  }
+  table.member-table > tbody > tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid rgb(var(--c-hairline));
+    border-radius: 12px;
+    padding: 0.75rem;
+  }
+  table.member-table > tbody > tr > td {
+    padding: 0.375rem 0;
+  }
+  table.member-table > tbody > tr > td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgb(var(--c-ink-faint));
+  }
 }
 
 /* DESIGN.md: Inter Variable substitute for Super Sans VF — sub-default weights */

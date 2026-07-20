@@ -64,7 +64,7 @@ export function NetworkTemplates() {
                 Create network
               </Button>
               <Button
-                variant="outline"
+                variant="destructive"
                 className="px-3 py-2 text-sm"
                 disabled={remove.isPending}
                 onClick={() => remove.mutate(t.id)}

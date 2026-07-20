@@ -19,6 +19,8 @@ export const brandColors = {
   'hairline-dark': '#3f3a52',
   'on-dark-mute': '#bcbac9',
   'on-dark-faint': '#5a5772',
+  // Foreground for filled danger surfaces (theme-invariant, like on-primary).
+  'on-danger': '#ffffff',
 } as const;
 
 /** Semantic color tokens for light mode.
@@ -33,6 +35,9 @@ export const semanticColorsLight = {
   // Positive/"added" foreground. Dark teal reads on white; the dark-mode value
   // below swaps to a light teal so it stays legible on the dark page background.
   success: '#0e3030',
+  // Destructive/error foreground. Deep red reads on white; the dark-mode value
+  // below lightens so it stays legible on the dark page background.
+  danger: '#c0392b',
 } as const;
 
 /** Semantic color tokens for dark mode (for reference; actual values in CSS) */
@@ -46,6 +51,8 @@ export const semanticColorsDark = {
   // Light teal so positive text stays legible on #100e1c (the dark teal-deep
   // #0e3030 was ~1.1:1 contrast there — effectively invisible).
   success: '#5fd0c4',
+  // Lightened red so destructive text stays legible on #100e1c.
+  danger: '#ff6b6b',
 } as const;
 
 // ============================================================================

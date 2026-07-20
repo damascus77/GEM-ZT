@@ -17,7 +17,7 @@ interface Spec {
 const METHOD_ORDER = ['get', 'post', 'put', 'patch', 'delete'] as const;
 
 export default function DocsPage() {
-  const { data } = useQuery<Spec>({
+  const { data, isError } = useQuery<Spec>({
     queryKey: ['openapi'],
     queryFn: async () => {
       const res = await fetch('/api/v1/openapi.json');
@@ -26,6 +26,12 @@ export default function DocsPage() {
     },
   });
 
+  if (isError && !data)
+    return (
+      <p role="alert" className="text-sm text-ink">
+        Could not load API docs. Refresh to retry.
+      </p>
+    );
   if (!data) return <p className="text-ink-mute">Loading…</p>;
 
   const groups = new Map<string, Array<{ methods: string[]; path: string; summary: string }>>();

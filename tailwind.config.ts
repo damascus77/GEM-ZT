@@ -17,6 +17,7 @@ const config: Config = {
         'hairline-dark': tokens.colors.brand['hairline-dark'],
         'on-dark-mute': tokens.colors.brand['on-dark-mute'],
         'on-dark-faint': tokens.colors.brand['on-dark-faint'],
+        'on-danger': tokens.colors.brand['on-danger'],
         // Neutral surface/text tokens — driven by CSS variables so the whole app
         // flips between light and dark via a `.dark` class on <html>.
         canvas: 'rgb(var(--c-canvas) / <alpha-value>)',
@@ -26,6 +27,7 @@ const config: Config = {
         'ink-faint': 'rgb(var(--c-ink-faint) / <alpha-value>)',
         hairline: 'rgb(var(--c-hairline) / <alpha-value>)',
         success: 'rgb(var(--c-success) / <alpha-value>)',
+        danger: 'rgb(var(--c-danger) / <alpha-value>)',
       },
       borderRadius: {
         xs: tokens.borderRadius.xs,

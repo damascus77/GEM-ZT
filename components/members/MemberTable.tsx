@@ -276,7 +276,7 @@ function MemberRowInner({
   return (
     <>
       <tr className="border-t border-hairline align-top">
-        <td className="py-3 pr-2">
+        <td data-label="Select" className="py-3 pr-2">
           {onToggleSelect && (
             <input
               type="checkbox"
@@ -286,14 +286,14 @@ function MemberRowInner({
             />
           )}
         </td>
-        <td className="py-3 pr-4">
+        <td data-label="Status" className="py-3 pr-4">
           <PresencePill online={member.online} />
           <MemberPresenceInfo memberId={member.memberId} presence={presence} />
         </td>
-        <td className="py-3 pr-4">
+        <td data-label="Connection" className="py-3 pr-4">
           <ConnectionPill connection={member.connection} />
         </td>
-        <td className="py-3 pr-4">
+        <td data-label="Member" className="py-3 pr-4">
           <Input
             value={name}
             placeholder="Nickname"
@@ -307,7 +307,7 @@ function MemberRowInner({
           />
           <div className="mt-1 font-mono text-xs text-ink-mute">{member.memberId}</div>
         </td>
-        <td className="py-3 pr-4">
+        <td data-label="Auth" className="py-3 pr-4">
           <Button
             variant={member.authorized ? 'outline' : 'primary'}
             className="px-3 py-2 text-sm"
@@ -373,7 +373,7 @@ function MemberRowInner({
             </div>
           )}
         </td>
-        <td className="min-w-52 py-3 pr-4">
+        <td data-label="Managed IPs" className="min-w-52 py-3 pr-4">
           <div>
             <div className="flex gap-2">
               <Input
@@ -416,20 +416,23 @@ function MemberRowInner({
             )}
           </div>
         </td>
-        <td className="whitespace-nowrap py-3 pr-4 text-sm text-ink-mute">
+        <td data-label="Latency" className="whitespace-nowrap py-3 pr-4 text-sm text-ink-mute">
           {member.latency !== null ? `${member.latency} ms` : '— ms'}
         </td>
-        <td className="py-3 pr-4 font-mono text-sm text-ink-mute">
+        <td data-label="Physical address" className="py-3 pr-4 font-mono text-sm text-ink-mute">
           {member.physicalAddress ?? 'unknown'}
         </td>
-        <td className="whitespace-nowrap py-3 pr-4 text-sm text-ink-mute">
+        <td
+          data-label="Last authorized"
+          className="whitespace-nowrap py-3 pr-4 text-sm text-ink-mute"
+        >
           {member.lastAuthorizedTime > 0
             ? new Date(member.lastAuthorizedTime).toLocaleString()
             : 'never'}
         </td>
         <td className="py-3">
           <Button
-            variant="outline"
+            variant="destructive"
             className="px-3 py-2 text-sm"
             disabled={degraded || remove.isPending}
             onClick={confirmRemove}
@@ -598,7 +601,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
             placeholder="Search name, ID, or IP"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="mt-0 w-56"
+            className="mt-0 w-full sm:w-56"
             aria-label="Search members"
           />
           <select
@@ -664,7 +667,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
             Deauthorize selected
           </Button>
           <Button
-            variant="outline"
+            variant="destructive"
             className="px-3 py-2 text-sm"
             disabled={degraded || bulk.isPending}
             onClick={() => runBulk('delete')}
@@ -707,7 +710,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
         <p className="text-ink-mute">No members match the current filters.</p>
       )}
       {visible.length > 0 && (
-        <table className="w-full text-left">
+        <table className="member-table w-full text-left">
           <thead>
             <tr className="text-xs uppercase text-ink-faint">
               <th className="pb-2 pr-2">

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithQuery } from '../helpers/render';
 import AccountPage from '@/app/(ui)/account/page';
 
 vi.mock('qrcode', () => ({
@@ -24,7 +25,7 @@ describe('AccountPage', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<AccountPage />);
+    renderWithQuery(<AccountPage />);
 
     expect((await screen.findAllByText('admin')).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: /password/i })).toBeInTheDocument();
@@ -44,7 +45,7 @@ describe('AccountPage', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    render(<AccountPage />);
+    renderWithQuery(<AccountPage />);
 
     expect(await screen.findByText(/is enabled/i)).toBeInTheDocument();
   });
