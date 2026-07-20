@@ -225,6 +225,96 @@ describe('resolveOidcUser', () => {
     expect(byOrg['ops-org']).toBeUndefined();
   });
 
+  it("retains a stale SSO grant that is the org's sole owner instead of orphaning it", async () => {
+    // Map net-ops -> ops-org as OWNER so the SSO user becomes ops-org's owner.
+    process.env.OIDC_GROUP_MAP = JSON.stringify({
+      'net-ops': { orgSlug: 'ops-org', role: 'owner' },
+    });
+    // ops-org must exist with no other owner: seedOrg's creator is only a seed
+    // user, not a member, so the SSO user is the sole owner once provisioned.
+    await seedOrg('ops-org');
+
+    const u = await resolveOidcUser({
+      subject: 'sub-sole',
+      email: null,
+      claims: { sub: 'sub-sole', preferred_username: 'erin', groups: ['net-ops'] },
+    });
+    let m = await getDb().membership.findMany({ where: { userId: u.id }, include: { org: true } });
+    expect(Object.fromEntries(m.map(x => [x.org.slug, x.role]))).toEqual({ 'ops-org': 'owner' });
+
+    // Offboarded from net-ops: the claim no longer grants ops-org. The grant is
+    // this org's only owner, so it must be retained (not deleted) to avoid an
+    // ownerless, unadministrable org.
+    await resolveOidcUser({
+      subject: 'sub-sole',
+      email: null,
+      claims: { sub: 'sub-sole', preferred_username: 'erin', groups: [] },
+    });
+    m = await getDb().membership.findMany({ where: { userId: u.id }, include: { org: true } });
+    expect(
+      Object.fromEntries(m.map(x => [x.org.slug, { role: x.role, origin: x.origin }]))
+    ).toEqual({
+      'ops-org': { role: 'owner', origin: 'oidc' },
+    });
+  });
+
+  it('revokes a stale SSO owner grant when another owner still remains', async () => {
+    process.env.OIDC_GROUP_MAP = JSON.stringify({
+      'net-ops': { orgSlug: 'ops-org', role: 'owner' },
+    });
+    const opsOrgId = await seedOrg('ops-org');
+    // A second, manual owner keeps the org administrable, so revoking the SSO
+    // owner is safe and should proceed.
+    const other = await getDb().user.create({ data: { username: 'coowner', passwordHash: 'h' } });
+    await getDb().membership.create({
+      data: { userId: other.id, orgId: opsOrgId, role: 'owner', origin: 'manual' },
+    });
+
+    const u = await resolveOidcUser({
+      subject: 'sub-co',
+      email: null,
+      claims: { sub: 'sub-co', preferred_username: 'frank', groups: ['net-ops'] },
+    });
+    expect(await getDb().membership.count({ where: { orgId: opsOrgId } })).toBe(2);
+
+    // The SSO user holds an org-scoped API key; the co-owner holds one too.
+    await getDb().apiKey.create({
+      data: {
+        userId: u.id,
+        orgId: opsOrgId,
+        role: 'owner',
+        name: 'frank-key',
+        prefix: 'gzt_frank',
+        hashedKey: 'hash-frank',
+      },
+    });
+    await getDb().apiKey.create({
+      data: {
+        userId: other.id,
+        orgId: opsOrgId,
+        role: 'owner',
+        name: 'coowner-key',
+        prefix: 'gzt_co',
+        hashedKey: 'hash-co',
+      },
+    });
+
+    await resolveOidcUser({
+      subject: 'sub-co',
+      email: null,
+      claims: { sub: 'sub-co', preferred_username: 'frank', groups: [] },
+    });
+    const m = await getDb().membership.findMany({ where: { userId: u.id } });
+    expect(m).toHaveLength(0); // SSO owner grant revoked; manual owner remains.
+    const remaining = await getDb().membership.findMany({ where: { orgId: opsOrgId } });
+    expect(remaining.map(x => x.userId)).toEqual([other.id]);
+
+    // The de-provisioned user's org-scoped API key is revoked with the
+    // membership; the co-owner's key survives.
+    const keys = await getDb().apiKey.findMany({ where: { orgId: opsOrgId } });
+    expect(keys.map(k => k.userId)).toEqual([other.id]);
+  });
+
   it('derives a unique username when the preferred one is taken by another account', async () => {
     await seedOrg('default-org');
     await getDb().user.create({ data: { username: 'alice', passwordHash: 'h' } });

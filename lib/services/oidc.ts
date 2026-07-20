@@ -252,7 +252,13 @@ const OIDC_ORIGIN = 'oidc';
  * Then REVOKE: delete every "oidc"-origin membership for this user whose org is
  * no longer in the desired set. This is what strips access from an offboarded
  * user removed from an IdP group (they used to keep the role forever). "manual"
- * rows are never deleted. Deletion is a direct delete of SSO-managed rows only.
+ * rows are never deleted.
+ *
+ * The revoke honors the same last-owner invariant that orgs.ts enforces: if a
+ * stale SSO grant is an org's *sole* remaining owner, it is RETAINED rather than
+ * deleted, because revoking it would leave the org ownerless and therefore
+ * unadministrable. The retained row keeps origin="oidc", so it is revoked
+ * automatically on a later login once another owner exists.
  */
 async function syncMemberships(userId: string, desired: GroupMapping[]): Promise<void> {
   const desiredOrgIds = new Set<string>();
@@ -281,15 +287,37 @@ async function syncMemberships(userId: string, desired: GroupMapping[]): Promise
     });
   }
 
-  // Revoke SSO-managed memberships for orgs no longer granted by the current claim.
+  // Revoke SSO-managed memberships for orgs no longer granted by the current
+  // claim. Done per-org inside a transaction (not one bulk deleteMany) so the
+  // last-owner guard can run atomically per org, exactly like orgs.ts: re-read
+  // the row inside the tx, skip anything that is no longer an SSO-managed row,
+  // and retain a grant that is the org's sole remaining owner.
   const stale = await getDb().membership.findMany({
     where: { userId, origin: OIDC_ORIGIN },
     select: { orgId: true },
   });
   const staleOrgIds = stale.map(m => m.orgId).filter(orgId => !desiredOrgIds.has(orgId));
-  if (staleOrgIds.length > 0) {
-    await getDb().membership.deleteMany({
-      where: { userId, origin: OIDC_ORIGIN, orgId: { in: staleOrgIds } },
+  for (const orgId of staleOrgIds) {
+    await getDb().$transaction(async tx => {
+      const current = await tx.membership.findUnique({
+        where: { userId_orgId: { userId, orgId } },
+      });
+      if (!current || current.origin !== OIDC_ORIGIN) return;
+      if (
+        current.role === 'owner' &&
+        (await tx.membership.count({ where: { orgId, role: 'owner' } })) <= 1
+      ) {
+        console.error(
+          `[gem-zt] Retaining sole-owner SSO membership (user ${userId}, org ${orgId}): ` +
+            'revoking it would leave the organization ownerless.'
+        );
+        return;
+      }
+      // Revoke the membership and its org-scoped API keys atomically, mirroring
+      // orgs.ts#removeMember: a de-provisioned user must not retain org access
+      // through a surviving credential.
+      await tx.membership.delete({ where: { userId_orgId: { userId, orgId } } });
+      await tx.apiKey.deleteMany({ where: { userId, orgId } });
     });
   }
 }
