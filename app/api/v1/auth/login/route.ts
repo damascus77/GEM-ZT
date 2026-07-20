@@ -9,7 +9,6 @@ import {
   sessionCookieOptions,
 } from '@/lib/services/auth';
 import { getLoginRateLimiters } from '@/lib/services/rateLimitSettings';
-import { runRetention } from '@/lib/services/retention';
 import { verifyTotp } from '@/lib/services/totp';
 
 const loginSchema = z
@@ -60,8 +59,8 @@ export async function POST(req: Request) {
     // password submission charges the IP limiter) don't exhaust the shared
     // IP slot for everyone behind the same NAT.
     ipLimiter.reset(ipKey);
-    // Opportunistic, self-throttled cleanup of expired sessions / old audit rows.
-    await runRetention();
+    // Retention (expired sessions / old audit + presence rows) now runs on the
+    // background scheduler (lib/scheduler/jobs.ts), not on the login hot path.
     const session = await createSessionWithOrg(user.id);
     const res = NextResponse.json({
       user: { id: user.id, username: user.username, role: user.role },

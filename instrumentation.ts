@@ -34,6 +34,14 @@ async function runStartupTasks(): Promise<void> {
     // `next build`'s trace step) can never touch a database.
     const { ensureDefaultOrgAndBackfill } = await import('@/lib/db/backfill');
     await ensureDefaultOrgAndBackfill();
+
+    // Start the in-process background scheduler (presence sampling, webhook
+    // checks, retention, controller-status polling). Deferred import for the
+    // same reason as the backfill: no DB side effects at parse time. The
+    // scheduler is lease-gated, so multiple replicas won't double-fire, and is
+    // a no-op when GEMZT_SCHEDULER_ENABLED=false.
+    const { startBackgroundScheduler } = await import('@/lib/scheduler/jobs');
+    startBackgroundScheduler();
   } catch (e) {
     // Never crash server startup over a backfill hiccup (e.g. DB not yet
     // migrated on first boot before `prisma migrate deploy` finishes) — log

@@ -4,6 +4,7 @@ import { apiError, handleRouteError } from '@/lib/api/errors';
 import { logAudit } from '@/lib/services/audit';
 import { assertNetworkInOrg } from '@/lib/services/networks';
 import { deleteMember, getMember, updateMember, updateMemberSchema } from '@/lib/services/members';
+import { publish } from '@/lib/events/bus';
 
 type Ctx = { params: Promise<{ nwid: string; memberId: string }> };
 
@@ -34,6 +35,24 @@ export async function PATCH(req: Request, { params }: Ctx) {
     }
     const before = await getMember(nwid, memberId).catch(() => null);
     const { data, metaWarning } = await updateMember(nwid, memberId, body);
+    // Coarse real-time invalidation: any member write refreshes viewers' member
+    // + presence lists over SSE (app/api/v1/events). Scoped to the network's org.
+    publish({ type: 'members.changed', nwid, orgId: auth.orgId });
+    // Edge-triggered: only on an authorized -> deauthorized transition, so
+    // re-PATCHing an already-deauthorized member (no transition) never fires.
+    // Each distinct deauthorization publishes its own event: the notification
+    // fan-out (lib/services/notifications.ts) keys member.deauthorized off the
+    // event timestamp, so deauthorize -> re-authorize -> deauthorize alerts
+    // twice rather than being deduped to once by the NotificationDelivery ledger.
+    if (before?.authorized === true && data.authorized === false) {
+      publish({
+        type: 'member.deauthorized',
+        nwid,
+        memberId,
+        name: data.name ?? '',
+        orgId: auth.orgId,
+      });
+    }
     await logAudit({
       userId: auth.user.id,
       orgId: auth.orgId,
@@ -57,6 +76,7 @@ export async function DELETE(req: Request, { params }: Ctx) {
       return apiError('NOT_FOUND', `Network ${nwid} not found.`, 404);
     }
     await deleteMember(nwid, memberId);
+    publish({ type: 'members.changed', nwid, orgId: auth.orgId });
     await logAudit({
       userId: auth.user.id,
       orgId: auth.orgId,

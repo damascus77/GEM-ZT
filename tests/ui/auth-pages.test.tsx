@@ -32,9 +32,11 @@ describe('LoginPage', () => {
     await userEvent.type(screen.getByLabelText(/password/i), 'password12345');
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/networks'));
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('/api/v1/auth/login');
-    expect(JSON.parse(init!.body as string)).toEqual({
+    // The page also probes /api/v1/setup/status on mount (SSO button gating), so
+    // find the login POST specifically rather than assuming it is the first call.
+    const loginCall = fetchMock.mock.calls.find(([url]) => url === '/api/v1/auth/login');
+    expect(loginCall).toBeDefined();
+    expect(JSON.parse(loginCall![1]!.body as string)).toEqual({
       username: 'admin',
       password: 'password12345',
     });

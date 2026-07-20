@@ -32,7 +32,7 @@ describe('setup + auth routes', () => {
   it('reports needsSetup=true before any user exists', async () => {
     const res = await setupStatusGet();
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ needsSetup: true });
+    expect(await res.json()).toEqual({ needsSetup: true, sso: false });
   });
 
   it('rejects invalid setup bodies with VALIDATION_ERROR', async () => {
@@ -85,7 +85,7 @@ describe('setup + auth routes', () => {
     expect(body.user.username).toBe('admin');
     expect(body.user).not.toHaveProperty('passwordHash');
     expect(res.headers.get('set-cookie')).toContain('gemzt_session=');
-    expect(await (await setupStatusGet()).json()).toEqual({ needsSetup: false });
+    expect(await (await setupStatusGet()).json()).toEqual({ needsSetup: false, sso: false });
   });
 
   it('refuses setup once a user exists (409 SETUP_ALREADY_COMPLETE)', async () => {

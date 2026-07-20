@@ -1,9 +1,14 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 
-vi.mock('@/lib/controller', () => ({ getControllerClient: vi.fn(), getControllerCacheTtlMs: () => 0 }));
+vi.mock('@/lib/controller', () => ({
+  getControllerClient: vi.fn(),
+  getControllerCacheTtlMs: () => 0,
+}));
 vi.mock('@/lib/services/members', () => ({ listMembers: vi.fn() }));
+vi.mock('@/lib/events/bus', () => ({ publish: vi.fn() }));
 
 import { listMembers } from '@/lib/services/members';
+import { publish } from '@/lib/events/bus';
 import { setupTestDb } from '../helpers/db';
 import { getDb } from '@/lib/db/client';
 import {
@@ -11,7 +16,6 @@ import {
   dispatchWebhook,
   getNewMemberWebhookUrl,
   setNewMemberWebhookUrl,
-  setWebhookConfig,
   notifyNewUnauthorizedMembers,
 } from '@/lib/services/webhooks';
 
@@ -27,6 +31,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  await getDb().notificationDelivery.deleteMany();
   await getDb().setting.deleteMany();
   await getDb().networkMeta.deleteMany();
   await getDb().membership.deleteMany();
@@ -158,135 +163,103 @@ describe('webhook URL settings', () => {
   });
 });
 
+// After the Phase 2 refactor, notifyNewUnauthorizedMembers no longer dispatches
+// webhooks or persists a "known set" itself — it publishes a `member.unauthorized`
+// event onto the bus for each unauthorized member. The unified fan-out
+// (lib/services/notifications.ts) resolves per-org channels and dedups via the
+// NotificationDelivery ledger; those concerns are covered in notifications.test.ts.
 describe('notifyNewUnauthorizedMembers', () => {
-  it('no-ops (no fetch) when the network has no org', async () => {
+  const publishMock = vi.mocked(publish);
+
+  it('does not publish when the network has no org', async () => {
     await seedNetwork(undefined);
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
     (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
       { memberId: 'm1', authorized: false, name: '' },
     ]);
     await notifyNewUnauthorizedMembers(NWID);
-    expect(fetchMock).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
+    expect(publishMock).not.toHaveBeenCalled();
   });
 
-  it('no-ops (no fetch) when the network has no NetworkMeta row at all', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
+  it('does not publish when the network has no NetworkMeta row at all', async () => {
     (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
       { memberId: 'm1', authorized: false, name: '' },
     ]);
     await notifyNewUnauthorizedMembers(NWID);
-    expect(fetchMock).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
+    expect(publishMock).not.toHaveBeenCalled();
   });
 
-  it('no-ops (no fetch) when the network belongs to an org with no webhook configured', async () => {
-    const orgId = await seedOrg('org-no-webhook');
-    await seedNetwork(orgId);
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-    (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { memberId: 'm1', authorized: false, name: '' },
-    ]);
-    await notifyNewUnauthorizedMembers(NWID);
-    expect(fetchMock).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
-  });
-
-  it('fires for new unauthorized members using the network org webhook config, and persists the known set', async () => {
+  it('publishes a member.unauthorized event (scoped to the network org) for each unauthorized member', async () => {
     const orgId = await seedOrg('org-a');
     await seedNetwork(orgId);
-    await setWebhookConfig(orgId, { newMemberUrl: 'https://example.com/hook' });
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    vi.stubGlobal('fetch', fetchMock);
     (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
       { memberId: 'm1', authorized: false, name: 'Laptop' },
       { memberId: 'm2', authorized: true, name: 'Phone' },
+      { memberId: 'm3', authorized: false, name: 'Tablet' },
     ]);
 
     await notifyNewUnauthorizedMembers(NWID);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('https://example.com/hook');
-    const body = JSON.parse(init.body);
-    expect(body).toEqual({
-      event: 'member.unauthorized',
+    // Only the unauthorized members (m1, m3) are published — not the authorized m2.
+    expect(publishMock).toHaveBeenCalledTimes(2);
+    expect(publishMock).toHaveBeenCalledWith({
+      type: 'member.unauthorized',
       nwid: NWID,
       memberId: 'm1',
       name: 'Laptop',
+      orgId,
     });
-
-    const known = await getDb().setting.findUnique({ where: { key: `webhook.known.${NWID}` } });
-    expect(known).not.toBeNull();
-    expect(JSON.parse(known!.value).sort()).toEqual(['m1', 'm2']);
-
-    vi.unstubAllGlobals();
+    expect(publishMock).toHaveBeenCalledWith({
+      type: 'member.unauthorized',
+      nwid: NWID,
+      memberId: 'm3',
+      name: 'Tablet',
+      orgId,
+    });
   });
 
-  it("does not dispatch to another org's webhook config", async () => {
-    const orgA = await seedOrg('org-a');
-    const orgB = await seedOrg('org-b');
-    await seedNetwork(orgA);
-    // Only org B has a webhook configured; the network belongs to org A.
-    await setWebhookConfig(orgB, { newMemberUrl: 'https://example.com/hook-b' });
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-    (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { memberId: 'm1', authorized: false, name: 'Laptop' },
-    ]);
-
-    await notifyNewUnauthorizedMembers(NWID);
-    expect(fetchMock).not.toHaveBeenCalled();
-
-    vi.unstubAllGlobals();
-  });
-
-  it('does not re-fire for already-known members on a second call', async () => {
+  it('re-publishes on a second call (idempotency is the fan-out ledger, not this layer)', async () => {
     const orgId = await seedOrg('org-a');
     await seedNetwork(orgId);
-    await setWebhookConfig(orgId, { newMemberUrl: 'https://example.com/hook' });
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    vi.stubGlobal('fetch', fetchMock);
     (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
       { memberId: 'm1', authorized: false, name: 'Laptop' },
     ]);
 
     await notifyNewUnauthorizedMembers(NWID);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
     await notifyNewUnauthorizedMembers(NWID);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    vi.unstubAllGlobals();
+    expect(publishMock).toHaveBeenCalledTimes(2);
   });
 
-  it('is robust to corrupt known-set JSON (treats as empty)', async () => {
+  it('does not re-publish for a member already delivered in the ledger', async () => {
     const orgId = await seedOrg('org-a');
     await seedNetwork(orgId);
-    await setWebhookConfig(orgId, { newMemberUrl: 'https://example.com/hook' });
-    await getDb().setting.create({
-      data: { key: `webhook.known.${NWID}`, value: 'not-json{' },
+    // Seed a ledger row as deliverEvent would write it:
+    // `member.unauthorized:${nwid}:${memberId}:${orgId}`.
+    await getDb().notificationDelivery.create({
+      data: { eventKey: `member.unauthorized:${NWID}:m1:${orgId}`, channel: 'webhook' },
     });
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    vi.stubGlobal('fetch', fetchMock);
     (listMembers as ReturnType<typeof vi.fn>).mockResolvedValue([
       { memberId: 'm1', authorized: false, name: 'Laptop' },
+      { memberId: 'm2', authorized: false, name: 'Tablet' },
     ]);
 
     await notifyNewUnauthorizedMembers(NWID);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    vi.unstubAllGlobals();
+    // m1 is already in the ledger and is skipped; only m2 is published.
+    expect(publishMock).toHaveBeenCalledTimes(1);
+    expect(publishMock).toHaveBeenCalledWith({
+      type: 'member.unauthorized',
+      nwid: NWID,
+      memberId: 'm2',
+      name: 'Tablet',
+      orgId,
+    });
   });
 
   it('never throws even when listMembers fails', async () => {
     const orgId = await seedOrg('org-a');
     await seedNetwork(orgId);
-    await setWebhookConfig(orgId, { newMemberUrl: 'https://example.com/hook' });
     (listMembers as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('controller sad'));
     await expect(notifyNewUnauthorizedMembers(NWID)).resolves.toBeUndefined();
+    expect(publishMock).not.toHaveBeenCalled();
   });
 });

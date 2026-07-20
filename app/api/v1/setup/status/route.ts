@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { userCount } from '@/lib/services/auth';
+import { isOidcEnabled } from '@/lib/services/oidc';
 import { handleRouteError } from '@/lib/api/errors';
 
 // Hits the database per request; must never be statically prerendered at build
@@ -10,6 +11,7 @@ export async function GET() {
   try {
     return NextResponse.json({
       needsSetup: (await userCount()) === 0,
+      sso: isOidcEnabled(),
     });
   } catch (e) {
     return handleRouteError(e);

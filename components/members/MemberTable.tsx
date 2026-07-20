@@ -482,7 +482,9 @@ export function MemberTable({ nwid }: { nwid: string }) {
       if (!res.ok) throw new Error('Failed to load members');
       return res.json();
     },
-    refetchInterval: pollInterval(process.env.NEXT_PUBLIC_MEMBERS_REFETCH_MS, 30000),
+    // SSE (useEventStream) drives instant refreshes now; this poll is the
+    // fallback for when the stream is down, so it can run less often.
+    refetchInterval: pollInterval(process.env.NEXT_PUBLIC_MEMBERS_REFETCH_MS, 60000),
     // Keep the current rows on screen during a poll refetch or filter change
     // instead of blanking the table back to a loading state.
     placeholderData: keepPreviousData,
@@ -511,7 +513,7 @@ export function MemberTable({ nwid }: { nwid: string }) {
       if (!res.ok) throw new Error('Failed to load presence');
       return res.json();
     },
-    refetchInterval: pollInterval(process.env.NEXT_PUBLIC_PRESENCE_REFETCH_MS, 30000),
+    refetchInterval: pollInterval(process.env.NEXT_PUBLIC_PRESENCE_REFETCH_MS, 60000),
   });
   const presenceMap: Record<string, PresenceEntry> = presenceData?.presence ?? {};
 

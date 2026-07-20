@@ -78,25 +78,60 @@ const DEFAULT_SAMPLE_LIMIT = 48;
  * Presence for every member in the network that has at least one sample,
  * keyed by memberId.
  *
- * Previously this loaded the network's ENTIRE presence history into memory and
- * kept only the last 48 per member — ~30 days x N members of rows per poll.
- * Instead, resolve the member set with a DB-side GROUP BY, then fetch only the
- * bounded slice each member actually needs (last-seen + last 48 samples), which
- * the [nwid, memberId, sampledAt] index serves directly.
+ * Runs in a bounded, fixed number of queries (3) regardless of member count —
+ * replacing the previous per-member loop that issued 2xN serialized queries on
+ * the single SQLite connection (AUD-09), which blocked other writers on large
+ * networks:
+ *   1. member set — one GROUP BY over the network's samples.
+ *   2. last-seen — one GROUP BY (online-only) with MAX(sampledAt) per member.
+ *   3. recent samples — one windowed read of the newest (members x limit) rows,
+ *      bucketed per member in memory (newest `limit` each) for the sparkline.
+ *
+ * Note on (3): since sampleNetworkPresence samples the whole roster every tick,
+ * current members are sampled uniformly and each gets its full last-`limit`
+ * window. A member that has stopped being sampled (left the network) can have
+ * its older sparkline tail truncated — acceptable, as its history is least
+ * relevant. last-seen (2) is always exact.
  */
 export async function getNetworkPresence(
   nwid: string
 ): Promise<Record<string, NetworkPresenceEntry>> {
-  const members = await getDb().memberPresence.groupBy({ by: ['memberId'], where: { nwid } });
+  const db = getDb();
+  const memberRows = await db.memberPresence.groupBy({ by: ['memberId'], where: { nwid } });
+  if (memberRows.length === 0) return {};
+  const memberIds = memberRows.map(r => r.memberId);
+
+  const lastSeenRows = await db.memberPresence.groupBy({
+    by: ['memberId'],
+    where: { nwid, online: true },
+    _max: { sampledAt: true },
+  });
+  const lastSeen = new Map(lastSeenRows.map(r => [r.memberId, r._max.sampledAt]));
+
+  const recent = await db.memberPresence.findMany({
+    where: { nwid },
+    orderBy: { sampledAt: 'desc' },
+    take: memberIds.length * DEFAULT_SAMPLE_LIMIT,
+    select: { memberId: true, online: true },
+  });
+  // Bucket newest->oldest, capped at the per-member limit.
+  const buckets = new Map<string, boolean[]>();
+  for (const row of recent) {
+    const arr = buckets.get(row.memberId);
+    if (!arr) {
+      buckets.set(row.memberId, [row.online]);
+    } else if (arr.length < DEFAULT_SAMPLE_LIMIT) {
+      arr.push(row.online);
+    }
+  }
+
   const result: Record<string, NetworkPresenceEntry> = {};
-  for (const { memberId } of members) {
-    const [lastSeen, recent] = await Promise.all([
-      getLastSeen(nwid, memberId),
-      getRecentSamples(nwid, memberId, DEFAULT_SAMPLE_LIMIT),
-    ]);
+  for (const memberId of memberIds) {
+    const seen = lastSeen.get(memberId) ?? null;
     result[memberId] = {
-      lastSeen: lastSeen ? lastSeen.toISOString() : null,
-      samples: recent.map(s => s.online),
+      lastSeen: seen ? seen.toISOString() : null,
+      // Stored newest->oldest above; reverse to oldest->newest for the sparkline.
+      samples: (buckets.get(memberId) ?? []).reverse(),
     };
   }
   return result;

@@ -1,5 +1,6 @@
 import { getDb } from '@/lib/db/client';
 import { isSafeWebhookUrl } from '@/lib/util/ssrf';
+import { publish } from '@/lib/events/bus';
 import { listMembers } from './members';
 
 const NEW_MEMBER_WEBHOOK_URL_KEY = 'webhook.new_member_url';
@@ -38,10 +39,6 @@ export async function setWebhookConfig(orgId: string, cfg: WebhookConfig): Promi
     create: { key, value },
     update: { value },
   });
-}
-
-function knownSetKey(nwid: string): string {
-  return `webhook.known.${nwid}`;
 }
 
 /** The configured outbound webhook URL for new-unauthorized-member alerts, or null if unset. */
@@ -101,60 +98,53 @@ export async function dispatchWebhook(url: string, payload: unknown): Promise<bo
   }
 }
 
-function parseKnownIds(raw: string | undefined): string[] {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.every(x => typeof x === 'string')) return parsed;
-    return [];
-  } catch {
-    return [];
-  }
-}
-
 /**
- * Best-effort, never throws (like presence/audit): fire a webhook the first
- * time an unauthorized member is seen on a network, then record every current
- * memberId (authorized or not) as "known" so it isn't re-alerted on later
- * polls even if it leaves and rejoins while still pending, or is later
- * deauthorized.
+ * Detect unauthorized members on a network and publish a `member.unauthorized`
+ * event for each onto the event bus. The notification fan-out
+ * (lib/services/notifications.ts) delivers to the configured channels (webhook
+ * + email) and dedups via the NotificationDelivery ledger — keyed by
+ * network+member, so a member is alerted at most once (replacing the old
+ * Setting-based "known set", and fixing the at-least-once AUD-07 race).
  *
- * Honest limitation: this only runs while someone is viewing a network's
- * member list (see the throttled call site in the members LIST route) — there
- * is no background scheduler, so a network nobody is viewing never triggers
- * an alert.
+ * Best-effort, never throws. The background scheduler drives this for every
+ * network regardless of viewers; the members LIST route also calls it as a
+ * low-latency fallback.
  */
 export async function notifyNewUnauthorizedMembers(nwid: string): Promise<void> {
   try {
     const meta = await getDb().networkMeta.findUnique({ where: { nwid } });
     if (!meta?.orgId) return;
-    const { newMemberUrl: url } = await getWebhookConfig(meta.orgId);
-    if (!url) return;
+
+    // One ledger query per network: which members have already been delivered a
+    // member.unauthorized alert? deliverEvent stores rows under an eventKey of
+    // the form `member.unauthorized:${nwid}:${memberId}:${orgId}`, so we match on
+    // the `member.unauthorized:${nwid}:` prefix and pull the memberId out of the
+    // 3rd colon-segment. Skipping those avoids the steady per-tick DB churn of a
+    // config read + an always-failing claim() insert for already-notified members
+    // on the single SQLite writer. A send that failed was release()d, so its row
+    // is gone and the member correctly re-publishes.
+    const prefix = `member.unauthorized:${nwid}:`;
+    const delivered = await getDb().notificationDelivery.findMany({
+      where: { eventKey: { startsWith: prefix } },
+      select: { eventKey: true },
+    });
+    const alreadyNotified = new Set(
+      delivered.map(row => row.eventKey.split(':')[2]).filter((id): id is string => Boolean(id))
+    );
 
     const members = await listMembers(nwid);
-    const key = knownSetKey(nwid);
-    const row = await getDb().setting.findUnique({ where: { key } });
-    const knownIds = parseKnownIds(row?.value);
-
-    const newUnauthorized = diffNewUnauthorized(members, knownIds);
-    const byId = new Map(members.map(m => [m.memberId, m]));
-    for (const memberId of newUnauthorized) {
-      const member = byId.get(memberId);
-      await dispatchWebhook(url, {
-        event: 'member.unauthorized',
-        nwid,
-        memberId,
-        name: member?.name ?? '',
-      });
+    for (const m of members) {
+      if (!m.authorized && !alreadyNotified.has(m.memberId)) {
+        publish({
+          type: 'member.unauthorized',
+          nwid,
+          memberId: m.memberId,
+          name: m.name ?? '',
+          orgId: meta.orgId,
+        });
+      }
     }
-
-    const updatedKnown = Array.from(new Set([...knownIds, ...members.map(m => m.memberId)]));
-    await getDb().setting.upsert({
-      where: { key },
-      create: { key, value: JSON.stringify(updatedKnown) },
-      update: { value: JSON.stringify(updatedKnown) },
-    });
   } catch (e) {
-    console.error('[gem-zt] new-member webhook notification failed:', e);
+    console.error('[gem-zt] new-member notification failed:', e);
   }
 }

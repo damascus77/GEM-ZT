@@ -42,6 +42,7 @@ model Membership {
   orgId     String
   org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   role      String   // "owner" | "admin" | "editor" | "viewer"
+  origin    String   @default("manual") // "manual" | "oidc" — provenance; SSO only manages "oidc" rows
   createdAt DateTime @default(now())
 
   @@unique([userId, orgId])
@@ -136,6 +137,19 @@ model AuditLog {
 model Setting {
   key   String @id
   value String
+}
+
+// Idempotency ledger for outbound notifications. Before a webhook/email fires
+// for an event we insert its (eventKey, channel); the @@unique means a
+// crash-and-retry can never double-send. Old rows are pruned by retention.
+model NotificationDelivery {
+  id        String   @id @default(cuid())
+  eventKey  String
+  channel   String // "webhook" | "email"
+  createdAt DateTime @default(now())
+
+  @@unique([eventKey, channel])
+  @@index([createdAt])
 }
 
 model NetworkTemplate {

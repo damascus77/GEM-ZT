@@ -8,10 +8,11 @@ import { notifyNewUnauthorizedMembers } from '@/lib/services/webhooks';
 
 type Ctx = { params: Promise<{ nwid: string }> };
 
-// Throttle presence sampling per-network to reduce database writes. This is a
-// deliberately honest limitation: presence is only ever sampled while someone
-// has the members list open — there is no background scheduler, so a network
-// nobody is viewing accumulates no history.
+// Throttle presence sampling per-network to reduce database writes. The
+// background scheduler (lib/scheduler/jobs.ts) is now the primary driver and
+// samples every network on a cadence regardless of viewers; this request-path
+// sampling remains as a low-latency fallback (e.g. when the scheduler is
+// disabled via GEMZT_SCHEDULER_ENABLED=false, or in dev).
 const SAMPLE_INTERVAL_MS = 120_000;
 const lastSampledAt = new Map<string, number>();
 
@@ -31,9 +32,9 @@ async function maybeSamplePresence(
 
 // Same throttling shape as presence sampling above, but for the "new
 // unauthorized member" webhook check — kept as a separate map/interval so the
-// two features can be tuned independently. Same honest limitation applies:
-// this only fires while someone is viewing the network's member list, since
-// there is no background scheduler.
+// two features can be tuned independently. As with sampling, the background
+// scheduler is now the primary driver (fires without a viewer); this remains a
+// request-path fallback.
 const WEBHOOK_CHECK_INTERVAL_MS = 60_000;
 const lastWebhookCheckAt = new Map<string, number>();
 

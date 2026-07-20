@@ -24,3 +24,12 @@ coverage/
 *.dc.html
 *standalone*.html
 .gstack/
+
+# Graphify
+graphify-out/
+
+# Agent Files
+AGENTS.md
+CLAUDE.md
+.claude/
+.codex/

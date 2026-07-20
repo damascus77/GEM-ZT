@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -12,6 +12,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ssoEnabled, setSsoEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Surface a "Sign in with SSO" button only when the instance has OIDC
+    // configured. Also flag a failed SSO round trip (?error=sso on the callback).
+    if (new URLSearchParams(window.location.search).get('error') === 'sso') {
+      setError('SSO sign-in failed. Please try again or use your password.');
+    }
+    fetch('/api/v1/setup/status')
+      .then(r => (r.ok ? r.json() : null))
+      .then(body => {
+        if (!cancelled && body?.sso) setSsoEnabled(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,6 +76,21 @@ export default function LoginPage() {
           Sign in
         </Button>
       </form>
+      {ssoEnabled && (
+        <>
+          <div className="my-4 flex items-center gap-3 text-xs text-ink-mute">
+            <span className="h-px flex-1 bg-line" />
+            or
+            <span className="h-px flex-1 bg-line" />
+          </div>
+          <a
+            href="/api/v1/auth/oidc/login"
+            className="block w-full rounded-md border border-line py-2 text-center text-sm text-ink hover:bg-surface-2"
+          >
+            Sign in with SSO
+          </a>
+        </>
+      )}
     </Card>
   );
 }
