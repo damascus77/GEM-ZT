@@ -277,3 +277,34 @@ Verified complete against the working tree and moved out of `TODO.md`.
   best-effort network/peer/active path counts. `/admin` now shows an `AdminControllerPanel`
   alongside rate-limit settings and existing organization management. Controller credentials
   remain server-only.)_
+
+## 6. Completed 2026-07-20 — OIDC/SSO login + P0 audit findings
+
+### Feature
+
+- ✅ **[DONE] [P1] OIDC/SSO login.** _(Done 2026-07-20: generic discovery-based OIDC
+  (Google/Okta/Authentik/Keycloak/Azure AD) in `lib/services/oidc.ts` with login + callback routes
+  (`app/api/v1/auth/oidc/login|callback`), PKCE + state/nonce, passwordless auto-provisioning via
+  the `Identity(provider, subject)` table, and env-driven group→org/role mapping. Memberships are
+  reconciled from claims on every login with an `origin="oidc"` provenance marker so SSO never
+  touches manual grants. Revoke honors the last-owner invariant (a sole SSO owner is retained, not
+  orphaned) and cascades org-scoped API-key revocation, mirroring `orgs.ts#removeMember`.)_
+
+### Audit findings (2026-07-19) — P0 set
+
+- ✅ **[DONE] [UI] AUD-01 Status pills & diff text invisible in dark theme.** _(Fixed: extracted a
+  `components/ui/Pill.tsx` primitive using `bg-teal-mid text-white` (WCAG-passing); the old
+  ~1.1:1 `text-teal-deep`-on-canvas pattern is gone from `MemberTable`, `StatusDashboard`,
+  `PendingMembers`, `RulesEditor`, and the audit diff.)_
+- ✅ **[DONE] [REL] AUD-02 `createOrg` not atomic.** _(Fixed: `organization.create` +
+  `membership.create` wrapped in one `$transaction` (`lib/services/orgs.ts:46`), so an org can
+  never exist without its owner.)_
+- ✅ **[DONE] [REL] AUD-03 Last-owner guard TOCTOU race.** _(Fixed: the owner-count check and the
+  demote/remove write now run inside one `$transaction` in `setMemberRole`/`removeMember`
+  (`lib/services/orgs.ts`), so concurrent operations can't strip the final owner.)_
+- ✅ **[DONE] [REL] AUD-04 Unbounded controller fan-out in network-list paths.** _(Fixed: all three
+  sites in `lib/services/networks.ts` (L170/207/257) route through
+  `mapWithConcurrency(ids, NETWORK_FETCH_CONCURRENCY, …)` instead of raw `Promise.all`.)_
+- ✅ **[DONE] [REL] AUD-05 Backup restore non-idempotent / partial state.** _(Fixed: restore is now
+  continue-on-error with per-item `RestoreSummary.warnings` (`lib/services/backup.ts`); the
+  non-idempotent-once-nwids-change behavior is documented in the function contract.)_
